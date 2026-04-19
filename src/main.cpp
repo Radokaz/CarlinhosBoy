@@ -1,8 +1,6 @@
-#include <iostream>
-#include <string>
-#include <vector>
+#include "cpu.h"
 
-int main(void){
+int main(int argc, char **argv){
   std::cout << "Hello world!\n";
   return 0;
 }

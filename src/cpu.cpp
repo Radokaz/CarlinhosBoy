@@ -2,8 +2,19 @@
 
 void CPU::step(void){
   uint8_t inst_byte = this->bus.read_byte(this->pc);
+
+  try{
   auto current_act = le_byte(inst_byte, this);
-  
+  this->execute(current_act);
+
+  if(!this->jp_flag)
+    this->pc+=current_act.tamanho;
+  }
+  catch(std::exception& ex){
+    std::cerr << "Erro: " << ex.what() << "\n";
+    this->pc++;
+  }
+  this->jp_flag = false;
 }
 
 uint8_t& CPU::get_target(reg_target alvo){
@@ -68,8 +79,89 @@ void CPU::execute(const Action& atual){
   switch(atual.instrucao){
     using enum Instrucoes;
 
+    case JPALWAYS: {
+      if(atual.alvo == reg_target::HL)
+        this->pc = this->registradores.get_duplo(reg_target::HL);
+      else
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+
+      this->jp_flag = true;
+      break;
+    }
+    case JPZERO: {
+      if(this->registradores.f & BIT_ZERO){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+      break;
+    }
+    case JPCARRY: {
+      if(this->registradores.f & BIT_CARRY){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+      break;
+    }
+    case JPNZERO: {
+      if(!(this->registradores.f & BIT_ZERO)){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+        
+      break;
+    }
+    case JPNCARRY: {
+      if(!(this->registradores.f & BIT_CARRY)){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRALWAYS: {
+      int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+      this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+      this->jp_flag = true;
+      break;
+    }
+    case JRZERO: {
+      if(this->registradores.f & BIT_ZERO){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRCARRY: {
+      if(this->registradores.f & BIT_CARRY){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRNZERO: {
+      if(!(this->registradores.f & BIT_ZERO)){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRNCARRY: {
+      if(!(this->registradores.f & BIT_CARRY)){
+      int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+      this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+      this->jp_flag = true;
+      }
+
+      break;
+    }
     case ADD: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       this->registradores.f = 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor);
 
@@ -97,7 +189,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case ADC: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
 
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor) + carry;
@@ -114,7 +206,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case SUB: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
       
       this->registradores.f = BIT_SUBTRACT;
@@ -130,7 +222,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case SBC: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor) - carry;
       
@@ -147,7 +239,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case AND: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a & valor);
       this->registradores.f = BIT_HALFCARRY;
 
@@ -158,7 +250,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case OR: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a | valor);
       this->registradores.f = 0;
 
@@ -169,7 +261,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case XOR: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a ^ valor);
       this->registradores.f = 0;
 
@@ -180,7 +272,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case CP: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
       
       this->registradores.f = BIT_SUBTRACT;

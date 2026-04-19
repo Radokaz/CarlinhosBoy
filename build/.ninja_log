@@ -1,0 +1,27 @@
+# ninja log v7
+1	77	1776621244569842655	CMakeFiles/gb.dir/src/cpu.cpp.o.ddi	96121bd01f37518a
+1	77	1776621244571014465	CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi	6c37d997c4a04e8c
+1	118	1776621244571121397	CMakeFiles/gb.dir/src/main.cpp.o.ddi	abd0d753ae9de956
+118	126	1776621244695625662	CMakeFiles/gb.dir/CXX.dd	8754afb27889dea8
+118	126	1776621244695625662	CMakeFiles/gb.dir/CXXModules.json	8754afb27889dea8
+118	126	1776621244695625662	CMakeFiles/gb.dir/src/cpu.cpp.o.modmap	8754afb27889dea8
+118	126	1776621244695625662	CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap	8754afb27889dea8
+118	126	1776621244695625662	CMakeFiles/gb.dir/src/main.cpp.o.modmap	8754afb27889dea8
+127	379	1776621244695844187	CMakeFiles/gb.dir/src/instrucoes.cpp.o	206df46ca55bc435
+127	746	1776621244696602597	CMakeFiles/gb.dir/src/main.cpp.o	33d435bc94375315
+1	81	1776621274822220286	CMakeFiles/gb.dir/src/cpu.cpp.o.ddi	96121bd01f37518a
+2	83	1776621274823220298	CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi	6c37d997c4a04e8c
+83	91	1776621274904221335	CMakeFiles/gb.dir/CXX.dd	8754afb27889dea8
+83	91	1776621274904221335	CMakeFiles/gb.dir/CXXModules.json	8754afb27889dea8
+83	91	1776621274904221335	CMakeFiles/gb.dir/src/cpu.cpp.o.modmap	8754afb27889dea8
+83	91	1776621274904221335	CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap	8754afb27889dea8
+83	91	1776621274904221335	CMakeFiles/gb.dir/src/main.cpp.o.modmap	8754afb27889dea8
+91	730	1776621274913413639	CMakeFiles/gb.dir/src/instrucoes.cpp.o	206df46ca55bc435
+1	80	1776621315612758983	CMakeFiles/gb.dir/src/cpu.cpp.o.ddi	96121bd01f37518a
+80	88	1776621315691760057	CMakeFiles/gb.dir/CXX.dd	8754afb27889dea8
+80	88	1776621315691760057	CMakeFiles/gb.dir/CXXModules.json	8754afb27889dea8
+80	88	1776621315691760057	CMakeFiles/gb.dir/src/cpu.cpp.o.modmap	8754afb27889dea8
+80	88	1776621315691760057	CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap	8754afb27889dea8
+80	88	1776621315691760057	CMakeFiles/gb.dir/src/main.cpp.o.modmap	8754afb27889dea8
+88	567	1776621315700580132	CMakeFiles/gb.dir/src/cpu.cpp.o	c622d80420736a72
+567	592	1776621316178766685	gb	96b879a2fcddd4c9
