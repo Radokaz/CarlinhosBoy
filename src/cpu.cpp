@@ -1,11 +1,75 @@
 #include "cpu.h"
 
-void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
-  switch(atual){
+void CPU::step(void){
+  uint8_t inst_byte = this->bus.read_byte(this->pc);
+  auto current_act = le_byte(inst_byte, this);
+  
+}
+
+uint8_t& CPU::get_target(reg_target alvo){
+  switch(alvo){
+    using enum reg_target;
+
+    case A:
+      return this->registradores.a;
+    case B:
+      return this->registradores.b;
+    case C:
+      return this->registradores.c;
+    case D:
+      return this->registradores.d;
+    case E:
+      return this->registradores.e;
+    case F:
+      return this->registradores.f;
+    case H:
+      return this->registradores.h;
+    case L:
+      return this->registradores.l;
+    case HL:
+      return this->bus.read_byte(this->registradores.get_duplo(HL));
+    default:
+      throw std::runtime_error("Registrador invalido.\n");
+  }
+}
+
+uint16_t CPU::get_target_duplo(reg_target alvo) const{
+    if(alvo == reg_target::SP)
+      return this->sp;
+    return this->registradores.get_duplo(alvo);
+}
+
+uint8_t CPU::get_bit(reg_target alvo, uint8_t bit) const{
+  switch(alvo){
+    using enum reg_target;
+    case A:
+      return ((this->registradores.a & (1 << bit)) > 0) ? 1 : 0;
+    case B:
+      return ((this->registradores.b & (1 << bit)) > 0) ? 1 : 0;
+    case C:
+      return ((this->registradores.c & (1 << bit)) > 0) ? 1 : 0;
+    case D:
+      return ((this->registradores.d & (1 << bit)) > 0) ? 1 : 0;
+    case E:
+      return ((this->registradores.e & (1 << bit)) > 0) ? 1 : 0;
+    case F:
+      return ((this->registradores.f & (1 << bit)) > 0) ? 1 : 0;
+    case H:
+      return ((this->registradores.h & (1 << bit)) > 0) ? 1 : 0;
+    case L:
+      return ((this->registradores.l & (1 << bit)) > 0) ? 1 : 0;
+    default:
+      throw std::runtime_error("Registrador inválido.\n");
+  }
+}
+
+void CPU::execute(const Action& atual){
+  
+  switch(atual.instrucao){
     using enum Instrucoes;
 
     case ADD: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       this->registradores.f = 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor);
 
@@ -20,7 +84,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case ADDHL: {
-      uint16_t valor = this->get_target_duplo(alvo);
+      uint16_t valor = this->get_target_duplo(atual.alvo);
       uint32_t result = static_cast<uint32_t>(valor) + static_cast<uint32_t>(this->registradores.get_duplo(reg_target::HL));
 
       this->registradores.f &= ~(BIT_HALFCARRY | BIT_CARRY | BIT_SUBTRACT);
@@ -33,7 +97,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case ADC: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
 
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor) + carry;
@@ -50,7 +114,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case SUB: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
       
       this->registradores.f = BIT_SUBTRACT;
@@ -66,7 +130,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case SBC: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor) - carry;
       
@@ -83,7 +147,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case AND: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a & valor);
       this->registradores.f = BIT_HALFCARRY;
 
@@ -94,7 +158,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case OR: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a | valor);
       this->registradores.f = 0;
 
@@ -105,7 +169,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case XOR: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a ^ valor);
       this->registradores.f = 0;
 
@@ -116,7 +180,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case CP: {
-      uint8_t valor = this->get_target(alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
       
       this->registradores.f = BIT_SUBTRACT;
@@ -131,7 +195,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case INC: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(reg) + 1;
 
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
@@ -143,8 +207,17 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       ++reg;
       break;
     }
+    case INCDUP: {
+      uint16_t reg = this->get_target_duplo(atual.alvo);
+            
+      if(atual.alvo != reg_target::SP)
+        this->registradores.set_duplo(atual.alvo, reg + 1);
+      else
+        this->sp++;
+      break;
+    }
     case DEC: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(reg) - 1;
 
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY);
@@ -155,6 +228,16 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
         this->registradores.f |= BIT_HALFCARRY;
       
       --reg;
+      break;
+    }
+    case DECDUP: {
+      uint16_t reg = this->get_target_duplo(atual.alvo);
+            
+      if(atual.alvo != reg_target::SP)
+        this->registradores.set_duplo(atual.alvo, reg - 1);
+      else
+        this->sp--;
+
       break;
     }
     case CCF: {
@@ -204,7 +287,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       this->registradores.a = ((this->registradores.a >> 1) | (bit0 << 7));
       break;
     } 
-    case RRLA: {
+    case RLCA: {
       uint8_t bit7 = ((this->registradores.a & (1 << 7)) > 0) ? 1 : 0;
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
       if(bit7)
@@ -221,7 +304,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case BIT: {
-      uint8_t bit = this->get_bit(alvo, bit_index);
+      uint8_t bit = this->get_bit(atual.alvo, atual.bit_index);
       this->registradores.f &= ~(BIT_ZERO | BIT_SUBTRACT);
       this->registradores.f |= BIT_HALFCARRY;
       if(!bit)
@@ -230,19 +313,19 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case RESET: {
-      uint8_t& reg = this->get_target(alvo);
-      reg &= ~(1 << bit_index);
+      uint8_t& reg = this->get_target(atual.alvo);
+      reg &= ~(1 << atual.bit_index);
 
       break;
     }
     case SET: {
-      uint8_t& reg = this->get_target(alvo);
-      reg |= (1 << bit_index);
+      uint8_t& reg = this->get_target(atual.alvo);
+      reg |= (1 << atual.bit_index);
 
       break;
     }
     case SRL: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit0 = (reg & 0x01);
       reg = (reg >> 1);
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
@@ -258,7 +341,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case RR: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit0 = (reg & 0x01);
       uint8_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
 
@@ -275,7 +358,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case RL: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit7 = (reg & (1 << 7));
       uint8_t carry = ((this->registradores.f & BIT_CARRY) > 0) ? 1 : 0;
 
@@ -292,7 +375,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case RRC: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit0 = (reg & 0x01);
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
       if(bit0)
@@ -307,7 +390,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case RLC: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit7 = ((reg & (1 << 7)) > 0) ? 1 : 0;
       this->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
       if(bit7)
@@ -322,7 +405,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case SRA: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t bit7 = ((reg & (1 << 7)) > 0) ? 1 : 0;
       uint8_t carry = (reg & 0x01);
       this->registradores.f = 0;
@@ -339,7 +422,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case SLA: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t carry = (reg & (1 << 7));
       this->registradores.f = 0;
 
@@ -355,7 +438,7 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
       break;
     }
     case SWAP: {
-      uint8_t& reg = this->get_target(alvo);
+      uint8_t& reg = this->get_target(atual.alvo);
       uint8_t lower = (reg << 4);
       uint8_t upper = (reg >> 4);
 
@@ -371,55 +454,4 @@ void CPU::execute(Instrucoes atual, reg_target alvo, uint8_t bit_index){
   }
 }
 
-uint8_t& CPU::get_target(reg_target alvo){
-  switch(alvo){
-    using enum reg_target;
 
-    case A:
-      return this->registradores.a;
-    case B:
-      return this->registradores.b;
-    case C:
-      return this->registradores.c;
-    case D:
-      return this->registradores.d;
-    case E:
-      return this->registradores.e;
-    case F:
-      return this->registradores.f;
-    case H:
-      return this->registradores.h;
-    case L:
-      return this->registradores.l;
-    default:
-      throw std::runtime_error("Registrador invalido.\n");
-  }
-}
-
-uint16_t CPU::get_target_duplo(reg_target alvo) const{
-    return this->registradores.get_duplo(alvo);
-}
-
-uint8_t CPU::get_bit(reg_target alvo, uint8_t bit) const{
-  switch(alvo){
-    using enum reg_target;
-    case A:
-      return ((this->registradores.a & (1 << bit)) > 0) ? 1 : 0;
-    case B:
-      return ((this->registradores.b & (1 << bit)) > 0) ? 1 : 0;
-    case C:
-      return ((this->registradores.c & (1 << bit)) > 0) ? 1 : 0;
-    case D:
-      return ((this->registradores.d & (1 << bit)) > 0) ? 1 : 0;
-    case E:
-      return ((this->registradores.e & (1 << bit)) > 0) ? 1 : 0;
-    case F:
-      return ((this->registradores.f & (1 << bit)) > 0) ? 1 : 0;
-    case H:
-      return ((this->registradores.h & (1 << bit)) > 0) ? 1 : 0;
-    case L:
-      return ((this->registradores.l & (1 << bit)) > 0) ? 1 : 0;
-    default:
-      throw std::runtime_error("Registrador inválido.\n");
-  }
-}

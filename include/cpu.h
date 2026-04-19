@@ -3,6 +3,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <array>
+#include <map>
 
 #define BIT_ZERO (1 << 7) //quando o resultado de uma instrução é zero
 #define BIT_SUBTRACT (1 << 6) //quando a ultima instrução foi uma subtração
@@ -21,10 +23,15 @@ enum class reg_target{
   AF,
   BC,
   DE,
-  HL
+  HL,
+  SP,
+  n
 };
 
 enum class Instrucoes{
+  NOP,
+  STOP,
+  HALT,
   ADD, //(adição) - soma o valor de um registrador específico com o do registrador A
   ADDHL, //(add to HL) - just like ADD except that the target is added to the HL register
   ADC, //(add with carry) - just like ADD except that the value of the carry flag is also added to the number
@@ -35,14 +42,18 @@ enum class Instrucoes{
   XOR, //(logical xor) - do a bitwise xor on the value in a specific register and the value in the A register
   CP, //(compare) - just like SUB except the result of the subtraction is not stored back into A
   INC, //(increment) - increment the value in a specific register by 1
+  INCDUP,
   DEC, //(decrement) - decrement the value in a specific register by 1
+  DECDUP,
   CCF, //(complement carry flag) - toggle the value of the carry flag
   SCF, //(set carry flag) - set the carry flag to true
   RRA, //(rotate right A register) - bit rotate A register right through the carry flag
   RLA, //(rotate left A register) - bit rotate A register left through the carry flag
   RRCA, //(rotate right A register) - bit rotate A register right (not through the carry flag)
-  RRLA, //(rotate left A register) - bit rotate A register left (not through the carry flag)
+  RLCA, //(rotate left A register) - bit rotate A register left (not through the carry flag)
   CPL, //(complement) - toggle every bit of the A register
+  LD,
+  LDDUP,
   BIT, //(bit test) - test to see if a specific bit of a specific register is set
   RESET, //(bit reset) - set a specific bit of a specific register to 0
   SET, //(bit set) - set a specific bit of a specific register to 1
@@ -54,6 +65,15 @@ enum class Instrucoes{
   SRA, //(shift right arithmetic) - arithmetic shift a specific register right by 1
   SLA, //(shift left arithmetic) - arithmetic shift a specific register left by 1
   SWAP, //(swap nibbles) - switch upper and lower nibble of a specific register
+};
+
+struct Action{
+  Instrucoes instrucao;
+  reg_target alvo;
+  uint8_t N;
+  uint8_t bit_index;
+
+  Action(Instrucoes i, reg_target a = reg_target::A, uint8_t n = 0, uint8_t b = 0): instrucao{i}, alvo{a}, N{n}, bit_index{b} {}
 };
 
 struct Registradores{
@@ -69,13 +89,13 @@ struct Registradores{
   uint16_t get_duplo(reg_target registrador) const{
 
     switch(registrador){
-      case reg_16::AF:
+      case reg_target::AF:
         return ((static_cast<uint16_t>(a) << 8) | static_cast<uint16_t>(f));
-      case reg_16::BC:
+      case reg_target::BC:
         return ((static_cast<uint16_t>(b) << 8) | static_cast<uint16_t>(c));
-      case reg_16::DE:
+      case reg_target::DE:
         return ((static_cast<uint16_t>(d) << 8) | static_cast<uint16_t>(e));
-      case reg_16::HL:
+      case reg_target::HL:
         return ((static_cast<uint16_t>(h) << 8) | static_cast<uint16_t>(l));
       default:
         throw std::runtime_error("Registrador inválido.\n");
@@ -110,21 +130,26 @@ struct Registradores{
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
 
-  uint8_t read_byte(uint16_t endereco){
+  uint8_t& read_byte(uint16_t endereco){
     return memoria[endereco];
   }
 };
 
 struct CPU{
   Registradores registradores;
-  uint16_t pc; //program counter
+  uint16_t pc; 
+  uint16_t sp; 
   Memorybus bus;
   
-  void execute(Instrucoes atual, reg_target alvo, uint8_t bit_index = 0);
+  void step(void);
+  void execute(const Action& atual);
 
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
 };
+
+Action le_byte(uint8_t byte, CPU *atual);
+Action le_byte_cb(uint8_t byte, CPU *atual);
 
 #endif 
