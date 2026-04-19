@@ -1,17 +1,18 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <iostream>
 #include <cstddef>
 #include <cstdint>
 #include <array>
-#include <map>
+#include <stdexcept>
 
 #define BIT_ZERO (1 << 7) //quando o resultado de uma instrução é zero
 #define BIT_SUBTRACT (1 << 6) //quando a ultima instrução foi uma subtração
 #define BIT_HALFCARRY (1 << 5) //quando há estouro do bit 3 ou 11
 #define BIT_CARRY (1 << 4) //quando há estouro do bit 7 ou 15
 
-enum class reg_target{
+enum class reg_target: uint16_t{
   A,
   B,
   C,
@@ -25,13 +26,24 @@ enum class reg_target{
   DE,
   HL,
   SP,
-  n
+  n,
+  NULO
 };
 
 enum class Instrucoes{
   NOP,
   STOP,
   HALT,
+  JPALWAYS,
+  JPZERO,
+  JPCARRY,
+  JPNZERO,
+  JPNCARRY,
+  JRALWAYS,
+  JRZERO,
+  JRCARRY,
+  JRNZERO,
+  JRNCARRY,
   ADD, //(adição) - soma o valor de um registrador específico com o do registrador A
   ADDHL, //(add to HL) - just like ADD except that the target is added to the HL register
   ADC, //(add with carry) - just like ADD except that the value of the carry flag is also added to the number
@@ -69,11 +81,12 @@ enum class Instrucoes{
 
 struct Action{
   Instrucoes instrucao;
+  uint8_t tamanho;
   reg_target alvo;
-  uint8_t N;
+  uint16_t N;
   uint8_t bit_index;
 
-  Action(Instrucoes i, reg_target a = reg_target::A, uint8_t n = 0, uint8_t b = 0): instrucao{i}, alvo{a}, N{n}, bit_index{b} {}
+  Action(Instrucoes i, uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0): instrucao{i}, tamanho{tam}, alvo{a}, N{n}, bit_index{b} {}
 };
 
 struct Registradores{
@@ -136,10 +149,11 @@ struct Memorybus{
 };
 
 struct CPU{
+  Memorybus bus;
   Registradores registradores;
   uint16_t pc; 
   uint16_t sp; 
-  Memorybus bus;
+  bool jp_flag {false};
   
   void step(void);
   void execute(const Action& atual);
