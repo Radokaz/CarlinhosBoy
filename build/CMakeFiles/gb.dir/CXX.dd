@@ -5,3 +5,5 @@ build CMakeFiles/gb.dir/src/instrucoes.cpp.o: dyndep
 
 build CMakeFiles/gb.dir/src/main.cpp.o: dyndep
 
+build CMakeFiles/gb.dir/src/stack.cpp.o: dyndep
+
