@@ -4,6 +4,10 @@
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 # 0 "<command-line>" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp"
+# 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h" 1
+
+
+
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 1
 
 
@@ -68859,90 +68863,12 @@ enum class reg_target: uint8_t{
   HL,
   SP,
   n,
-  NULO
-};
-
-enum class load_target: uint8_t{
-  A,
-  B,
-  C,
-  D,
-  E,
-  F,
-  H,
-  L,
-  AF,
-  BC,
-  DE,
-  HL,
-  HLI,
-  HLD,
   A8,
   A16,
+  HLI,
+  HLD,
   CPTR,
   NULO
-};
-
-enum class Instrucoes{
-  NOP,
-  STOP,
-  HALT,
-  JPALWAYS,
-  JPZERO,
-  JPCARRY,
-  JPNZERO,
-  JPNCARRY,
-  JRALWAYS,
-  JRZERO,
-  JRCARRY,
-  JRNZERO,
-  JRNCARRY,
-  ADD,
-  ADDHL,
-  ADDSP,
-  ADC,
-  SUB,
-  SBC,
-  AND,
-  OR,
-  XOR,
-  CP,
-  INC,
-  INCDUP,
-  DEC,
-  DECDUP,
-  CCF,
-  SCF,
-  RRA,
-  RLA,
-  RRCA,
-  RLCA,
-  CPL,
-  LD,
-  LDDUP,
-  BIT,
-  RESET,
-  SET,
-  SRL,
-  RR,
-  RL,
-  RRC,
-  RLC,
-  SRA,
-  SLA,
-  SWAP
-};
-
-struct Action{
-  Instrucoes instrucao;
-  uint8_t tamanho;
-  reg_target alvo;
-  uint16_t N;
-  uint8_t bit_index;
-  load_target ld_alvo;
-
-  Action(Instrucoes i, int tam, reg_target a = reg_target::NULO, int n = 0, int b = 0, load_target ld = load_target::NULO):
-    instrucao{i}, tamanho{static_cast<uint8_t>(tam)}, alvo{a}, N{static_cast<uint16_t>(n)}, bit_index{static_cast<uint8_t>(b)}, ld_alvo {ld} {}
 };
 
 struct Registradores{
@@ -69002,26 +68928,639 @@ struct Memorybus{
   uint8_t& read_byte(uint16_t endereco){
     return memoria[endereco];
   }
+  uint8_t read_byte_const(uint16_t endereco) const{
+    return memoria[endereco];
+  }
 };
 
 struct CPU{
   Memorybus bus;
   Registradores registradores;
-  uint16_t pc;
-  uint16_t sp;
+  uint16_t pc {0x0100};
+  uint16_t sp {0xFFFE};
   bool jp_flag {false};
+  bool halted {false};
+  bool stopped {true};
 
   void step(void);
-  void execute(const Action& atual);
+
+  void push(reg_target alvo);
+  void pop(reg_target alvo);
+  void push(uint16_t valor);
+  uint16_t pop(void);
+  void call(uint16_t endereco);
+  void ret(void);
 
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
 };
 
+struct Action{
+  void (*execute)(const Action&, CPU*);
+  uint8_t tamanho;
+  reg_target alvo;
+  uint16_t N;
+  uint8_t bit_index;
+  reg_target ld_alvo;
+
+  Action(void (*ptr)(const Action&, CPU*), uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0, reg_target ld = reg_target::NULO):
+    execute{ptr}, tamanho{tam}, alvo{a}, N{n}, bit_index{b}, ld_alvo {ld} {}
+};
+
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
 
+}
+# 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h" 2
+
+namespace GBInstruct{
+    using namespace GB;
+
+    inline void NOP(const Action& atual, CPU *cpu){
+        return;
+    }
+
+    inline void STOP(const Action& atual, CPU *cpu){
+      cpu->stopped = true;
+    }
+
+    inline void HALT(const Action& atual, CPU *cpu){
+      cpu->halted = true;
+    }
+
+    inline void JPALWAYS(const Action& atual, CPU *cpu) {
+      if(atual.alvo == reg_target::HL)
+        cpu->pc = cpu->registradores.get_duplo(reg_target::HL);
+      else
+        cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+
+      cpu->jp_flag = true;
+    }
+
+    inline void JPZERO(const Action& atual, CPU *cpu) {
+      if(cpu->registradores.f & (1 << 7)){
+        cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JPCARRY(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 4)){
+        cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JPNZERO(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 7))){
+        cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JPNCARRY(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 4))){
+        cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JRALWAYS(const Action& atual, CPU *cpu) {
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+      cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+      cpu->jp_flag = true;
+    }
+
+    inline void JRZERO(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 7)){
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JRCARRY(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 4)){
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JRNZERO(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 7))){
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void JRNCARRY(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 4))){
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void LD(const Action& atual, CPU *cpu){
+      uint8_t& memoria = cpu->get_target(atual.alvo);
+      uint8_t valor = cpu->get_target(atual.ld_alvo);
+
+      memoria = valor;
+    }
+
+    inline void LDDUP(const Action& atual, CPU *cpu){
+      if(atual.alvo == reg_target::SP){
+        uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
+        cpu->sp = valor;
+      }
+      else{
+        uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
+        cpu->registradores.set_duplo(atual.alvo, valor);
+      }
+    }
+
+    inline void LDHL(const Action& atual, CPU *cpu){
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+      uint16_t result = static_cast<uint16_t>(cpu->sp + static_cast<int16_t>(add));
+      cpu->registradores.set_duplo(reg_target::HL, result);
+      cpu->registradores.f = 0;
+      if((cpu->sp & 0x0F) + (add & 0x0F) > 0x0F)
+        cpu->registradores.f |= (1 << 5);
+      if((cpu->sp & 0xFF) + (add & 0xFF) > 0xFF)
+        cpu->registradores.f |= (1 << 4);
+    }
+
+    inline void LDSP(const Action& atual, CPU *cpu){
+      uint16_t lower = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
+      uint16_t upper = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8);
+      uint16_t resultado = lower | upper;
+
+      cpu->bus.read_byte(resultado) = static_cast<uint8_t>(cpu->sp & 0xFF);
+      cpu->bus.read_byte(resultado + 1) = static_cast<uint8_t>((cpu->sp >> 8) & 0xFF);
+    }
+
+    inline void PUSH(const Action& atual, CPU *cpu){
+      cpu->push(atual.alvo);
+    }
+
+    inline void POP(const Action& atual, CPU *cpu){
+      cpu->pop(atual.alvo);
+    }
+
+    inline void CALLALWAYS(const Action& atual, CPU *cpu){
+      cpu->call(atual.N);
+      cpu->jp_flag = true;
+    }
+
+    inline void CALLZERO(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 7)){
+        cpu->call(atual.N);
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void CALLNZERO(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 7))){
+        cpu->call(atual.N);
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void CALLCARRY(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 4)){
+        cpu->call(atual.N);
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void CALLNCARRY(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 4))){
+        cpu->call(atual.N);
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void RETALWAYS(const Action& atual, CPU *cpu){
+      cpu->ret();
+      cpu->jp_flag = true;
+    }
+
+    inline void RETZERO(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 7)){
+        cpu->ret();
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void RETNZERO(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 7))){
+        cpu->ret();
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void RETCARRY(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 4)){
+        cpu->ret();
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void RETNCARRY(const Action& atual, CPU *cpu){
+      if(!(cpu->registradores.f & (1 << 4))){
+        cpu->ret();
+        cpu->jp_flag = true;
+      }
+    }
+
+    inline void ADD(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      cpu->registradores.f = 0;
+      uint32_t result = static_cast<uint32_t>(cpu->registradores.a) + static_cast<uint32_t>(valor);
+
+      if(result > 0xFF)
+        cpu->registradores.f |= (1 << 4);
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((cpu->registradores.a & 0x0F) + (valor & 0x0F) > 0x0F)
+        cpu->registradores.f |= (1 << 5);
+
+      cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+    }
+
+    inline void ADDHL(const Action& atual, CPU *cpu){
+      uint16_t valor = cpu->get_target_duplo(atual.alvo);
+      uint32_t result = static_cast<uint32_t>(valor) + static_cast<uint32_t>(cpu->registradores.get_duplo(reg_target::HL));
+
+      cpu->registradores.f &= ~((1 << 5) | (1 << 4) | (1 << 6));
+      if((cpu->registradores.get_duplo(reg_target::HL) & 0x0FFF) + (valor & 0x0FFF) > 0x0FFF)
+        cpu->registradores.f |= (1 << 5);
+      if(result > 0xFFFF)
+        cpu->registradores.f |= (1 << 4);
+
+      cpu->registradores.set_duplo(reg_target::HL, static_cast<uint16_t>(result & 0xFFFF));
+    }
+
+    inline void ADDSP(const Action& atual, CPU *cpu){
+      int8_t valor = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+      uint32_t result = static_cast<uint32_t>(cpu->sp) + static_cast<uint32_t>(static_cast<int16_t>(valor));
+
+      cpu->registradores.f = 0;
+      if((cpu->sp & 0xFF) + (valor & 0xFF) > 0xFF)
+        cpu->registradores.f |= (1 << 4);
+      if((cpu->sp & 0x0F) + (valor & 0x0F) > 0x0F)
+        cpu->registradores.f |= (1 << 5);
+
+      cpu->sp = static_cast<uint16_t>(result & 0xFFFF);
+    }
+
+    inline void ADC(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint32_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+
+      uint32_t result = static_cast<uint32_t>(cpu->registradores.a) + static_cast<uint32_t>(valor) + carry;
+      cpu->registradores.f = 0;
+
+      if(result > 0xFF)
+        cpu->registradores.f |= (1 << 4);
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((cpu->registradores.a & 0x0F) + (valor & 0x0F) + (carry & 0x0F) > 0x0F)
+        cpu->registradores.f |= (1 << 5);
+
+      cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+    }
+
+    inline void SUB(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint32_t result = static_cast<uint32_t>(cpu->registradores.a) - static_cast<uint32_t>(valor);
+
+      cpu->registradores.f = (1 << 6);
+
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((cpu->registradores.a & 0x0F) < (valor & 0x0F))
+        cpu->registradores.f |= (1 << 5);
+      if((cpu->registradores.a & 0xFF) < (valor & 0xFF))
+        cpu->registradores.f |= (1 << 4);
+
+      cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+    }
+
+    inline void SBC(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint32_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+      uint32_t result = static_cast<uint32_t>(cpu->registradores.a) - static_cast<uint32_t>(valor) - carry;
+
+      cpu->registradores.f = (1 << 6);
+
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((cpu->registradores.a & 0x0F) < ((valor & 0x0F) + carry))
+        cpu->registradores.f |= (1 << 5);
+      if((cpu->registradores.a & 0xFF) < ((valor & 0xFF) + carry))
+        cpu->registradores.f |= (1 << 4);
+
+      cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+    }
+
+    inline void AND(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint8_t result = (cpu->registradores.a & valor);
+      cpu->registradores.f = (1 << 5);
+
+      if(result == 0)
+        cpu->registradores.f |= (1 << 7);
+
+      cpu->registradores.a = result;
+    }
+
+    inline void OR(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint8_t result = (cpu->registradores.a | valor);
+      cpu->registradores.f = 0;
+
+      if(result == 0)
+        cpu->registradores.f |= (1 << 7);
+
+      cpu->registradores.a = result;
+    }
+
+    inline void XOR(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint8_t result = (cpu->registradores.a ^ valor);
+      cpu->registradores.f = 0;
+
+      if(result == 0)
+        cpu->registradores.f |= (1 << 7);
+
+      cpu->registradores.a = result;
+    }
+
+    inline void CP(const Action& atual, CPU *cpu){
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : cpu->get_target(atual.alvo);
+      uint32_t result = static_cast<uint32_t>(cpu->registradores.a) - static_cast<uint32_t>(valor);
+
+      cpu->registradores.f = (1 << 6);
+
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((cpu->registradores.a & 0x0F) < (valor & 0x0F))
+        cpu->registradores.f |= (1 << 5);
+      if((cpu->registradores.a & 0xFF) < (valor & 0xFF))
+        cpu->registradores.f |= (1 << 4);
+    }
+
+    inline void INC(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint32_t result = static_cast<uint32_t>(reg) + 1;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((reg & 0x0F) + 0x01 > 0x0F)
+        cpu->registradores.f |= (1 << 5);
+
+      ++reg;
+    }
+
+    inline void INCDUP(const Action& atual, CPU *cpu){
+      uint16_t reg = cpu->get_target_duplo(atual.alvo);
+
+      if(atual.alvo != reg_target::SP)
+        cpu->registradores.set_duplo(atual.alvo, reg + 1);
+      else
+        cpu->sp++;
+    }
+
+    inline void DEC(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint32_t result = static_cast<uint32_t>(reg) - 1;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5));
+      cpu->registradores.f |= (1 << 6);
+      if((result & 0xFF) == 0)
+        cpu->registradores.f |= (1 << 7);
+      if((reg & 0x0F) == 0)
+        cpu->registradores.f |= (1 << 5);
+
+      --reg;
+    }
+
+    inline void DECDUP(const Action& atual, CPU *cpu){
+      uint16_t reg = cpu->get_target_duplo(atual.alvo);
+
+      if(atual.alvo != reg_target::SP)
+        cpu->registradores.set_duplo(atual.alvo, reg - 1);
+      else
+        cpu->sp--;
+    }
+
+    inline void CCF(const Action& atual, CPU *cpu){
+      cpu->registradores.f ^= (1 << 4);
+      cpu->registradores.f &= ~((1 << 6) | (1 << 5));
+    }
+
+    inline void SCF(const Action& atual, CPU *cpu){
+      cpu->registradores.f |= (1 << 4);
+      cpu->registradores.f &= ~((1 << 6) | (1 << 5));
+    }
+
+    inline void RRA(const Action& atual, CPU *cpu){
+      uint8_t bit0 = (cpu->registradores.a & 0x01);
+      uint8_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit0)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      cpu->registradores.a = ((cpu->registradores.a >> 1) | (carry << 7));
+    }
+
+    inline void RLA(const Action& atual, CPU *cpu){
+      uint8_t bit7 = (cpu->registradores.a & (1 << 7));
+      uint8_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit7)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      cpu->registradores.a = ((cpu->registradores.a << 1) | carry);
+    }
+
+    inline void RRCA(const Action& atual, CPU *cpu){
+      uint8_t bit0 = (cpu->registradores.a & 0x01);
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit0)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      cpu->registradores.a = ((cpu->registradores.a >> 1) | (bit0 << 7));
+    }
+
+    inline void RLCA(const Action& atual, CPU *cpu){
+      uint8_t bit7 = ((cpu->registradores.a & (1 << 7)) > 0) ? 1 : 0;
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit7)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      cpu->registradores.a = ((cpu->registradores.a << 1) | bit7);
+    }
+
+    inline void CPL(const Action& atual, CPU *cpu){
+      cpu->registradores.a = ~cpu->registradores.a;
+      cpu->registradores.f |= ((1 << 6) | (1 << 5));
+    }
+
+    inline void BIT(const Action& atual, CPU *cpu){
+      uint8_t bit = cpu->get_bit(atual.alvo, atual.bit_index);
+      cpu->registradores.f &= ~((1 << 7) | (1 << 6));
+      cpu->registradores.f |= (1 << 5);
+      if(!bit)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void RESET(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      reg &= ~(1 << atual.bit_index);
+    }
+
+    inline void SET(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      reg |= (1 << atual.bit_index);
+    }
+
+    inline void SRL(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit0 = (reg & 0x01);
+      reg = (reg >> 1);
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+
+      if(bit0)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void RR(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit0 = (reg & 0x01);
+      uint8_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit0)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = ((reg >> 1) | (carry << 7));
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void RL(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit7 = (reg & (1 << 7));
+      uint8_t carry = ((cpu->registradores.f & (1 << 4)) > 0) ? 1 : 0;
+
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit7)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = ((reg << 1) | carry);
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void RRC(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit0 = (reg & 0x01);
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit0)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = ((reg >> 1) | (bit0 << 7));
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void RLC(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit7 = ((reg & (1 << 7)) > 0) ? 1 : 0;
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5) | (1 << 6));
+      if(bit7)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = ((reg << 1) | bit7);
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void SRA(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t bit7 = ((reg & (1 << 7)) > 0) ? 1 : 0;
+      uint8_t carry = (reg & 0x01);
+      cpu->registradores.f = 0;
+
+      if(carry)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = ((reg >> 1) | (bit7 << 7));
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void SLA(const Action& atual, CPU *cpu){
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t carry = (reg & (1 << 7));
+      cpu->registradores.f = 0;
+
+      if(carry)
+        cpu->registradores.f |= (1 << 4);
+      else
+        cpu->registradores.f &= ~(1 << 4);
+
+      reg = (reg << 1);
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void SWAP(const Action& atual, CPU *cpu) {
+      uint8_t& reg = cpu->get_target(atual.alvo);
+      uint8_t lower = (reg << 4);
+      uint8_t upper = (reg >> 4);
+
+      reg = (lower | upper);
+      cpu->registradores.f = 0;
+      if(!reg)
+        cpu->registradores.f |= (1 << 7);
+    }
+
+    inline void DAA(const Action& atual, CPU *cpu){
+
+    }
+# 600 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp" 2
 
@@ -69030,17 +69569,38 @@ namespace GB{
 Action le_byte(uint8_t byte, CPU *atual){
   switch(byte){
     using enum reg_target;
-    using enum Instrucoes;
+    using namespace GBInstruct;
+
     case 0xCB:
       return le_byte_cb(atual->bus.read_byte(atual->pc + 1), atual);
-    case 0x03:
-      return Action(INCDUP, 1, BC);
-    case 0x13:
-      return Action(INCDUP, 1, DE);
+    case 0x00:
+      return Action(NOP, 1);
+    case 0x10:
+      return Action(STOP, 0);
     case 0x20:
       return Action(JRNZERO, 2);
     case 0x30:
       return Action(JRNCARRY, 2);
+    case 0x01:
+      return Action(LDDUP, 3, BC, 0, 0, n);
+    case 0x11:
+      return Action(LDDUP, 3, DE, 0, 0, n);
+    case 0x21:
+      return Action(LDDUP, 3, HL, 0, 0, n);
+    case 0x31:
+      return Action(LDDUP, 3, SP, 0, 0, n);
+    case 0x02:
+      return Action(LD, 1, BC, 0, 0, A);
+    case 0x12:
+      return Action(LD, 1, DE, 0, 0, A);
+    case 0x22:
+      return Action(LD, 1, HLI, 0, 0, A);
+    case 0x32:
+      return Action(LD, 1, HLD, 0, 0, A);
+    case 0x03:
+      return Action(INCDUP, 1, BC);
+    case 0x13:
+      return Action(INCDUP, 1, DE);
     case 0x23:
       return Action(INCDUP, 1, HL);
     case 0x33:
@@ -69061,12 +69621,24 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(DEC, 1, H);
     case 0x35:
       return Action(DEC, 1, HL);
+    case 0x06:
+      return Action(LD, 2, B, 0, 0, n);
+    case 0x16:
+      return Action(LD, 2, D, 0, 0, n);
+    case 0x26:
+      return Action(LD, 2, H, 0, 0, n);
+    case 0x36:
+      return Action(LD, 2, HL, 0, 0, n);
     case 0x07:
       return Action(RLCA, 1);
     case 0x17:
       return Action(RLA, 1);
+    case 0x27:
+      return Action(DAA, 1);
     case 0x37:
       return Action(SCF, 1);
+    case 0x08:
+      return Action(LDSP, 3);
     case 0x18:
       return Action(JRALWAYS, 2);
     case 0x28:
@@ -69081,6 +69653,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(ADDHL, 1, HL);
     case 0x39:
       return Action(ADDHL, 1, SP);
+    case 0x0A:
+      return Action(LD, 1, A, 0, 0, BC);
+    case 0x1A:
+      return Action(LD, 1, A, 0, 0, DE);
+    case 0x2A:
+      return Action(LD, 1, A, 0, 0, HLI);
+    case 0x3A:
+      return Action(LD, 1, A, 0, 0, HLD);
     case 0x0B:
       return Action(DECDUP, 1, BC);
     case 0x1B:
@@ -69105,6 +69685,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(DEC, 1, L);
     case 0x3D:
       return Action(DEC, 1, A);
+    case 0x0E:
+      return Action(LD, 2, C, 0, 0, n);
+    case 0x1E:
+      return Action(LD, 2, E, 0, 0, n);
+    case 0x2E:
+      return Action(LD, 2, L, 0, 0, n);
+    case 0x3E:
+      return Action(LD, 2, A, 0, 0, n);
     case 0x0F:
       return Action(RRCA, 1);
     case 0x1F:
@@ -69113,6 +69701,136 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CPL, 1);
     case 0x3F:
       return Action(CCF, 1);
+
+    case 0x40:
+      return Action(LD, 1, B, 0, 0, B);
+    case 0x41:
+      return Action(LD, 1, B, 0, 0, C);
+    case 0x42:
+      return Action(LD, 1, B, 0, 0, D);
+    case 0x43:
+      return Action(LD, 1, B, 0, 0, E);
+    case 0x44:
+      return Action(LD, 1, B, 0, 0, H);
+    case 0x45:
+      return Action(LD, 1, B, 0, 0, L);
+    case 0x46:
+      return Action(LD, 1, B, 0, 0, HL);
+    case 0x47:
+      return Action(LD, 1, B, 0, 0, A);
+    case 0x48:
+      return Action(LD, 1, C, 0, 0, B);
+    case 0x49:
+      return Action(LD, 1, C, 0, 0, C);
+    case 0x4A:
+      return Action(LD, 1, C, 0, 0, D);
+    case 0x4B:
+      return Action(LD, 1, C, 0, 0, E);
+    case 0x4C:
+      return Action(LD, 1, C, 0, 0, H);
+    case 0x4D:
+      return Action(LD, 1, C, 0, 0, L);
+    case 0x4E:
+      return Action(LD, 1, C, 0, 0, HL);
+    case 0x4F:
+      return Action(LD, 1, C, 0, 0, A);
+    case 0x50:
+      return Action(LD, 1, D, 0, 0, B);
+    case 0x51:
+      return Action(LD, 1, D, 0, 0, C);
+    case 0x52:
+      return Action(LD, 1, D, 0, 0, D);
+    case 0x53:
+      return Action(LD, 1, D, 0, 0, E);
+    case 0x54:
+      return Action(LD, 1, D, 0, 0, H);
+    case 0x55:
+      return Action(LD, 1, D, 0, 0, L);
+    case 0x56:
+      return Action(LD, 1, D, 0, 0, HL);
+    case 0x57:
+      return Action(LD, 1, D, 0, 0, A);
+    case 0x58:
+      return Action(LD, 1, E, 0, 0, B);
+    case 0x59:
+      return Action(LD, 1, E, 0, 0, C);
+    case 0x5A:
+      return Action(LD, 1, E, 0, 0, D);
+    case 0x5B:
+      return Action(LD, 1, E, 0, 0, E);
+    case 0x5C:
+      return Action(LD, 1, E, 0, 0, H);
+    case 0x5D:
+      return Action(LD, 1, E, 0, 0, L);
+    case 0x5E:
+      return Action(LD, 1, E, 0, 0, HL);
+    case 0x5F:
+      return Action(LD, 1, E, 0, 0, A);
+    case 0x60:
+      return Action(LD, 1, H, 0, 0, B);
+    case 0x61:
+      return Action(LD, 1, H, 0, 0, C);
+    case 0x62:
+      return Action(LD, 1, H, 0, 0, D);
+    case 0x63:
+      return Action(LD, 1, H, 0, 0, E);
+    case 0x64:
+      return Action(LD, 1, H, 0, 0, H);
+    case 0x65:
+      return Action(LD, 1, H, 0, 0, L);
+    case 0x66:
+      return Action(LD, 1, H, 0, 0, HL);
+    case 0x67:
+      return Action(LD, 1, H, 0, 0, A);
+    case 0x68:
+      return Action(LD, 1, L, 0, 0, B);
+    case 0x69:
+      return Action(LD, 1, L, 0, 0, C);
+    case 0x6A:
+      return Action(LD, 1, L, 0, 0, D);
+    case 0x6B:
+      return Action(LD, 1, L, 0, 0, E);
+    case 0x6C:
+      return Action(LD, 1, L, 0, 0, H);
+    case 0x6D:
+      return Action(LD, 1, L, 0, 0, L);
+    case 0x6E:
+      return Action(LD, 1, L, 0, 0, HL);
+    case 0x6F:
+      return Action(LD, 1, L, 0, 0, A);
+    case 0x70:
+      return Action(LD, 1, HL, 0, 0, B);
+    case 0x71:
+      return Action(LD, 1, HL, 0, 0, C);
+    case 0x72:
+      return Action(LD, 1, HL, 0, 0, D);
+    case 0x73:
+      return Action(LD, 1, HL, 0, 0, E);
+    case 0x74:
+      return Action(LD, 1, HL, 0, 0, H);
+    case 0x75:
+      return Action(LD, 1, HL, 0, 0, L);
+    case 0x76:
+      return Action(HALT, 0);
+    case 0x77:
+      return Action(LD, 1, HL, 0, 0, A);
+    case 0x78:
+      return Action(LD, 1, A, 0, 0, B);
+    case 0x79:
+      return Action(LD, 1, A, 0, 0, C);
+    case 0x7A:
+      return Action(LD, 1, A, 0, 0, D);
+    case 0x7B:
+      return Action(LD, 1, A, 0, 0, E);
+    case 0x7C:
+      return Action(LD, 1, A, 0, 0, H);
+    case 0x7D:
+      return Action(LD, 1, A, 0, 0, L);
+    case 0x7E:
+      return Action(LD, 1, A, 0, 0, HL);
+    case 0x7F:
+      return Action(LD, 1, A, 0, 0, A);
+
     case 0x80:
       return Action(ADD, 1, B);
     case 0x81:
@@ -69241,12 +69959,44 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CP, 1, HL);
     case 0xBF:
       return Action(CP, 1, A);
+    case 0xC0:
+      return Action(RETNZERO, 1);
+    case 0xD0:
+      return Action(RETNCARRY, 1);
+    case 0xE0:
+      return Action(LD, 2, A8, 0, 0, A);
+    case 0xF0:
+      return Action(LD, 2, A, 0, 0, A8);
+    case 0xC1:
+      return Action(POP, 1, BC);
+    case 0xD1:
+      return Action(POP, 1, DE);
+    case 0xE1:
+      return Action(POP, 1, HL);
+    case 0xF1:
+      return Action(POP, 1, AF);
     case 0xC2:
       return Action(JPNZERO, 3);
     case 0xD2:
       return Action(JPNCARRY, 3);
+    case 0xE2:
+      return Action(LD, 1, CPTR, 0, 0, A);
+    case 0xF2:
+      return Action(LD, 1, A, 0, 0, CPTR);
     case 0xC3:
       return Action(JPALWAYS, 3);
+    case 0xC4:
+      return Action(CALLNZERO, 3, NULO, atual->get_target_duplo(n));
+    case 0xD4:
+      return Action(CALLNCARRY, 3, NULO, atual->get_target_duplo(n));
+    case 0xC5:
+      return Action(PUSH, 1, BC);
+    case 0xD5:
+      return Action(PUSH, 1, DE);
+    case 0xE5:
+      return Action(PUSH, 1, HL);
+    case 0xF5:
+      return Action(PUSH, 1, AF);
     case 0xC6:
       return Action(ADD, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xD6:
@@ -69255,14 +70005,34 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xC8:
+      return Action(RETZERO, 1);
+    case 0xD8:
+      return Action(RETCARRY, 1);
     case 0xE8:
       return Action(ADDSP, 2);
+    case 0xF8:
+      return Action(LDHL, 2);
+    case 0xC9:
+      return Action(RETALWAYS, 1);
     case 0xE9:
       return Action(JPALWAYS, 3, HL);
+    case 0xF9:
+      return Action(LDDUP, 1, SP, 0, 0, HL);
     case 0xCA:
       return Action(JPZERO, 3);
     case 0xDA:
       return Action(JPCARRY, 3);
+    case 0xEA:
+      return Action(LD, 3, A16, 0, 0, A);
+    case 0xFA:
+      return Action(LD, 3, A, 0, 0, A16);
+    case 0xCC:
+      return Action(CALLZERO, 3, NULO, atual->get_target_duplo(n));
+    case 0xDC:
+      return Action(CALLCARRY, 3, NULO, atual->get_target_duplo(n));
+    case 0xCD:
+      return Action(CALLALWAYS, 3, NULO, atual->get_target_duplo(n));
     case 0xCE:
       return Action(ADC, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xDE:
@@ -69279,7 +70049,7 @@ Action le_byte(uint8_t byte, CPU *atual){
 Action le_byte_cb(uint8_t byte, CPU *atual){
   switch(byte){
     using enum reg_target;
-    using enum Instrucoes;
+    using namespace GBInstruct;
 
     case 0x00:
       return Action(RLC, 2, B);

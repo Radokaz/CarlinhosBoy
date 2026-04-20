@@ -12,6 +12,13 @@
 #define BIT_HALFCARRY (1 << 5) //quando há estouro do bit 3 ou 11
 #define BIT_CARRY (1 << 4) //quando há estouro do bit 7 ou 15
 
+//flags de interrupção
+#define BIT_VBLANK (1 << 0)
+#define BIT_LCDSTAT (1 << 1)
+#define BIT_TIMER (1 << 2)
+#define BIT_SERIAL (1 << 3)
+#define BIT_JOYPAD (1 << 4)
+
 namespace GB{
 
 enum class reg_target: uint8_t{
@@ -35,72 +42,6 @@ enum class reg_target: uint8_t{
   HLD,
   CPTR,
   NULO
-};
-
-enum class Instrucoes{
-  NOP,
-  STOP,
-  HALT,
-  JPALWAYS,
-  JPZERO,
-  JPCARRY,
-  JPNZERO,
-  JPNCARRY,
-  JRALWAYS,
-  JRZERO,
-  JRCARRY,
-  JRNZERO,
-  JRNCARRY,
-  PUSH,
-  POP,
-  ADD, //(adição) - soma o valor de um registrador específico com o do registrador A
-  ADDHL, //(add to HL) - just like ADD except that the target is added to the HL register
-  ADDSP,
-  ADC, //(add with carry) - just like ADD except that the value of the carry flag is also added to the number
-  SUB, //(subtract) - subtract the value stored in a specific register with the value in the A register
-  SBC, //(subtract with carry) - just like ADD except that the value of the carry flag is also subtracted from the number
-  AND, //(logical and) - do a bitwise and on the value in a specific register and the value in the A register
-  OR, //(logical or) - do a bitwise or on the value in a specific register and the value in the A register
-  XOR, //(logical xor) - do a bitwise xor on the value in a specific register and the value in the A register
-  CP, //(compare) - just like SUB except the result of the subtraction is not stored back into A
-  INC, //(increment) - increment the value in a specific register by 1
-  INCDUP,
-  DEC, //(decrement) - decrement the value in a specific register by 1
-  DECDUP,
-  CCF, //(complement carry flag) - toggle the value of the carry flag
-  SCF, //(set carry flag) - set the carry flag to true
-  RRA, //(rotate right A register) - bit rotate A register right through the carry flag
-  RLA, //(rotate left A register) - bit rotate A register left through the carry flag
-  RRCA, //(rotate right A register) - bit rotate A register right (not through the carry flag)
-  RLCA, //(rotate left A register) - bit rotate A register left (not through the carry flag)
-  CPL, //(complement) - toggle every bit of the A register
-  LD,
-  LDDUP,
-  LDHL,
-  LDSP,
-  BIT, //(bit test) - test to see if a specific bit of a specific register is set
-  RESET, //(bit reset) - set a specific bit of a specific register to 0
-  SET, //(bit set) - set a specific bit of a specific register to 1
-  SRL, //(shift right logical) - bit shift a specific register right by 1
-  RR, //(rotate right) - bit rotate a specific register right by 1 through the carry flag
-  RL, //(rotate left) - bit rotate a specific register left by 1 through the carry flag
-  RRC, //(rorate right) - bit rotate a specific register right by 1 (not through the carry flag)
-  RLC, //(rorate left) - bit rotate a specific register left by 1 (not through the carry flag)
-  SRA, //(shift right arithmetic) - arithmetic shift a specific register right by 1
-  SLA, //(shift left arithmetic) - arithmetic shift a specific register left by 1
-  SWAP //(swap nibbles) - switch upper and lower nibble of a specific register
-};
-
-struct Action{
-  Instrucoes instrucao;
-  uint8_t tamanho;
-  reg_target alvo;
-  uint16_t N;
-  uint8_t bit_index;
-  reg_target ld_alvo;
-
-  Action(Instrucoes i, int tam, reg_target a = reg_target::NULO, int n = 0, int b = 0, reg_target ld = reg_target::NULO): 
-    instrucao{i}, tamanho{static_cast<uint8_t>(tam)}, alvo{a}, N{static_cast<uint16_t>(n)}, bit_index{static_cast<uint8_t>(b)}, ld_alvo {ld} {}
 };
 
 struct Registradores{
@@ -160,29 +101,54 @@ struct Memorybus{
   uint8_t& read_byte(uint16_t endereco){
     return memoria[endereco];
   }
+  uint8_t read_byte_const(uint16_t endereco) const{
+    return memoria[endereco];
+  }
 };
 
 struct CPU{
   Memorybus bus;
   Registradores registradores;
-  uint16_t pc; 
+  uint16_t pc {0x0100}; 
   uint16_t sp {0xFFFE}; 
   bool jp_flag {false};
   bool halted {false};
   bool stopped {true};
+  bool ime {false};
+  bool ime_ie {false};
   
   void step(void);
-  void execute(const Action& atual);
+  void check(void);
+
   void push(reg_target alvo);
   void pop(reg_target alvo);
+  void push(uint16_t valor);
+  uint16_t pop(void);
+  void call(uint16_t endereco);
+  void ret(void);
 
+  uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
+  uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
 };
 
+struct Action{
+  void (*execute)(const Action&, CPU*);
+  uint8_t tamanho;
+  reg_target alvo;
+  uint16_t N;
+  uint8_t bit_index;
+  reg_target ld_alvo;
+
+  Action(void (*ptr)(const Action&, CPU*), uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0, reg_target ld = reg_target::NULO): 
+    execute{ptr}, tamanho{tam}, alvo{a}, N{n}, bit_index{b}, ld_alvo {ld} {}
+};
+
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+void roda_cpu(CPU *atual);
 
 }
 #endif 

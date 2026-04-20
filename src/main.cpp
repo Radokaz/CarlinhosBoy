@@ -1,6 +1,11 @@
-#include "cpu.h"
+#include "actions.h"
+#include <memory>
 
 int main(int argc, char **argv){
-  std::cout << sizeof(GB::Action) << "\n";
+  
+  std::unique_ptr<GB::CPU> cpu = std::make_unique<GB::CPU>();
+
+  
+
   return 0;
 }

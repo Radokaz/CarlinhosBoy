@@ -1,11 +1,12 @@
-#include "cpu.h"
+#include "actions.h"
 
 namespace GB{
 
 Action le_byte(uint8_t byte, CPU *atual){
   switch(byte){
     using enum reg_target;
-    using enum Instrucoes;
+    using namespace GBInstruct;
+
     case 0xCB:
       return le_byte_cb(atual->bus.read_byte(atual->pc + 1), atual);
     case 0x00:
@@ -69,7 +70,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x17:
       return Action(RLA, 1);
     case 0x27:
-      return Action(DAA, );
+      return Action(DAA, 1);
     case 0x37:
       return Action(SCF, 1);
     case 0x08:
@@ -394,6 +395,10 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CP, 1, HL);
     case 0xBF:
       return Action(CP, 1, A);
+    case 0xC0:
+      return Action(RETNZERO, 1);
+    case 0xD0:
+      return Action(RETNCARRY, 1);
     case 0xE0:
       return Action(LD, 2, A8, 0, 0, A);
     case 0xF0:
@@ -416,6 +421,12 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LD, 1, A, 0, 0, CPTR);
     case 0xC3:
       return Action(JPALWAYS, 3);
+    case 0xF3:
+      return Action(DI, 1);
+    case 0xC4:
+      return Action(CALLNZERO, 3, NULO, atual->get_target_duplo(n));
+    case 0xD4:
+      return Action(CALLNCARRY, 3, NULO, atual->get_target_duplo(n));
     case 0xC5:
       return Action(PUSH, 1, BC);
     case 0xD5:
@@ -432,10 +443,16 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xC8:
+      return Action(RETZERO, 1);
+    case 0xD8:
+      return Action(RETCARRY, 1);
     case 0xE8:
       return Action(ADDSP, 2);
     case 0xF8:
       return Action(LDHL, 2);
+    case 0xC9:
+      return Action(RETALWAYS, 1);
     case 0xE9:
       return Action(JPALWAYS, 3, HL);
     case 0xF9:
@@ -448,6 +465,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LD, 3, A16, 0, 0, A);
     case 0xFA:
       return Action(LD, 3, A, 0, 0, A16);
+    case 0xFB:
+      return Action(EI, 1);
+    case 0xCC:
+      return Action(CALLZERO, 3, NULO, atual->get_target_duplo(n));
+    case 0xDC:
+      return Action(CALLCARRY, 3, NULO, atual->get_target_duplo(n));
+    case 0xCD:
+      return Action(CALLALWAYS, 3, NULO, atual->get_target_duplo(n));
     case 0xCE:
       return Action(ADC, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xDE:
@@ -464,7 +489,7 @@ Action le_byte(uint8_t byte, CPU *atual){
 Action le_byte_cb(uint8_t byte, CPU *atual){
   switch(byte){
     using enum reg_target;
-    using enum Instrucoes;
+    using namespace GBInstruct;
 
     case 0x00:
       return Action(RLC, 2, B);

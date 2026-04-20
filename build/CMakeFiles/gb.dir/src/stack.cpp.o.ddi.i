@@ -1,9 +1,9 @@
-# 0 "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp"
+# 0 "/home/radokaz/Trabalho de metodologia/Emulador/src/stack.cpp"
 # 0 "<built-in>"
 # 0 "<command-line>"
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 # 0 "<command-line>" 2
-# 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp"
+# 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/stack.cpp"
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 1
 
 
@@ -68968,9 +68968,48 @@ Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
 
 }
-# 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp" 2
+# 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/stack.cpp" 2
 
-int main(int argc, char **argv){
-  std::cout << sizeof(GB::Action) << "\n";
-  return 0;
+namespace GB{
+
+void CPU::push(reg_target alvo){
+  uint16_t valor = this->registradores.get_duplo(alvo);
+  --this->sp;
+  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  --this->sp;
+  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+}
+
+void CPU::pop(reg_target alvo){
+  uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->sp));
+  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp + 1)) << 8);
+  this->registradores.set_duplo(alvo, (lower | upper));
+  this->sp+=2;
+}
+
+void CPU::push(uint16_t valor){
+  --this->sp;
+  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  --this->sp;
+  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+}
+
+uint16_t CPU::pop(void){
+  uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->sp));
+  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp + 1)) << 8);
+  uint16_t valor = (lower | upper);
+  this->sp+=2;
+  return valor;
+}
+
+void CPU::call(uint16_t endereco){
+  uint16_t pc_prox = this->pc + 3;
+  this->push(pc_prox);
+  this->pc = endereco;
+}
+
+void CPU::ret(void){
+  this->pc = this->pop();
+}
+
 }

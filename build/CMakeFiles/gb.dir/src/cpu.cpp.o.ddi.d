@@ -1,6 +1,7 @@
 CMakeFiles/gb.dir/src/cpu.cpp.o.ddi: \
  /home/radokaz/Trabalho\ de\ metodologia/Emulador/src/cpu.cpp \
  /usr/include/stdc-predef.h \
+ /home/radokaz/Trabalho\ de\ metodologia/Emulador/include/actions.h \
  /home/radokaz/Trabalho\ de\ metodologia/Emulador/include/cpu.h \
  /usr/include/c++/15.2.1/iostream \
  /usr/include/c++/15.2.1/bits/requires_hosted.h \

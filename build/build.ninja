@@ -104,7 +104,27 @@ build CMakeFiles/gb.dir/src/main.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz/
   TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
   dyndep = CMakeFiles/gb.dir/CXX.dd
 
-build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb.dir/src/cpu.cpp.o.modmap CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap CMakeFiles/gb.dir/src/main.cpp.o.modmap: CXX_DYNDEP__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o.ddi CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi CMakeFiles/gb.dir/src/main.cpp.o.ddi | /home/radokaz/Trabalho$ de$ metodologia/Emulador/build/CMakeFiles/gb.dir/CXXDependInfo.json
+build CMakeFiles/gb.dir/src/stack.cpp.o.ddi: CXX_SCAN__gb_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/stack.cpp || cmake_object_order_depends_target_gb
+  DEP_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.ddi.d
+  DYNDEP_INTERMEDIATE_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.ddi
+  FLAGS = -std=c++23
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include"
+  OBJ_FILE = CMakeFiles/gb.dir/src/stack.cpp.o
+  PREPROCESSED_OUTPUT_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.ddi.i
+
+build CMakeFiles/gb.dir/src/stack.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/stack.cpp | CMakeFiles/gb.dir/src/stack.cpp.o.modmap || cmake_object_order_depends_target_gb CMakeFiles/gb.dir/CXX.dd
+  DEP_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.d
+  DYNDEP_MODULE_MAP_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.modmap
+  FLAGS = -std=c++23
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include"
+  OBJECT_DIR = CMakeFiles/gb.dir
+  OBJECT_FILE_DIR = CMakeFiles/gb.dir/src
+  TARGET_COMPILE_PDB = CMakeFiles/gb.dir/
+  TARGET_PDB = gb.pdb
+  TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
+  dyndep = CMakeFiles/gb.dir/CXX.dd
+
+build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb.dir/src/cpu.cpp.o.modmap CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap CMakeFiles/gb.dir/src/main.cpp.o.modmap CMakeFiles/gb.dir/src/stack.cpp.o.modmap: CXX_DYNDEP__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o.ddi CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi CMakeFiles/gb.dir/src/main.cpp.o.ddi CMakeFiles/gb.dir/src/stack.cpp.o.ddi | /home/radokaz/Trabalho$ de$ metodologia/Emulador/build/CMakeFiles/gb.dir/CXXDependInfo.json
 
 
 # =============================================================================
@@ -114,7 +134,7 @@ build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb
 #############################################
 # Link the executable gb
 
-build gb: CXX_EXECUTABLE_LINKER__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o CMakeFiles/gb.dir/src/instrucoes.cpp.o CMakeFiles/gb.dir/src/main.cpp.o
+build gb: CXX_EXECUTABLE_LINKER__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o CMakeFiles/gb.dir/src/instrucoes.cpp.o CMakeFiles/gb.dir/src/main.cpp.o CMakeFiles/gb.dir/src/stack.cpp.o
   DEP_FILE = CMakeFiles/gb.dir/link.d
   LINK_FLAGS = -Wl,--dependency-file=CMakeFiles/gb.dir/link.d
   OBJECT_DIR = CMakeFiles/gb.dir
