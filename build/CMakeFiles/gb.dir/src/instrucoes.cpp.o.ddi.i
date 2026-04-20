@@ -68843,9 +68843,9 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 namespace GB{
 
 enum class reg_target: uint8_t{
@@ -68940,9 +68940,13 @@ struct CPU{
   uint16_t sp {0xFFFE};
   bool jp_flag {false};
   bool halted {false};
-  bool stopped {true};
+  bool haltbug {false};
+  bool stepping {true};
+  bool ime {false};
+  bool ime_ie {false};
 
   void step(void);
+  void check(void);
 
   void push(reg_target alvo);
   void pop(reg_target alvo);
@@ -68951,6 +68955,15 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
+  void jump_vblank(void);
+  void jump_serial(void);
+  void jump_timer(void);
+  void jump_lcdstat(void);
+  void jump_joypad(void);
+
+  uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
+  uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
+  uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
@@ -68970,6 +68983,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+void roda_cpu(CPU *atual);
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h" 2
@@ -68982,11 +68996,17 @@ namespace GBInstruct{
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
-      cpu->stopped = true;
+      cpu->stepping = false;
+      cpu->jp_flag = true;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      cpu->halted = true;
+      if(cpu->get_ie() & cpu->get_if() & 0x1F){
+        cpu->haltbug = true;
+        cpu->jp_flag = true;
+      }
+      else
+        cpu->halted = true;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
@@ -69422,6 +69442,27 @@ namespace GBInstruct{
       cpu->registradores.f |= ((1 << 6) | (1 << 5));
     }
 
+    inline void DI(const Action& atual, CPU *cpu){
+      cpu->ime_ie = false;
+      cpu->ime = false;
+    }
+
+    inline void EI(const Action& atual, CPU *cpu){
+      cpu->ime_ie = true;
+    }
+
+    inline void RETI(const Action& atual, CPU *cpu){
+      cpu->pc = cpu->pop();
+      cpu->ime = true;
+      cpu->jp_flag = true;
+    }
+
+    inline void RST(const Action& atual, CPU *cpu){
+      cpu->push(cpu->pc + 1);
+      cpu->pc = atual.N;
+      cpu->jp_flag = true;
+    }
+
     inline void BIT(const Action& atual, CPU *cpu){
       uint8_t bit = cpu->get_bit(atual.alvo, atual.bit_index);
       cpu->registradores.f &= ~((1 << 7) | (1 << 6));
@@ -69546,7 +69587,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 7);
     }
 
-    inline void SWAP(const Action& atual, CPU *cpu) {
+    inline void SWAP(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target(atual.alvo);
       uint8_t lower = (reg << 4);
       uint8_t upper = (reg >> 4);
@@ -69558,9 +69599,26 @@ namespace GBInstruct{
     }
 
     inline void DAA(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 6)){
+        if(cpu->registradores.f & (1 << 5))
+          cpu->registradores.a -= 0x06;
+        if((cpu->registradores.f & (1 << 4)))
+          cpu->registradores.a -= 0x60;
+      }
+      else{
+        if((cpu->registradores.f & (1 << 5)) || ((cpu->registradores.a & 0x0F) > 0x09))
+          cpu->registradores.a += 0x06;
+        if((cpu->registradores.f & (1 << 4)) || cpu->registradores.a > 0x99){
+          cpu->registradores.a += 0x60;
+          cpu->registradores.f |= (1 << 4);
+        }
+      }
 
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5));
+      if(!cpu->registradores.a)
+        cpu->registradores.f |= (1 << 7);
     }
-# 600 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 644 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp" 2
 
@@ -69985,6 +70043,8 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LD, 1, A, 0, 0, CPTR);
     case 0xC3:
       return Action(JPALWAYS, 3);
+    case 0xF3:
+      return Action(DI, 1);
     case 0xC4:
       return Action(CALLNZERO, 3, NULO, atual->get_target_duplo(n));
     case 0xD4:
@@ -70005,6 +70065,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xC7:
+      return Action(RST, 1, NULO, 0x00);
+    case 0xD7:
+      return Action(RST, 1, NULO, 0x10);
+    case 0xE7:
+      return Action(RST, 1, NULO, 0x20);
+    case 0xF7:
+      return Action(RST, 1, NULO, 0x30);
     case 0xC8:
       return Action(RETZERO, 1);
     case 0xD8:
@@ -70015,6 +70083,8 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LDHL, 2);
     case 0xC9:
       return Action(RETALWAYS, 1);
+    case 0xD9:
+      return Action(RETI, 0);
     case 0xE9:
       return Action(JPALWAYS, 3, HL);
     case 0xF9:
@@ -70027,6 +70097,8 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LD, 3, A16, 0, 0, A);
     case 0xFA:
       return Action(LD, 3, A, 0, 0, A16);
+    case 0xFB:
+      return Action(EI, 1);
     case 0xCC:
       return Action(CALLZERO, 3, NULO, atual->get_target_duplo(n));
     case 0xDC:
@@ -70041,6 +70113,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(XOR, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xFE:
       return Action(CP, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xCF:
+      return Action(RST, 1, NULO, 0x08);
+    case 0xDF:
+      return Action(RST, 1, NULO, 0x18);
+    case 0xEF:
+      return Action(RST, 1, NULO, 0x28);
+    case 0xFF:
+      return Action(RST, 1, NULO, 0x38);
     default:
       throw std::runtime_error("Endereço inválido.\n");
   }

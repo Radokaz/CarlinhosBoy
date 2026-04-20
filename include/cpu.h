@@ -113,7 +113,8 @@ struct CPU{
   uint16_t sp {0xFFFE}; 
   bool jp_flag {false};
   bool halted {false};
-  bool stopped {true};
+  bool haltbug {false};
+  bool stepping {true};
   bool ime {false};
   bool ime_ie {false};
   
@@ -127,8 +128,15 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
+  void jump_vblank(void);
+  void jump_serial(void);
+  void jump_timer(void);
+  void jump_lcdstat(void);
+  void jump_joypad(void);
+
   uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
   uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
+  uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;

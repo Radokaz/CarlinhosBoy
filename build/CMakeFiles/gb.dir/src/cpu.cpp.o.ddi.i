@@ -68843,9 +68843,9 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 namespace GB{
 
 enum class reg_target: uint8_t{
@@ -68940,9 +68940,13 @@ struct CPU{
   uint16_t sp {0xFFFE};
   bool jp_flag {false};
   bool halted {false};
-  bool stopped {true};
+  bool haltbug {false};
+  bool stepping {true};
+  bool ime {false};
+  bool ime_ie {false};
 
   void step(void);
+  void check(void);
 
   void push(reg_target alvo);
   void pop(reg_target alvo);
@@ -68951,6 +68955,15 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
+  void jump_vblank(void);
+  void jump_serial(void);
+  void jump_timer(void);
+  void jump_lcdstat(void);
+  void jump_joypad(void);
+
+  uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
+  uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
+  uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
@@ -68970,6 +68983,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+void roda_cpu(CPU *atual);
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h" 2
@@ -68982,11 +68996,17 @@ namespace GBInstruct{
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
-      cpu->stopped = true;
+      cpu->stepping = false;
+      cpu->jp_flag = true;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      cpu->halted = true;
+      if(cpu->get_ie() & cpu->get_if() & 0x1F){
+        cpu->haltbug = true;
+        cpu->jp_flag = true;
+      }
+      else
+        cpu->halted = true;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
@@ -69422,6 +69442,27 @@ namespace GBInstruct{
       cpu->registradores.f |= ((1 << 6) | (1 << 5));
     }
 
+    inline void DI(const Action& atual, CPU *cpu){
+      cpu->ime_ie = false;
+      cpu->ime = false;
+    }
+
+    inline void EI(const Action& atual, CPU *cpu){
+      cpu->ime_ie = true;
+    }
+
+    inline void RETI(const Action& atual, CPU *cpu){
+      cpu->pc = cpu->pop();
+      cpu->ime = true;
+      cpu->jp_flag = true;
+    }
+
+    inline void RST(const Action& atual, CPU *cpu){
+      cpu->push(cpu->pc + 1);
+      cpu->pc = atual.N;
+      cpu->jp_flag = true;
+    }
+
     inline void BIT(const Action& atual, CPU *cpu){
       uint8_t bit = cpu->get_bit(atual.alvo, atual.bit_index);
       cpu->registradores.f &= ~((1 << 7) | (1 << 6));
@@ -69546,7 +69587,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 7);
     }
 
-    inline void SWAP(const Action& atual, CPU *cpu) {
+    inline void SWAP(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target(atual.alvo);
       uint8_t lower = (reg << 4);
       uint8_t upper = (reg >> 4);
@@ -69558,30 +69599,129 @@ namespace GBInstruct{
     }
 
     inline void DAA(const Action& atual, CPU *cpu){
+      if(cpu->registradores.f & (1 << 6)){
+        if(cpu->registradores.f & (1 << 5))
+          cpu->registradores.a -= 0x06;
+        if((cpu->registradores.f & (1 << 4)))
+          cpu->registradores.a -= 0x60;
+      }
+      else{
+        if((cpu->registradores.f & (1 << 5)) || ((cpu->registradores.a & 0x0F) > 0x09))
+          cpu->registradores.a += 0x06;
+        if((cpu->registradores.f & (1 << 4)) || cpu->registradores.a > 0x99){
+          cpu->registradores.a += 0x60;
+          cpu->registradores.f |= (1 << 4);
+        }
+      }
 
+      cpu->registradores.f &= ~((1 << 7) | (1 << 5));
+      if(!cpu->registradores.a)
+        cpu->registradores.f |= (1 << 7);
     }
-# 600 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 644 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/cpu.cpp" 2
 
 namespace GB{
+
+void roda_cpu(CPU *atual){
+  atual->check();
+  atual->step();
+  if(atual->get_ie() & atual->get_if() & 0x1F)
+    atual->halted = false;
+}
+
+void CPU::check(void){
+  if(this->ime){
+    uint8_t Ie = this->get_ie();
+    uint8_t If = this->get_if();
+    if(Ie & If & (1 << 0)){
+      this->jump_vblank();
+    }
+    else if(Ie & If & (1 << 1)){
+      this->jump_lcdstat();
+    }
+    else if(Ie & If & (1 << 2)){
+      this->jump_timer();
+    }
+    else if(Ie & If & (1 << 3)){
+      this->jump_serial();
+    }
+    else if(Ie & If & (1 << 4)){
+      this->jump_joypad();
+    }
+  }
+}
+
 void CPU::step(void){
-  if(this->halted || this->stopped) return;
+  if(this->halted || !this->stepping) return;
+
+  bool set_ime {false};
+  if(this->ime_ie){
+    set_ime = true;
+    this->ime_ie = false;
+  }
 
   uint8_t inst_byte = this->bus.read_byte(this->pc);
 
   try{
-  auto current_act = le_byte(inst_byte, this);
-  current_act.execute(current_act, this);
+    auto current_act = (this->haltbug) ? Action(GBInstruct::NOP, 1) : le_byte(inst_byte, this);
+    current_act.execute(current_act, this);
 
-  if(!this->jp_flag)
-    this->pc+=current_act.tamanho;
+    if(!this->jp_flag){
+      this->pc+=current_act.tamanho;
+      this->haltbug = false;
+    }
   }
   catch(std::exception& ex){
     std::cerr << "Erro: " << ex.what() << "\n";
     this->pc++;
   }
+
   this->jp_flag = false;
+  if(set_ime)
+    this->ime = true;
+}
+
+void CPU::jump_vblank(void){
+  this->push(this->pc);
+  this->pc = 0x0040;
+  this->ime = 0;
+  this->get_if() &= ~(1 << 0);
+  this->halted = false;
+}
+
+void CPU::jump_serial(void){
+  this->push(this->pc);
+  this->pc = 0x0058;
+  this->ime = 0;
+  this->get_if() &= ~(1 << 3);
+  this->halted = false;
+
+}
+
+void CPU::jump_timer(void){
+  this->push(this->pc);
+  this->pc = 0x0050;
+  this->ime = 0;
+  this->get_if() &= ~(1 << 2);
+  this->halted = false;
+}
+
+void CPU::jump_lcdstat(void){
+  this->push(this->pc);
+  this->pc = 0x0048;
+  this->ime = 0;
+  this->get_if() &= ~(1 << 1);
+  this->halted = false;
+}
+
+void CPU::jump_joypad(void){
+  this->push(this->pc);
+  this->pc = 0x0060;
+  this->ime = 0;
+  this->get_if() &= ~(1 << 4);
+  this->halted = false;
 }
 
 uint8_t& CPU::get_target(reg_target alvo){
@@ -69670,5 +69810,5 @@ uint8_t CPU::get_bit(reg_target alvo, uint8_t bit) const{
       throw std::runtime_error("Registrador inválido.\n");
   }
 }
-# 721 "/home/radokaz/Trabalho de metodologia/Emulador/src/cpu.cpp"
+
 }

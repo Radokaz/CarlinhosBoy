@@ -68839,9 +68839,9 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 
-# 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+# 22 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 namespace GB{
 
 enum class reg_target: uint8_t{
@@ -68936,9 +68936,13 @@ struct CPU{
   uint16_t sp {0xFFFE};
   bool jp_flag {false};
   bool halted {false};
-  bool stopped {true};
+  bool haltbug {false};
+  bool stepping {true};
+  bool ime {false};
+  bool ime_ie {false};
 
   void step(void);
+  void check(void);
 
   void push(reg_target alvo);
   void pop(reg_target alvo);
@@ -68947,6 +68951,15 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
+  void jump_vblank(void);
+  void jump_serial(void);
+  void jump_timer(void);
+  void jump_lcdstat(void);
+  void jump_joypad(void);
+
+  uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
+  uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
+  uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
   uint8_t get_bit(reg_target alvo, uint8_t bit) const;
@@ -68966,6 +68979,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+void roda_cpu(CPU *atual);
 
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/stack.cpp" 2
