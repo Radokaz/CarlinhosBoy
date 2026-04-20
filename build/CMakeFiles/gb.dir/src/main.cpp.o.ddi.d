@@ -1,6 +1,8 @@
 CMakeFiles/gb.dir/src/main.cpp.o.ddi: \
  /home/radokaz/Trabalho\ de\ metodologia/Emulador/src/main.cpp \
- /usr/include/stdc-predef.h /usr/include/c++/15.2.1/iostream \
+ /usr/include/stdc-predef.h \
+ /home/radokaz/Trabalho\ de\ metodologia/Emulador/include/cpu.h \
+ /usr/include/c++/15.2.1/iostream \
  /usr/include/c++/15.2.1/bits/requires_hosted.h \
  /usr/include/c++/15.2.1/x86_64-pc-linux-gnu/bits/c++config.h \
  /usr/include/c++/15.2.1/x86_64-pc-linux-gnu/bits/os_defines.h \
@@ -174,8 +176,4 @@ CMakeFiles/gb.dir/src/main.cpp.o.ddi: \
  /usr/include/c++/15.2.1/bits/stl_tempbuf.h \
  /usr/include/c++/15.2.1/bits/unicode-data.h \
  /usr/include/c++/15.2.1/bits/ostream.tcc /usr/include/c++/15.2.1/istream \
- /usr/include/c++/15.2.1/bits/istream.tcc /usr/include/c++/15.2.1/vector \
- /usr/include/c++/15.2.1/bits/stl_uninitialized.h \
- /usr/include/c++/15.2.1/bits/stl_vector.h \
- /usr/include/c++/15.2.1/bits/stl_bvector.h \
- /usr/include/c++/15.2.1/bits/vector.tcc
+ /usr/include/c++/15.2.1/bits/istream.tcc

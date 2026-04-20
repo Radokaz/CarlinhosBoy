@@ -12,7 +12,9 @@
 #define BIT_HALFCARRY (1 << 5) //quando há estouro do bit 3 ou 11
 #define BIT_CARRY (1 << 4) //quando há estouro do bit 7 ou 15
 
-enum class reg_target: uint16_t{
+namespace GB{
+
+enum class reg_target: uint8_t{
   A,
   B,
   C,
@@ -27,6 +29,11 @@ enum class reg_target: uint16_t{
   HL,
   SP,
   n,
+  A8,
+  A16,
+  HLI,
+  HLD,
+  CPTR,
   NULO
 };
 
@@ -44,8 +51,11 @@ enum class Instrucoes{
   JRCARRY,
   JRNZERO,
   JRNCARRY,
+  PUSH,
+  POP,
   ADD, //(adição) - soma o valor de um registrador específico com o do registrador A
   ADDHL, //(add to HL) - just like ADD except that the target is added to the HL register
+  ADDSP,
   ADC, //(add with carry) - just like ADD except that the value of the carry flag is also added to the number
   SUB, //(subtract) - subtract the value stored in a specific register with the value in the A register
   SBC, //(subtract with carry) - just like ADD except that the value of the carry flag is also subtracted from the number
@@ -66,6 +76,8 @@ enum class Instrucoes{
   CPL, //(complement) - toggle every bit of the A register
   LD,
   LDDUP,
+  LDHL,
+  LDSP,
   BIT, //(bit test) - test to see if a specific bit of a specific register is set
   RESET, //(bit reset) - set a specific bit of a specific register to 0
   SET, //(bit set) - set a specific bit of a specific register to 1
@@ -76,7 +88,7 @@ enum class Instrucoes{
   RLC, //(rorate left) - bit rotate a specific register left by 1 (not through the carry flag)
   SRA, //(shift right arithmetic) - arithmetic shift a specific register right by 1
   SLA, //(shift left arithmetic) - arithmetic shift a specific register left by 1
-  SWAP, //(swap nibbles) - switch upper and lower nibble of a specific register
+  SWAP //(swap nibbles) - switch upper and lower nibble of a specific register
 };
 
 struct Action{
@@ -85,8 +97,10 @@ struct Action{
   reg_target alvo;
   uint16_t N;
   uint8_t bit_index;
+  reg_target ld_alvo;
 
-  Action(Instrucoes i, uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0): instrucao{i}, tamanho{tam}, alvo{a}, N{n}, bit_index{b} {}
+  Action(Instrucoes i, int tam, reg_target a = reg_target::NULO, int n = 0, int b = 0, reg_target ld = reg_target::NULO): 
+    instrucao{i}, tamanho{static_cast<uint8_t>(tam)}, alvo{a}, N{static_cast<uint16_t>(n)}, bit_index{static_cast<uint8_t>(b)}, ld_alvo {ld} {}
 };
 
 struct Registradores{
@@ -152,11 +166,15 @@ struct CPU{
   Memorybus bus;
   Registradores registradores;
   uint16_t pc; 
-  uint16_t sp; 
+  uint16_t sp {0xFFFE}; 
   bool jp_flag {false};
+  bool halted {false};
+  bool stopped {true};
   
   void step(void);
   void execute(const Action& atual);
+  void push(reg_target alvo);
+  void pop(reg_target alvo);
 
   uint8_t& get_target(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo) const;
@@ -166,4 +184,5 @@ struct CPU{
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
 
+}
 #endif 

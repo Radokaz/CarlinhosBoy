@@ -1,6 +1,6 @@
 #include "cpu.h"
 
 int main(int argc, char **argv){
-  std::cout << "Hello world!\n";
+  std::cout << sizeof(GB::Action) << "\n";
   return 0;
 }
