@@ -68842,6 +68842,8 @@ namespace std __attribute__ ((__visibility__ ("default")))
 # 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 
 # 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+namespace GB{
+
 enum class reg_target: uint8_t{
   A,
   B,
@@ -68860,12 +68862,44 @@ enum class reg_target: uint8_t{
   NULO
 };
 
+enum class load_target: uint8_t{
+  A,
+  B,
+  C,
+  D,
+  E,
+  F,
+  H,
+  L,
+  AF,
+  BC,
+  DE,
+  HL,
+  HLI,
+  HLD,
+  A8,
+  A16,
+  CPTR,
+  NULO
+};
+
 enum class Instrucoes{
   NOP,
   STOP,
   HALT,
+  JPALWAYS,
+  JPZERO,
+  JPCARRY,
+  JPNZERO,
+  JPNCARRY,
+  JRALWAYS,
+  JRZERO,
+  JRCARRY,
+  JRNZERO,
+  JRNCARRY,
   ADD,
   ADDHL,
+  ADDSP,
   ADC,
   SUB,
   SBC,
@@ -68896,17 +68930,19 @@ enum class Instrucoes{
   RLC,
   SRA,
   SLA,
-  SWAP,
+  SWAP
 };
 
 struct Action{
   Instrucoes instrucao;
   uint8_t tamanho;
   reg_target alvo;
-  uint8_t N;
+  uint16_t N;
   uint8_t bit_index;
+  load_target ld_alvo;
 
-  Action(Instrucoes i, uint8_t tam, reg_target a = reg_target::NULO, uint8_t n = 0, uint8_t b = 0): instrucao{i}, tamanho{tam}, alvo{a}, N{n}, bit_index{b} {}
+  Action(Instrucoes i, int tam, reg_target a = reg_target::NULO, int n = 0, int b = 0, load_target ld = load_target::NULO):
+    instrucao{i}, tamanho{static_cast<uint8_t>(tam)}, alvo{a}, N{static_cast<uint16_t>(n)}, bit_index{static_cast<uint8_t>(b)}, ld_alvo {ld} {}
 };
 
 struct Registradores{
@@ -68969,10 +69005,11 @@ struct Memorybus{
 };
 
 struct CPU{
+  Memorybus bus;
   Registradores registradores;
   uint16_t pc;
   uint16_t sp;
-  Memorybus bus;
+  bool jp_flag {false};
 
   void step(void);
   void execute(const Action& atual);
@@ -68984,7 +69021,11 @@ struct CPU{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+
+}
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp" 2
+
+namespace GB{
 
 Action le_byte(uint8_t byte, CPU *atual){
   switch(byte){
@@ -68996,6 +69037,10 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(INCDUP, 1, BC);
     case 0x13:
       return Action(INCDUP, 1, DE);
+    case 0x20:
+      return Action(JRNZERO, 2);
+    case 0x30:
+      return Action(JRNCARRY, 2);
     case 0x23:
       return Action(INCDUP, 1, HL);
     case 0x33:
@@ -69022,6 +69067,12 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(RLA, 1);
     case 0x37:
       return Action(SCF, 1);
+    case 0x18:
+      return Action(JRALWAYS, 2);
+    case 0x28:
+      return Action(JRZERO, 2);
+    case 0x38:
+      return Action(JRCARRY, 2);
     case 0x09:
       return Action(ADDHL, 1, BC);
     case 0x19:
@@ -69190,6 +69241,12 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CP, 1, HL);
     case 0xBF:
       return Action(CP, 1, A);
+    case 0xC2:
+      return Action(JPNZERO, 3);
+    case 0xD2:
+      return Action(JPNCARRY, 3);
+    case 0xC3:
+      return Action(JPALWAYS, 3);
     case 0xC6:
       return Action(ADD, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xD6:
@@ -69198,6 +69255,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xE8:
+      return Action(ADDSP, 2);
+    case 0xE9:
+      return Action(JPALWAYS, 3, HL);
+    case 0xCA:
+      return Action(JPZERO, 3);
+    case 0xDA:
+      return Action(JPCARRY, 3);
     case 0xCE:
       return Action(ADC, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xDE:
@@ -69747,4 +69812,6 @@ Action le_byte_cb(uint8_t byte, CPU *atual){
     default:
       throw std::runtime_error("Endereço inválido.\n");
   }
+}
+
 }

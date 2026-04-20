@@ -1,19 +1,41 @@
 #include "cpu.h"
 
+namespace GB{
+
 Action le_byte(uint8_t byte, CPU *atual){
   switch(byte){
     using enum reg_target;
     using enum Instrucoes;
     case 0xCB:
       return le_byte_cb(atual->bus.read_byte(atual->pc + 1), atual);
-    case 0x03:
-      return Action(INCDUP, 1, BC);
-    case 0x13:
-      return Action(INCDUP, 1, DE);
+    case 0x00:
+      return Action(NOP, 1);
+    case 0x10:
+      return Action(STOP, 0);
     case 0x20:
       return Action(JRNZERO, 2);
     case 0x30:
       return Action(JRNCARRY, 2);
+    case 0x01:
+      return Action(LDDUP, 3, BC, 0, 0, n);
+    case 0x11:
+      return Action(LDDUP, 3, DE, 0, 0, n);
+    case 0x21:
+      return Action(LDDUP, 3, HL, 0, 0, n);
+    case 0x31:
+      return Action(LDDUP, 3, SP, 0, 0, n);
+    case 0x02:
+      return Action(LD, 1, BC, 0, 0, A);
+    case 0x12:
+      return Action(LD, 1, DE, 0, 0, A);
+    case 0x22:
+      return Action(LD, 1, HLI, 0, 0, A);
+    case 0x32:
+      return Action(LD, 1, HLD, 0, 0, A);
+    case 0x03:
+      return Action(INCDUP, 1, BC);
+    case 0x13:
+      return Action(INCDUP, 1, DE);
     case 0x23:
       return Action(INCDUP, 1, HL);
     case 0x33:
@@ -34,12 +56,24 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(DEC, 1, H);
     case 0x35:
       return Action(DEC, 1, HL);
+    case 0x06:
+      return Action(LD, 2, B, 0, 0, n);
+    case 0x16:
+      return Action(LD, 2, D, 0, 0, n);
+    case 0x26:
+      return Action(LD, 2, H, 0, 0, n);
+    case 0x36:
+      return Action(LD, 2, HL, 0, 0, n);
     case 0x07:
       return Action(RLCA, 1);
     case 0x17:
       return Action(RLA, 1);
+    case 0x27:
+      return Action(DAA, );
     case 0x37:
       return Action(SCF, 1);
+    case 0x08:
+      return Action(LDSP, 3);
     case 0x18:
       return Action(JRALWAYS, 2);
     case 0x28:
@@ -54,6 +88,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(ADDHL, 1, HL);
     case 0x39:
       return Action(ADDHL, 1, SP);
+    case 0x0A:
+      return Action(LD, 1, A, 0, 0, BC);
+    case 0x1A:
+      return Action(LD, 1, A, 0, 0, DE);
+    case 0x2A:
+      return Action(LD, 1, A, 0, 0, HLI);
+    case 0x3A:
+      return Action(LD, 1, A, 0, 0, HLD);
     case 0x0B:
       return Action(DECDUP, 1, BC);
     case 0x1B:
@@ -78,6 +120,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(DEC, 1, L);
     case 0x3D:
       return Action(DEC, 1, A);
+    case 0x0E:
+      return Action(LD, 2, C, 0, 0, n);
+    case 0x1E:
+      return Action(LD, 2, E, 0, 0, n);
+    case 0x2E:
+      return Action(LD, 2, L, 0, 0, n);
+    case 0x3E:
+      return Action(LD, 2, A, 0, 0, n);
     case 0x0F:
       return Action(RRCA, 1);
     case 0x1F:
@@ -86,6 +136,136 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CPL, 1);
     case 0x3F:
       return Action(CCF, 1);
+
+    case 0x40:
+      return Action(LD, 1, B, 0, 0, B);
+    case 0x41:
+      return Action(LD, 1, B, 0, 0, C);
+    case 0x42:
+      return Action(LD, 1, B, 0, 0, D);
+    case 0x43:
+      return Action(LD, 1, B, 0, 0, E);
+    case 0x44:
+      return Action(LD, 1, B, 0, 0, H);
+    case 0x45:
+      return Action(LD, 1, B, 0, 0, L);
+    case 0x46:
+      return Action(LD, 1, B, 0, 0, HL);
+    case 0x47:
+      return Action(LD, 1, B, 0, 0, A);
+    case 0x48:
+      return Action(LD, 1, C, 0, 0, B);
+    case 0x49:
+      return Action(LD, 1, C, 0, 0, C);
+    case 0x4A:
+      return Action(LD, 1, C, 0, 0, D);
+    case 0x4B:
+      return Action(LD, 1, C, 0, 0, E);
+    case 0x4C:
+      return Action(LD, 1, C, 0, 0, H);
+    case 0x4D:
+      return Action(LD, 1, C, 0, 0, L);
+    case 0x4E:
+      return Action(LD, 1, C, 0, 0, HL);
+    case 0x4F:
+      return Action(LD, 1, C, 0, 0, A);
+    case 0x50:
+      return Action(LD, 1, D, 0, 0, B);
+    case 0x51:
+      return Action(LD, 1, D, 0, 0, C);
+    case 0x52:
+      return Action(LD, 1, D, 0, 0, D);
+    case 0x53:
+      return Action(LD, 1, D, 0, 0, E);
+    case 0x54:
+      return Action(LD, 1, D, 0, 0, H);
+    case 0x55:
+      return Action(LD, 1, D, 0, 0, L);
+    case 0x56:
+      return Action(LD, 1, D, 0, 0, HL);
+    case 0x57:
+      return Action(LD, 1, D, 0, 0, A);
+    case 0x58:
+      return Action(LD, 1, E, 0, 0, B);
+    case 0x59:
+      return Action(LD, 1, E, 0, 0, C);
+    case 0x5A:
+      return Action(LD, 1, E, 0, 0, D);
+    case 0x5B:
+      return Action(LD, 1, E, 0, 0, E);
+    case 0x5C:
+      return Action(LD, 1, E, 0, 0, H);
+    case 0x5D:
+      return Action(LD, 1, E, 0, 0, L);
+    case 0x5E:
+      return Action(LD, 1, E, 0, 0, HL);
+    case 0x5F:
+      return Action(LD, 1, E, 0, 0, A);
+    case 0x60:
+      return Action(LD, 1, H, 0, 0, B);
+    case 0x61:
+      return Action(LD, 1, H, 0, 0, C);
+    case 0x62:
+      return Action(LD, 1, H, 0, 0, D);
+    case 0x63:
+      return Action(LD, 1, H, 0, 0, E);
+    case 0x64:
+      return Action(LD, 1, H, 0, 0, H);
+    case 0x65:
+      return Action(LD, 1, H, 0, 0, L);
+    case 0x66:
+      return Action(LD, 1, H, 0, 0, HL);
+    case 0x67:
+      return Action(LD, 1, H, 0, 0, A);
+    case 0x68:
+      return Action(LD, 1, L, 0, 0, B);
+    case 0x69:
+      return Action(LD, 1, L, 0, 0, C);
+    case 0x6A:
+      return Action(LD, 1, L, 0, 0, D);
+    case 0x6B:
+      return Action(LD, 1, L, 0, 0, E);
+    case 0x6C:
+      return Action(LD, 1, L, 0, 0, H);
+    case 0x6D:
+      return Action(LD, 1, L, 0, 0, L);
+    case 0x6E:
+      return Action(LD, 1, L, 0, 0, HL);
+    case 0x6F:
+      return Action(LD, 1, L, 0, 0, A);
+    case 0x70:
+      return Action(LD, 1, HL, 0, 0, B);
+    case 0x71:
+      return Action(LD, 1, HL, 0, 0, C);
+    case 0x72:
+      return Action(LD, 1, HL, 0, 0, D);
+    case 0x73:
+      return Action(LD, 1, HL, 0, 0, E);
+    case 0x74:
+      return Action(LD, 1, HL, 0, 0, H);
+    case 0x75:
+      return Action(LD, 1, HL, 0, 0, L);
+    case 0x76:
+      return Action(HALT, 0);
+    case 0x77:
+      return Action(LD, 1, HL, 0, 0, A);
+    case 0x78:
+      return Action(LD, 1, A, 0, 0, B);
+    case 0x79:
+      return Action(LD, 1, A, 0, 0, C);
+    case 0x7A:
+      return Action(LD, 1, A, 0, 0, D);
+    case 0x7B:
+      return Action(LD, 1, A, 0, 0, E);
+    case 0x7C:
+      return Action(LD, 1, A, 0, 0, H);
+    case 0x7D:
+      return Action(LD, 1, A, 0, 0, L);
+    case 0x7E:
+      return Action(LD, 1, A, 0, 0, HL);
+    case 0x7F:
+      return Action(LD, 1, A, 0, 0, A);
+
     case 0x80:
       return Action(ADD, 1, B);
     case 0x81:
@@ -214,12 +394,36 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CP, 1, HL);
     case 0xBF:
       return Action(CP, 1, A);
+    case 0xE0:
+      return Action(LD, 2, A8, 0, 0, A);
+    case 0xF0:
+      return Action(LD, 2, A, 0, 0, A8);
+    case 0xC1:
+      return Action(POP, 1, BC);
+    case 0xD1:
+      return Action(POP, 1, DE);
+    case 0xE1:
+      return Action(POP, 1, HL);
+    case 0xF1:
+      return Action(POP, 1, AF);
     case 0xC2:
       return Action(JPNZERO, 3);
     case 0xD2:
       return Action(JPNCARRY, 3);
+    case 0xE2:
+      return Action(LD, 1, CPTR, 0, 0, A);
+    case 0xF2:
+      return Action(LD, 1, A, 0, 0, CPTR);
     case 0xC3:
       return Action(JPALWAYS, 3);
+    case 0xC5:
+      return Action(PUSH, 1, BC);
+    case 0xD5:
+      return Action(PUSH, 1, DE);
+    case 0xE5:
+      return Action(PUSH, 1, HL);
+    case 0xF5:
+      return Action(PUSH, 1, AF);
     case 0xC6:
       return Action(ADD, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xD6:
@@ -228,12 +432,22 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xE8:
+      return Action(ADDSP, 2);
+    case 0xF8:
+      return Action(LDHL, 2);
     case 0xE9:
       return Action(JPALWAYS, 3, HL);
+    case 0xF9:
+      return Action(LDDUP, 1, SP, 0, 0, HL);
     case 0xCA:
       return Action(JPZERO, 3);
     case 0xDA:
       return Action(JPCARRY, 3);
+    case 0xEA:
+      return Action(LD, 3, A16, 0, 0, A);
+    case 0xFA:
+      return Action(LD, 3, A, 0, 0, A16);
     case 0xCE:
       return Action(ADC, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xDE:
@@ -783,4 +997,6 @@ Action le_byte_cb(uint8_t byte, CPU *atual){
     default:
       throw std::runtime_error("Endereço inválido.\n");
   }
+}
+
 }

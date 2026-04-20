@@ -68842,6 +68842,8 @@ namespace std __attribute__ ((__visibility__ ("default")))
 # 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
 
 # 15 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+namespace GB{
+
 enum class reg_target: uint8_t{
   A,
   B,
@@ -68860,12 +68862,44 @@ enum class reg_target: uint8_t{
   NULO
 };
 
+enum class load_target: uint8_t{
+  A,
+  B,
+  C,
+  D,
+  E,
+  F,
+  H,
+  L,
+  AF,
+  BC,
+  DE,
+  HL,
+  HLI,
+  HLD,
+  A8,
+  A16,
+  CPTR,
+  NULO
+};
+
 enum class Instrucoes{
   NOP,
   STOP,
   HALT,
+  JPALWAYS,
+  JPZERO,
+  JPCARRY,
+  JPNZERO,
+  JPNCARRY,
+  JRALWAYS,
+  JRZERO,
+  JRCARRY,
+  JRNZERO,
+  JRNCARRY,
   ADD,
   ADDHL,
+  ADDSP,
   ADC,
   SUB,
   SBC,
@@ -68896,17 +68930,19 @@ enum class Instrucoes{
   RLC,
   SRA,
   SLA,
-  SWAP,
+  SWAP
 };
 
 struct Action{
   Instrucoes instrucao;
   uint8_t tamanho;
   reg_target alvo;
-  uint8_t N;
+  uint16_t N;
   uint8_t bit_index;
+  load_target ld_alvo;
 
-  Action(Instrucoes i, uint8_t tam, reg_target a = reg_target::NULO, uint8_t n = 0, uint8_t b = 0): instrucao{i}, tamanho{tam}, alvo{a}, N{n}, bit_index{b} {}
+  Action(Instrucoes i, int tam, reg_target a = reg_target::NULO, int n = 0, int b = 0, load_target ld = load_target::NULO):
+    instrucao{i}, tamanho{static_cast<uint8_t>(tam)}, alvo{a}, N{static_cast<uint16_t>(n)}, bit_index{static_cast<uint8_t>(b)}, ld_alvo {ld} {}
 };
 
 struct Registradores{
@@ -68969,10 +69005,11 @@ struct Memorybus{
 };
 
 struct CPU{
+  Memorybus bus;
   Registradores registradores;
   uint16_t pc;
   uint16_t sp;
-  Memorybus bus;
+  bool jp_flag {false};
 
   void step(void);
   void execute(const Action& atual);
@@ -68984,19 +69021,26 @@ struct CPU{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
+
+}
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/cpu.cpp" 2
 
+namespace GB{
 void CPU::step(void){
   uint8_t inst_byte = this->bus.read_byte(this->pc);
 
   try{
   auto current_act = le_byte(inst_byte, this);
   this->execute(current_act);
-  this->pc+=current_act.tamanho;
+
+  if(!this->jp_flag)
+    this->pc+=current_act.tamanho;
   }
   catch(std::exception& ex){
     std::cerr << "Erro: " << ex.what() << "\n";
+    this->pc++;
   }
+  this->jp_flag = false;
 }
 
 uint8_t& CPU::get_target(reg_target alvo){
@@ -69021,6 +69065,10 @@ uint8_t& CPU::get_target(reg_target alvo){
       return this->registradores.l;
     case HL:
       return this->bus.read_byte(this->registradores.get_duplo(HL));
+    case BC:
+      return this->bus.read_byte(this->registradores.get_duplo(BC));
+    case DE:
+      return this->bus.read_byte(this->registradores.get_duplo(DE));
     default:
       throw std::runtime_error("Registrador invalido.\n");
   }
@@ -69061,8 +69109,98 @@ void CPU::execute(const Action& atual){
   switch(atual.instrucao){
     using enum Instrucoes;
 
+    case JPALWAYS: {
+      if(atual.alvo == reg_target::HL)
+        this->pc = this->registradores.get_duplo(reg_target::HL);
+      else
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+
+      this->jp_flag = true;
+      break;
+    }
+    case JPZERO: {
+      if(this->registradores.f & (1 << 7)){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+      break;
+    }
+    case JPCARRY: {
+      if(this->registradores.f & (1 << 4)){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+      break;
+    }
+    case JPNZERO: {
+      if(!(this->registradores.f & (1 << 7))){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JPNCARRY: {
+      if(!(this->registradores.f & (1 << 4))){
+        this->pc = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) | (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRALWAYS: {
+      int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+      this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+      this->jp_flag = true;
+      break;
+    }
+    case JRZERO: {
+      if(this->registradores.f & (1 << 7)){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRCARRY: {
+      if(this->registradores.f & (1 << 4)){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRNZERO: {
+      if(!(this->registradores.f & (1 << 7))){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case JRNCARRY: {
+      if(!(this->registradores.f & (1 << 4))){
+        int8_t add = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+        this->pc = static_cast<uint16_t>(this->pc + static_cast<int16_t>(add));
+        this->jp_flag = true;
+      }
+
+      break;
+    }
+    case LD:{
+      uint8_t valor = this->get_target(atual.alvo);
+
+      break;
+    }
+    case LDDUP:{
+
+      break;
+    }
     case ADD: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       this->registradores.f = 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor);
 
@@ -69089,8 +69227,21 @@ void CPU::execute(const Action& atual){
       this->registradores.set_duplo(reg_target::HL, static_cast<uint16_t>(result & 0xFFFF));
       break;
     }
+    case ADDSP: {
+      int8_t valor = static_cast<int8_t>(this->bus.read_byte(this->pc + 1));
+      uint32_t result = static_cast<uint32_t>(this->sp) + static_cast<uint32_t>(static_cast<int16_t>(valor));
+
+      this->registradores.f = 0;
+      if((this->sp & 0xFF) + (valor & 0xFF) > 0xFF)
+        this->registradores.f |= (1 << 4);
+      if((this->sp & 0x0F) + (valor & 0x0F) > 0x0F)
+        this->registradores.f |= (1 << 5);
+
+      this->sp = static_cast<uint16_t>(result & 0xFFFF);
+      break;
+    }
     case ADC: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & (1 << 4)) > 0) ? 1 : 0;
 
       uint32_t result = static_cast<uint32_t>(this->registradores.a) + static_cast<uint32_t>(valor) + carry;
@@ -69107,7 +69258,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case SUB: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
 
       this->registradores.f = (1 << 6);
@@ -69123,7 +69274,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case SBC: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t carry = ((this->registradores.f & (1 << 4)) > 0) ? 1 : 0;
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor) - carry;
 
@@ -69140,7 +69291,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case AND: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a & valor);
       this->registradores.f = (1 << 5);
 
@@ -69151,7 +69302,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case OR: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a | valor);
       this->registradores.f = 0;
 
@@ -69162,7 +69313,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case XOR: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint8_t result = (this->registradores.a ^ valor);
       this->registradores.f = 0;
 
@@ -69173,7 +69324,7 @@ void CPU::execute(const Action& atual){
       break;
     }
     case CP: {
-      uint8_t valor = (atual.alvo == reg_target::n) ? atual.N : this->get_target(atual.alvo);
+      uint8_t valor = (atual.alvo == reg_target::n) ? static_cast<uint8_t>(atual.N) : this->get_target(atual.alvo);
       uint32_t result = static_cast<uint32_t>(this->registradores.a) - static_cast<uint32_t>(valor);
 
       this->registradores.f = (1 << 6);
@@ -69445,4 +69596,5 @@ void CPU::execute(const Action& atual){
     default:
       throw std::runtime_error("Operação inválida.\n");
   }
+}
 }
