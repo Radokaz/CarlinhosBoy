@@ -443,6 +443,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xF6:
       return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xC7:
+      return Action(RST, 1, NULO, 0x00);
+    case 0xD7:
+      return Action(RST, 1, NULO, 0x10);
+    case 0xE7:
+      return Action(RST, 1, NULO, 0x20);
+    case 0xF7:
+      return Action(RST, 1, NULO, 0x30);
     case 0xC8:
       return Action(RETZERO, 1);
     case 0xD8:
@@ -453,6 +461,8 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LDHL, 2);
     case 0xC9:
       return Action(RETALWAYS, 1);
+    case 0xD9:
+      return Action(RETI, 0);
     case 0xE9:
       return Action(JPALWAYS, 3, HL);
     case 0xF9:
@@ -481,6 +491,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(XOR, 2, n, atual->bus.read_byte(atual->pc + 1));
     case 0xFE:
       return Action(CP, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xCF:
+      return Action(RST, 1, NULO, 0x08);
+    case 0xDF:
+      return Action(RST, 1, NULO, 0x18);
+    case 0xEF:
+      return Action(RST, 1, NULO, 0x28);
+    case 0xFF:
+      return Action(RST, 1, NULO, 0x38);
     default:
       throw std::runtime_error("Endereço inválido.\n");
   }

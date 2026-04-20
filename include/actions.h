@@ -11,11 +11,17 @@ namespace GBInstruct{
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
-      cpu->stopped = true;
+      cpu->stepping = false;
+      cpu->jp_flag = true;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      cpu->halted = true;
+      if(cpu->get_ie() & cpu->get_if() & 0x1F){
+        cpu->haltbug = true;
+        cpu->jp_flag = true;
+      }
+      else
+        cpu->halted = true;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
@@ -452,11 +458,24 @@ namespace GBInstruct{
     }
 
     inline void DI(const Action& atual, CPU *cpu){
+      cpu->ime_ie = false;
       cpu->ime = false;
     }
 
     inline void EI(const Action& atual, CPU *cpu){
       cpu->ime_ie = true;
+    }
+
+    inline void RETI(const Action& atual, CPU *cpu){
+      cpu->pc = cpu->pop();
+      cpu->ime = true;
+      cpu->jp_flag = true;
+    }
+
+    inline void RST(const Action& atual, CPU *cpu){
+      cpu->push(cpu->pc + 1);
+      cpu->pc = atual.N;
+      cpu->jp_flag = true;
     }
 
     inline void BIT(const Action& atual, CPU *cpu){
