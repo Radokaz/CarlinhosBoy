@@ -208,6 +208,7 @@ struct CPU{
 
   void step(Timer& timer);
   void check(void);
+  bool check_joypad(void);
 
   void push(reg_target alvo);
   void pop(reg_target alvo);
