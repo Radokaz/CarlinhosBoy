@@ -13,10 +13,8 @@
 namespace GB{
 
   struct Joypad{
-    private:
-    uint8_t output {};
-
-    public:
+    uint8_t output {0xFF};
+    uint8_t prev {0xFF};
     bool select_dir {};
     bool select_but {};
     uint8_t *p1 {};
@@ -30,6 +28,7 @@ namespace GB{
       uint8_t result {0xCF};
 
       if(select_dir){
+        result &= ~(1 << 4);
         if(controles & RIGHT_BUTTON)
           result &= ~(1 << 0);
         if(controles & LEFT_BUTTON)
@@ -41,6 +40,7 @@ namespace GB{
       }
 
       if(select_but){
+        result &= ~(1 << 5);
         if(controles & A_BUTTON)
           result &= ~(1 << 0);
         if(controles & B_BUTTON)
@@ -51,6 +51,7 @@ namespace GB{
           result &= ~(1 << 3);
       }
 
+      prev = output;
       output = result | 0b11000000;
       return output;
     }

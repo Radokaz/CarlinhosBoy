@@ -3,7 +3,7 @@
 namespace GB{
 
 void roda_cpu(CPU *atual, Timer& timer){
-  if(atual->get_if() & BIT_JOYPAD)
+  if(cpu->check_joypad())
     atual->stepping = true;
   if(!atual->stepping) return;
   atual->check();
@@ -31,6 +31,23 @@ void CPU::check(void){
     }
   }
 }
+
+bool CPU::check_joypad(void){
+  uint8_t prev = this->bus.joypad->prev;
+  uint8_t curr = this->bus.joypad->output;
+
+  if(prev & ~curr & 0x0F){
+    this->get_if() |= BIT_JOYPAD;
+    this->bus.joypad->prev = curr;
+    return true;
+  }
+  if(prev ^ curr){
+    return true;
+  }
+
+  return false;
+}
+
 
 void CPU::step(Timer& timer){
   if(this->halted || !this->stepping) return;
