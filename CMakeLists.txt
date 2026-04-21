@@ -13,6 +13,7 @@ file(GLOB_RECURSE SOURCES src/*.cpp)
 
 # Create executable
 add_executable(gb ${SOURCES})
+target_compile_options(gb PRIVATE -g)
 
 target_include_directories(gb PRIVATE include)
 # For multi-file projects with headers and separate .cpp files

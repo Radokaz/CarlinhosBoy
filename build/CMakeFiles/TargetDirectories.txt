@@ -1,3 +1,0 @@
-/home/radokaz/Trabalho de metodologia/Emulador/build/CMakeFiles/gb.dir
-/home/radokaz/Trabalho de metodologia/Emulador/build/CMakeFiles/edit_cache.dir
-/home/radokaz/Trabalho de metodologia/Emulador/build/CMakeFiles/rebuild_cache.dir

@@ -340,9 +340,9 @@ namespace GBInstruct{
 
       if(result > 0xFF)
         cpu->registradores.f |= BIT_CARRY;
-      if((result & 0xFF) == 0)
+      if(((cpu->registradores.a + valor + carry) & 0xFF) == 0)
         cpu->registradores.f |= BIT_ZERO;
-      if((cpu->registradores.a & 0x0F) + (valor & 0x0F) + (carry & 0x0F) > 0x0F)
+      if(((cpu->registradores.a & 0x0F) + (valor & 0x0F) + carry) > 0x0F)
         cpu->registradores.f |= BIT_HALFCARRY;
       
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
@@ -737,6 +737,8 @@ namespace GBInstruct{
     }
 
     inline void DAA(const Action& atual, CPU *cpu){
+      uint8_t a = cpu->registradores.a;
+
       if(cpu->registradores.f & BIT_SUBTRACT){
         if(cpu->registradores.f & BIT_HALFCARRY)
           cpu->registradores.a -= 0x06;
@@ -744,9 +746,9 @@ namespace GBInstruct{
           cpu->registradores.a -= 0x60;
       }
       else{
-        if((cpu->registradores.f & BIT_HALFCARRY) || ((cpu->registradores.a & 0x0F) > 0x09))
+        if((cpu->registradores.f & BIT_HALFCARRY) || (a & 0x0F) > 0x09)
           cpu->registradores.a += 0x06;
-        if((cpu->registradores.f & BIT_CARRY) || cpu->registradores.a > 0x99){
+        if((cpu->registradores.f & BIT_CARRY) || a > 0x99){
           cpu->registradores.a += 0x60;
           cpu->registradores.f |= BIT_CARRY;
         }
