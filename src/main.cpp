@@ -7,8 +7,10 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  GB::CPU cpu;
-  GB::init_game(&cpu, argv);
+  GB::Timer timer;
+  GB::CPU cpu(&timer.div_count);
+
+  GB::init_game(&cpu, timer, argv);
 
   return 0;
 }

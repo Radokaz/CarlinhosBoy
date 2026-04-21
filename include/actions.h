@@ -80,7 +80,7 @@ namespace GBInstruct{
 
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
       int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
-      cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+      cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
       cpu->jp_flag = true;
       cpu->last_ticks = 12;
     }
@@ -88,7 +88,7 @@ namespace GBInstruct{
     inline void JRZERO(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & BIT_ZERO){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
         cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
@@ -99,7 +99,7 @@ namespace GBInstruct{
     inline void JRCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & BIT_CARRY){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
         cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
@@ -110,7 +110,7 @@ namespace GBInstruct{
     inline void JRNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & BIT_ZERO)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
         cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
@@ -121,7 +121,7 @@ namespace GBInstruct{
     inline void JRNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & BIT_CARRY)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
         cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
@@ -137,6 +137,11 @@ namespace GBInstruct{
       }
       else{
         uint8_t valor = cpu->get_target(atual.ld_alvo);
+        if(atual.alvo == reg_target::HLI)
+          cpu->registradores.set_duplo(reg_target::HL, atual.N + 1);
+        else if(atual.alvo == reg_target::HLD)
+          cpu->registradores.set_duplo(reg_target::HL, atual.N - 1);
+
         cpu->bus.write_byte(atual.N, valor);
       }
       
