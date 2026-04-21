@@ -1,11 +1,14 @@
-#include "actions.h"
-#include <memory>
+#include "init.h"
 
 int main(int argc, char **argv){
   
-  std::unique_ptr<GB::CPU> cpu = std::make_unique<GB::CPU>();
+  if(argc < 2){
+    std::cout << "Especifique uma rom.\n";
+    return 1;
+  }
 
-  
+  GB::CPU cpu;
+  GB::init_game(&cpu, argv);
 
   return 0;
 }

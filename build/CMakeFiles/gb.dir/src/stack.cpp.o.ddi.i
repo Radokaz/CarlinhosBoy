@@ -68868,14 +68868,14 @@ enum class reg_target: uint8_t{
 };
 
 struct Registradores{
-  uint8_t a {};
-  uint8_t b {};
-  uint8_t c {};
-  uint8_t d {};
-  uint8_t e {};
-  uint8_t f {};
-  uint8_t h {};
-  uint8_t l {};
+  uint8_t a {0x01};
+  uint8_t b {0x00};
+  uint8_t c {0x13};
+  uint8_t d {0x00};
+  uint8_t e {0xD8};
+  uint8_t f {0xB0};
+  uint8_t h {0x01};
+  uint8_t l {0x4D};
 
   uint16_t get_duplo(reg_target registrador) const{
 
@@ -68920,20 +68920,75 @@ struct Registradores{
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
+  uint16_t *div_count;
+
+  const uint8_t& read_byte(uint16_t endereco) const{
+    return memoria[endereco];
+  }
 
   uint8_t& read_byte(uint16_t endereco){
     return memoria[endereco];
   }
-  uint8_t read_byte_const(uint16_t endereco) const{
-    return memoria[endereco];
+
+  void write_byte(uint16_t endereco, uint8_t valor){
+    if(endereco == 0xFF04){
+      memoria[endereco] = 0;
+      *div_count = 0;
+      return;
+    }
+    memoria[endereco] = valor;
   }
 };
+
+struct Timer{
+    uint16_t div_count {};
+    uint16_t tima_count {};
+
+    void step(uint8_t ciclos, Memorybus& bus){
+      div_count+=ciclos;
+      bus.read_byte(0xFF04) = this->get_div();
+
+      uint8_t tac = bus.read_byte(0xFF07);
+      if(!(tac & 0x04)) return;
+
+      uint16_t limite{};
+      switch(tac & 0x03){
+        case 0x00:
+          limite = 1024;
+          break;
+        case 0x01:
+          limite = 16;
+          break;
+        case 0x02:
+          limite = 64;
+          break;
+        case 0x03:
+          limite = 256;
+          break;
+      }
+
+      tima_count+=ciclos;
+      if(tima_count >= limite){
+        tima_count -= limite;
+        uint16_t tima = static_cast<uint16_t>(bus.read_byte(0xFF05)) + 1;
+        if(tima > 0xFF){
+          bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
+          bus.read_byte(0xFF0F) |= (1 << 2);
+        }
+        else
+          ++bus.read_byte(0xFF05);
+      }
+    }
+
+    uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
+  };
 
 struct CPU{
   Memorybus bus;
   Registradores registradores;
   uint16_t pc {0x0100};
   uint16_t sp {0xFFFE};
+  uint8_t last_ticks {};
   bool jp_flag {false};
   bool halted {false};
   bool haltbug {false};
@@ -68941,7 +68996,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
 
-  void step(void);
+  void step(Timer& timer);
   void check(void);
 
   void push(reg_target alvo);
@@ -68979,7 +69034,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
-void roda_cpu(CPU *atual);
+void roda_cpu(CPU *atual, Timer& timer);
 
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/stack.cpp" 2
@@ -68989,9 +69044,9 @@ namespace GB{
 void CPU::push(reg_target alvo){
   uint16_t valor = this->registradores.get_duplo(alvo);
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>(((valor & 0xFF00) >> 8)));
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>((valor & 0xFF)));
 }
 
 void CPU::pop(reg_target alvo){
@@ -69003,9 +69058,9 @@ void CPU::pop(reg_target alvo){
 
 void CPU::push(uint16_t valor){
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>(((valor & 0xFF00) >> 8)));
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>((valor & 0xFF)));
 }
 
 uint16_t CPU::pop(void){

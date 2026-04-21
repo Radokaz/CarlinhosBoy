@@ -5,9 +5,9 @@ namespace GB{
 void CPU::push(reg_target alvo){
   uint16_t valor = this->registradores.get_duplo(alvo);
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>(((valor & 0xFF00) >> 8)));
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>((valor & 0xFF)));
 }
 
 void CPU::pop(reg_target alvo){
@@ -19,9 +19,9 @@ void CPU::pop(reg_target alvo){
 
 void CPU::push(uint16_t valor){
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>(((valor & 0xFF00) >> 8));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>(((valor & 0xFF00) >> 8)));
   --this->sp;
-  this->bus.read_byte(this->sp) = static_cast<uint8_t>((valor & 0xFF));
+  this->bus.write_byte(this->sp, static_cast<uint8_t>((valor & 0xFF)));
 }
 
 uint16_t CPU::pop(void){
