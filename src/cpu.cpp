@@ -3,6 +3,8 @@
 namespace GB{
 
 void roda_cpu(CPU *atual, Timer& timer){
+  if(atual->get_if() & BIT_JOYPAD)
+    atual->stepping = true;
   if(!atual->stepping) return;
   atual->check();
   atual->step(timer);

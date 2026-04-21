@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <array>
 #include <stdexcept>
+#include "joypad.h"
 
 #define BIT_ZERO (1 << 7) //quando o resultado de uma instrução é zero
 #define BIT_SUBTRACT (1 << 6) //quando a ultima instrução foi uma subtração
@@ -98,27 +99,9 @@ struct Registradores{
 struct Memorybus{
   mutable std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
+  Joypad *pad;
 
   Memorybus(uint16_t *div): div_count{div} {}
-
-  const uint8_t& read_byte(uint16_t endereco) const{
-    switch(endereco){
-        case 0xFF07: //tac
-          memoria[endereco] |= 0b11111000; 
-          break;
-        case 0xFF0F: //if
-          memoria[endereco] |= 0b11100000; 
-          break;
-        case 0xFF00: //joypad
-          memoria[endereco] |= 0b11000000; 
-          break;
-        case 0xFF41: //stat
-          memoria[endereco] |= 0b10000000; 
-          break;
-        default: break;
-    }
-    return memoria[endereco];
-  }
 
   uint8_t& read_byte(uint16_t endereco){
     switch(endereco){
@@ -129,8 +112,7 @@ struct Memorybus{
           memoria[endereco] |= 0b11100000; 
           break;
         case 0xFF00: //joypad
-          memoria[endereco] |= 0b11000000; 
-          break;
+          return pad->get_output(); 
         case 0xFF41: //stat
           memoria[endereco] |= 0b10000000; 
           break;
@@ -146,11 +128,7 @@ struct Memorybus{
       return;
     }
     if(endereco == 0xFF00){ //joypad
-      uint8_t temp = (memoria[0xFF00] & 0x3F);
-      memoria[0xFF00] = valor; 
-      if((temp & memoria[0xFF00] & 0x3F) != temp){
-        memoria[0xFF0F] |= BIT_JOYPAD;
-      }
+      memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
       return;
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
@@ -226,7 +204,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
   
-  CPU(uint16_t *div): bus(div) {}
+  CPU(uint16_t *div, Joypad *jp): bus(div, jp) {}
 
   void step(Timer& timer);
   void check(void);
@@ -248,8 +226,8 @@ struct CPU{
   uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
   uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
   uint8_t& get_target(reg_target alvo);
-  uint16_t get_target_duplo(reg_target alvo) const;
-  uint8_t get_bit(reg_target alvo, uint8_t bit) const;
+  uint16_t get_target_duplo(reg_target alvo);
+  uint8_t get_bit(reg_target alvo, uint8_t bit);
 };
 
 struct Action{
