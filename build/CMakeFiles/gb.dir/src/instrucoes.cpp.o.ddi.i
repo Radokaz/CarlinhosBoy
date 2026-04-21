@@ -68872,14 +68872,14 @@ enum class reg_target: uint8_t{
 };
 
 struct Registradores{
-  uint8_t a {};
-  uint8_t b {};
-  uint8_t c {};
-  uint8_t d {};
-  uint8_t e {};
-  uint8_t f {};
-  uint8_t h {};
-  uint8_t l {};
+  uint8_t a {0x01};
+  uint8_t b {0x00};
+  uint8_t c {0x13};
+  uint8_t d {0x00};
+  uint8_t e {0xD8};
+  uint8_t f {0xB0};
+  uint8_t h {0x01};
+  uint8_t l {0x4D};
 
   uint16_t get_duplo(reg_target registrador) const{
 
@@ -68924,20 +68924,75 @@ struct Registradores{
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
+  uint16_t *div_count;
+
+  const uint8_t& read_byte(uint16_t endereco) const{
+    return memoria[endereco];
+  }
 
   uint8_t& read_byte(uint16_t endereco){
     return memoria[endereco];
   }
-  uint8_t read_byte_const(uint16_t endereco) const{
-    return memoria[endereco];
+
+  void write_byte(uint16_t endereco, uint8_t valor){
+    if(endereco == 0xFF04){
+      memoria[endereco] = 0;
+      *div_count = 0;
+      return;
+    }
+    memoria[endereco] = valor;
   }
 };
+
+struct Timer{
+    uint16_t div_count {};
+    uint16_t tima_count {};
+
+    void step(uint8_t ciclos, Memorybus& bus){
+      div_count+=ciclos;
+      bus.read_byte(0xFF04) = this->get_div();
+
+      uint8_t tac = bus.read_byte(0xFF07);
+      if(!(tac & 0x04)) return;
+
+      uint16_t limite{};
+      switch(tac & 0x03){
+        case 0x00:
+          limite = 1024;
+          break;
+        case 0x01:
+          limite = 16;
+          break;
+        case 0x02:
+          limite = 64;
+          break;
+        case 0x03:
+          limite = 256;
+          break;
+      }
+
+      tima_count+=ciclos;
+      if(tima_count >= limite){
+        tima_count -= limite;
+        uint16_t tima = static_cast<uint16_t>(bus.read_byte(0xFF05)) + 1;
+        if(tima > 0xFF){
+          bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
+          bus.read_byte(0xFF0F) |= (1 << 2);
+        }
+        else
+          ++bus.read_byte(0xFF05);
+      }
+    }
+
+    uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
+  };
 
 struct CPU{
   Memorybus bus;
   Registradores registradores;
   uint16_t pc {0x0100};
   uint16_t sp {0xFFFE};
+  uint8_t last_ticks {};
   bool jp_flag {false};
   bool halted {false};
   bool haltbug {false};
@@ -68945,7 +69000,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
 
-  void step(void);
+  void step(Timer& timer);
   void check(void);
 
   void push(reg_target alvo);
@@ -68983,7 +69038,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
-void roda_cpu(CPU *atual);
+void roda_cpu(CPU *atual, Timer& timer);
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h" 2
@@ -68992,10 +69047,12 @@ namespace GBInstruct{
     using namespace GB;
 
     inline void NOP(const Action& atual, CPU *cpu){
-        return;
+      cpu->last_ticks = 4;
+      return;
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
+      cpu->last_ticks = 4;
       cpu->stepping = false;
       cpu->jp_flag = true;
     }
@@ -69007,6 +69064,8 @@ namespace GBInstruct{
       }
       else
         cpu->halted = true;
+
+      cpu->last_ticks = 4;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
@@ -69016,40 +69075,54 @@ namespace GBInstruct{
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
 
       cpu->jp_flag = true;
+      cpu->last_ticks = 16;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {
       if(cpu->registradores.f & (1 << 7)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
         cpu->jp_flag = true;
+        cpu->last_ticks = 16;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void JPCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 4)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
         cpu->jp_flag = true;
+        cpu->last_ticks = 16;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void JPNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 7))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
         cpu->jp_flag = true;
+        cpu->last_ticks = 16;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void JPNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 4))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
         cpu->jp_flag = true;
+        cpu->last_ticks = 16;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
       int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
       cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
       cpu->jp_flag = true;
+      cpu->last_ticks = 12;
     }
 
     inline void JRZERO(const Action& atual, CPU *cpu){
@@ -69057,7 +69130,10 @@ namespace GBInstruct{
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
         cpu->jp_flag = true;
+        cpu->last_ticks = 12;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void JRCARRY(const Action& atual, CPU *cpu){
@@ -69065,7 +69141,10 @@ namespace GBInstruct{
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
         cpu->jp_flag = true;
+        cpu->last_ticks = 12;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void JRNZERO(const Action& atual, CPU *cpu){
@@ -69073,7 +69152,10 @@ namespace GBInstruct{
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
         cpu->jp_flag = true;
+        cpu->last_ticks = 12;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void JRNCARRY(const Action& atual, CPU *cpu){
@@ -69081,24 +69163,36 @@ namespace GBInstruct{
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add));
         cpu->jp_flag = true;
+        cpu->last_ticks = 12;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void LD(const Action& atual, CPU *cpu){
-      uint8_t& memoria = cpu->get_target(atual.alvo);
-      uint8_t valor = cpu->get_target(atual.ld_alvo);
+      if(atual.N == 0xFEA0){
+        uint8_t& memoria = cpu->get_target(atual.alvo);
+        uint8_t valor = cpu->get_target(atual.ld_alvo);
+        memoria = valor;
+      }
+      else{
+        uint8_t valor = cpu->get_target(atual.ld_alvo);
+        cpu->bus.write_byte(atual.N, valor);
+      }
 
-      memoria = valor;
+      cpu->last_ticks = atual.bit_index;
     }
 
     inline void LDDUP(const Action& atual, CPU *cpu){
       if(atual.alvo == reg_target::SP){
         uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
         cpu->sp = valor;
+        cpu->last_ticks = (atual.ld_alvo == reg_target::n) ? 12 : 8;
       }
       else{
         uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
         cpu->registradores.set_duplo(atual.alvo, valor);
+        cpu->last_ticks = 12;
       }
     }
 
@@ -69111,6 +69205,8 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
       if((cpu->sp & 0xFF) + (add & 0xFF) > 0xFF)
         cpu->registradores.f |= (1 << 4);
+
+      cpu->last_ticks = 12;
     }
 
     inline void LDSP(const Action& atual, CPU *cpu){
@@ -69118,82 +69214,111 @@ namespace GBInstruct{
       uint16_t upper = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8);
       uint16_t resultado = lower | upper;
 
-      cpu->bus.read_byte(resultado) = static_cast<uint8_t>(cpu->sp & 0xFF);
-      cpu->bus.read_byte(resultado + 1) = static_cast<uint8_t>((cpu->sp >> 8) & 0xFF);
+      cpu->bus.write_byte(resultado, static_cast<uint8_t>(cpu->sp & 0xFF));
+      cpu->bus.write_byte(resultado + 1, static_cast<uint8_t>((cpu->sp >> 8) & 0xFF));
+      cpu->last_ticks = 20;
     }
 
     inline void PUSH(const Action& atual, CPU *cpu){
       cpu->push(atual.alvo);
+      cpu->last_ticks = 16;
     }
 
     inline void POP(const Action& atual, CPU *cpu){
       cpu->pop(atual.alvo);
+      cpu->last_ticks = 12;
     }
 
     inline void CALLALWAYS(const Action& atual, CPU *cpu){
       cpu->call(atual.N);
       cpu->jp_flag = true;
+      cpu->last_ticks = 24;
     }
 
     inline void CALLZERO(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 7)){
         cpu->call(atual.N);
         cpu->jp_flag = true;
+        cpu->last_ticks = 24;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void CALLNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 7))){
         cpu->call(atual.N);
         cpu->jp_flag = true;
+        cpu->last_ticks = 24;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void CALLCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 4)){
         cpu->call(atual.N);
         cpu->jp_flag = true;
+        cpu->last_ticks = 24;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void CALLNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 4))){
         cpu->call(atual.N);
         cpu->jp_flag = true;
+        cpu->last_ticks = 24;
       }
+      else
+        cpu->last_ticks = 12;
     }
 
     inline void RETALWAYS(const Action& atual, CPU *cpu){
       cpu->ret();
       cpu->jp_flag = true;
+      cpu->last_ticks = 16;
     }
 
     inline void RETZERO(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 7)){
         cpu->ret();
         cpu->jp_flag = true;
+        cpu->last_ticks = 20;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void RETNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 7))){
         cpu->ret();
         cpu->jp_flag = true;
+        cpu->last_ticks = 20;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void RETCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 4)){
         cpu->ret();
         cpu->jp_flag = true;
+        cpu->last_ticks = 20;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void RETNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 4))){
         cpu->ret();
         cpu->jp_flag = true;
+        cpu->last_ticks = 20;
       }
+      else
+        cpu->last_ticks = 8;
     }
 
     inline void ADD(const Action& atual, CPU *cpu){
@@ -69209,6 +69334,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void ADDHL(const Action& atual, CPU *cpu){
@@ -69222,6 +69348,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 4);
 
       cpu->registradores.set_duplo(reg_target::HL, static_cast<uint16_t>(result & 0xFFFF));
+      cpu->last_ticks = 8;
     }
 
     inline void ADDSP(const Action& atual, CPU *cpu){
@@ -69235,6 +69362,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
 
       cpu->sp = static_cast<uint16_t>(result & 0xFFFF);
+      cpu->last_ticks = 16;
     }
 
     inline void ADC(const Action& atual, CPU *cpu){
@@ -69252,6 +69380,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void SUB(const Action& atual, CPU *cpu){
@@ -69268,6 +69397,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 4);
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void SBC(const Action& atual, CPU *cpu){
@@ -69285,6 +69415,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 4);
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void AND(const Action& atual, CPU *cpu){
@@ -69296,6 +69427,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 7);
 
       cpu->registradores.a = result;
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void OR(const Action& atual, CPU *cpu){
@@ -69307,6 +69439,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 7);
 
       cpu->registradores.a = result;
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void XOR(const Action& atual, CPU *cpu){
@@ -69318,6 +69451,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 7);
 
       cpu->registradores.a = result;
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void CP(const Action& atual, CPU *cpu){
@@ -69332,6 +69466,8 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
       if((cpu->registradores.a & 0xFF) < (valor & 0xFF))
         cpu->registradores.f |= (1 << 4);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
     }
 
     inline void INC(const Action& atual, CPU *cpu){
@@ -69345,6 +69481,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
 
       ++reg;
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 12 : 4;
     }
 
     inline void INCDUP(const Action& atual, CPU *cpu){
@@ -69354,6 +69491,8 @@ namespace GBInstruct{
         cpu->registradores.set_duplo(atual.alvo, reg + 1);
       else
         cpu->sp++;
+
+      cpu->last_ticks = 8;
     }
 
     inline void DEC(const Action& atual, CPU *cpu){
@@ -69368,6 +69507,7 @@ namespace GBInstruct{
         cpu->registradores.f |= (1 << 5);
 
       --reg;
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 12 : 4;
     }
 
     inline void DECDUP(const Action& atual, CPU *cpu){
@@ -69377,16 +69517,20 @@ namespace GBInstruct{
         cpu->registradores.set_duplo(atual.alvo, reg - 1);
       else
         cpu->sp--;
+
+      cpu->last_ticks = 8;
     }
 
     inline void CCF(const Action& atual, CPU *cpu){
       cpu->registradores.f ^= (1 << 4);
       cpu->registradores.f &= ~((1 << 6) | (1 << 5));
+      cpu->last_ticks = 4;
     }
 
     inline void SCF(const Action& atual, CPU *cpu){
       cpu->registradores.f |= (1 << 4);
       cpu->registradores.f &= ~((1 << 6) | (1 << 5));
+      cpu->last_ticks = 4;
     }
 
     inline void RRA(const Action& atual, CPU *cpu){
@@ -69400,6 +69544,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~(1 << 4);
 
       cpu->registradores.a = ((cpu->registradores.a >> 1) | (carry << 7));
+      cpu->last_ticks = 4;
     }
 
     inline void RLA(const Action& atual, CPU *cpu){
@@ -69413,6 +69558,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~(1 << 4);
 
       cpu->registradores.a = ((cpu->registradores.a << 1) | carry);
+      cpu->last_ticks = 4;
     }
 
     inline void RRCA(const Action& atual, CPU *cpu){
@@ -69424,6 +69570,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~(1 << 4);
 
       cpu->registradores.a = ((cpu->registradores.a >> 1) | (bit0 << 7));
+      cpu->last_ticks = 4;
     }
 
     inline void RLCA(const Action& atual, CPU *cpu){
@@ -69435,32 +69582,37 @@ namespace GBInstruct{
         cpu->registradores.f &= ~(1 << 4);
 
       cpu->registradores.a = ((cpu->registradores.a << 1) | bit7);
+      cpu->last_ticks = 4;
     }
 
     inline void CPL(const Action& atual, CPU *cpu){
       cpu->registradores.a = ~cpu->registradores.a;
       cpu->registradores.f |= ((1 << 6) | (1 << 5));
+      cpu->last_ticks = 4;
     }
 
     inline void DI(const Action& atual, CPU *cpu){
-      cpu->ime_ie = false;
       cpu->ime = false;
+      cpu->last_ticks = 4;
     }
 
     inline void EI(const Action& atual, CPU *cpu){
       cpu->ime_ie = true;
+      cpu->last_ticks = 4;
     }
 
     inline void RETI(const Action& atual, CPU *cpu){
       cpu->pc = cpu->pop();
       cpu->ime = true;
       cpu->jp_flag = true;
+      cpu->last_ticks = 16;
     }
 
     inline void RST(const Action& atual, CPU *cpu){
       cpu->push(cpu->pc + 1);
       cpu->pc = atual.N;
       cpu->jp_flag = true;
+      cpu->last_ticks = 16;
     }
 
     inline void BIT(const Action& atual, CPU *cpu){
@@ -69469,16 +69621,20 @@ namespace GBInstruct{
       cpu->registradores.f |= (1 << 5);
       if(!bit)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 12 : 8;
     }
 
     inline void RESET(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target(atual.alvo);
       reg &= ~(1 << atual.bit_index);
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void SET(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target(atual.alvo);
       reg |= (1 << atual.bit_index);
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void SRL(const Action& atual, CPU *cpu){
@@ -69494,6 +69650,8 @@ namespace GBInstruct{
 
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void RR(const Action& atual, CPU *cpu){
@@ -69510,6 +69668,8 @@ namespace GBInstruct{
       reg = ((reg >> 1) | (carry << 7));
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void RL(const Action& atual, CPU *cpu){
@@ -69526,6 +69686,8 @@ namespace GBInstruct{
       reg = ((reg << 1) | carry);
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void RRC(const Action& atual, CPU *cpu){
@@ -69540,6 +69702,8 @@ namespace GBInstruct{
       reg = ((reg >> 1) | (bit0 << 7));
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void RLC(const Action& atual, CPU *cpu){
@@ -69554,6 +69718,8 @@ namespace GBInstruct{
       reg = ((reg << 1) | bit7);
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void SRA(const Action& atual, CPU *cpu){
@@ -69570,6 +69736,8 @@ namespace GBInstruct{
       reg = ((reg >> 1) | (bit7 << 7));
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void SLA(const Action& atual, CPU *cpu){
@@ -69585,6 +69753,8 @@ namespace GBInstruct{
       reg = (reg << 1);
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void SWAP(const Action& atual, CPU *cpu){
@@ -69596,6 +69766,8 @@ namespace GBInstruct{
       cpu->registradores.f = 0;
       if(!reg)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void DAA(const Action& atual, CPU *cpu){
@@ -69617,8 +69789,10 @@ namespace GBInstruct{
       cpu->registradores.f &= ~((1 << 7) | (1 << 5));
       if(!cpu->registradores.a)
         cpu->registradores.f |= (1 << 7);
+
+      cpu->last_ticks = 4;
     }
-# 644 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 763 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp" 2
 
@@ -69640,21 +69814,27 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x30:
       return Action(JRNCARRY, 2);
     case 0x01:
-      return Action(LDDUP, 3, BC, 0, 0, n);
+      return Action(LDDUP, 3, BC, 12, 0, n);
     case 0x11:
-      return Action(LDDUP, 3, DE, 0, 0, n);
+      return Action(LDDUP, 3, DE, 12, 0, n);
     case 0x21:
-      return Action(LDDUP, 3, HL, 0, 0, n);
+      return Action(LDDUP, 3, HL, 12, 0, n);
     case 0x31:
-      return Action(LDDUP, 3, SP, 0, 0, n);
+      return Action(LDDUP, 3, SP, 12, 0, n);
     case 0x02:
-      return Action(LD, 1, BC, 0, 0, A);
+      return Action(LD, 1, BC, atual->registradores.get_duplo(BC), 8, A);
     case 0x12:
-      return Action(LD, 1, DE, 0, 0, A);
-    case 0x22:
-      return Action(LD, 1, HLI, 0, 0, A);
-    case 0x32:
-      return Action(LD, 1, HLD, 0, 0, A);
+      return Action(LD, 1, DE, atual->registradores.get_duplo(DE), 8, A);
+    case 0x22:{
+      uint16_t temp = atual->registradores.get_duplo(HL);
+      atual->registradores.set_duplo(HL, temp + 1);
+      return Action(LD, 1, HLI, temp, 8, A);
+      }
+    case 0x32:{
+      uint16_t temp = atual->registradores.get_duplo(HL);
+      atual->registradores.set_duplo(HL, temp - 1);
+      return Action(LD, 1, HLD, temp, 8, A);
+      }
     case 0x03:
       return Action(INCDUP, 1, BC);
     case 0x13:
@@ -69680,13 +69860,13 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x35:
       return Action(DEC, 1, HL);
     case 0x06:
-      return Action(LD, 2, B, 0, 0, n);
+      return Action(LD, 2, B, 0xFEA0, 8, n);
     case 0x16:
-      return Action(LD, 2, D, 0, 0, n);
+      return Action(LD, 2, D, 0xFEA0, 8, n);
     case 0x26:
-      return Action(LD, 2, H, 0, 0, n);
+      return Action(LD, 2, H, 0xFEA0, 8, n);
     case 0x36:
-      return Action(LD, 2, HL, 0, 0, n);
+      return Action(LD, 2, HL, atual->registradores.get_duplo(HL), 12, n);
     case 0x07:
       return Action(RLCA, 1);
     case 0x17:
@@ -69712,13 +69892,13 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x39:
       return Action(ADDHL, 1, SP);
     case 0x0A:
-      return Action(LD, 1, A, 0, 0, BC);
+      return Action(LD, 1, A, 0xFEA0, 8, BC);
     case 0x1A:
-      return Action(LD, 1, A, 0, 0, DE);
+      return Action(LD, 1, A, 0xFEA0, 8, DE);
     case 0x2A:
-      return Action(LD, 1, A, 0, 0, HLI);
+      return Action(LD, 1, A, 0xFEA0, 8, HLI);
     case 0x3A:
-      return Action(LD, 1, A, 0, 0, HLD);
+      return Action(LD, 1, A, 0xFEA0, 8, HLD);
     case 0x0B:
       return Action(DECDUP, 1, BC);
     case 0x1B:
@@ -69744,13 +69924,13 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x3D:
       return Action(DEC, 1, A);
     case 0x0E:
-      return Action(LD, 2, C, 0, 0, n);
+      return Action(LD, 2, C, 0xFEA0, 8, n);
     case 0x1E:
-      return Action(LD, 2, E, 0, 0, n);
+      return Action(LD, 2, E, 0xFEA0, 8, n);
     case 0x2E:
-      return Action(LD, 2, L, 0, 0, n);
+      return Action(LD, 2, L, 0xFEA0, 8, n);
     case 0x3E:
-      return Action(LD, 2, A, 0, 0, n);
+      return Action(LD, 2, A, 0xFEA0, 8, n);
     case 0x0F:
       return Action(RRCA, 1);
     case 0x1F:
@@ -69761,133 +69941,133 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(CCF, 1);
 
     case 0x40:
-      return Action(LD, 1, B, 0, 0, B);
+      return Action(LD, 1, B, 0xFEA0, 4, B);
     case 0x41:
-      return Action(LD, 1, B, 0, 0, C);
+      return Action(LD, 1, B, 0xFEA0, 4, C);
     case 0x42:
-      return Action(LD, 1, B, 0, 0, D);
+      return Action(LD, 1, B, 0xFEA0, 4, D);
     case 0x43:
-      return Action(LD, 1, B, 0, 0, E);
+      return Action(LD, 1, B, 0xFEA0, 4, E);
     case 0x44:
-      return Action(LD, 1, B, 0, 0, H);
+      return Action(LD, 1, B, 0xFEA0, 4, H);
     case 0x45:
-      return Action(LD, 1, B, 0, 0, L);
+      return Action(LD, 1, B, 0xFEA0, 4, L);
     case 0x46:
-      return Action(LD, 1, B, 0, 0, HL);
+      return Action(LD, 1, B, 0xFEA0, 8, HL);
     case 0x47:
-      return Action(LD, 1, B, 0, 0, A);
+      return Action(LD, 1, B, 0xFEA0, 4, A);
     case 0x48:
-      return Action(LD, 1, C, 0, 0, B);
+      return Action(LD, 1, C, 0xFEA0, 4, B);
     case 0x49:
-      return Action(LD, 1, C, 0, 0, C);
+      return Action(LD, 1, C, 0xFEA0, 4, C);
     case 0x4A:
-      return Action(LD, 1, C, 0, 0, D);
+      return Action(LD, 1, C, 0xFEA0, 4, D);
     case 0x4B:
-      return Action(LD, 1, C, 0, 0, E);
+      return Action(LD, 1, C, 0xFEA0, 4, E);
     case 0x4C:
-      return Action(LD, 1, C, 0, 0, H);
+      return Action(LD, 1, C, 0xFEA0, 4, H);
     case 0x4D:
-      return Action(LD, 1, C, 0, 0, L);
+      return Action(LD, 1, C, 0xFEA0, 4, L);
     case 0x4E:
-      return Action(LD, 1, C, 0, 0, HL);
+      return Action(LD, 1, C, 0xFEA0, 8, HL);
     case 0x4F:
-      return Action(LD, 1, C, 0, 0, A);
+      return Action(LD, 1, C, 0xFEA0, 4, A);
     case 0x50:
-      return Action(LD, 1, D, 0, 0, B);
+      return Action(LD, 1, D, 0xFEA0, 4, B);
     case 0x51:
-      return Action(LD, 1, D, 0, 0, C);
+      return Action(LD, 1, D, 0xFEA0, 4, C);
     case 0x52:
-      return Action(LD, 1, D, 0, 0, D);
+      return Action(LD, 1, D, 0xFEA0, 4, D);
     case 0x53:
-      return Action(LD, 1, D, 0, 0, E);
+      return Action(LD, 1, D, 0xFEA0, 4, E);
     case 0x54:
-      return Action(LD, 1, D, 0, 0, H);
+      return Action(LD, 1, D, 0xFEA0, 4, H);
     case 0x55:
-      return Action(LD, 1, D, 0, 0, L);
+      return Action(LD, 1, D, 0xFEA0, 4, L);
     case 0x56:
-      return Action(LD, 1, D, 0, 0, HL);
+      return Action(LD, 1, D, 0xFEA0, 8, HL);
     case 0x57:
-      return Action(LD, 1, D, 0, 0, A);
+      return Action(LD, 1, D, 0xFEA0, 4, A);
     case 0x58:
-      return Action(LD, 1, E, 0, 0, B);
+      return Action(LD, 1, E, 0xFEA0, 4, B);
     case 0x59:
-      return Action(LD, 1, E, 0, 0, C);
+      return Action(LD, 1, E, 0xFEA0, 4, C);
     case 0x5A:
-      return Action(LD, 1, E, 0, 0, D);
+      return Action(LD, 1, E, 0xFEA0, 4, D);
     case 0x5B:
-      return Action(LD, 1, E, 0, 0, E);
+      return Action(LD, 1, E, 0xFEA0, 4, E);
     case 0x5C:
-      return Action(LD, 1, E, 0, 0, H);
+      return Action(LD, 1, E, 0xFEA0, 4, H);
     case 0x5D:
-      return Action(LD, 1, E, 0, 0, L);
+      return Action(LD, 1, E, 0xFEA0, 4, L);
     case 0x5E:
-      return Action(LD, 1, E, 0, 0, HL);
+      return Action(LD, 1, E, 0xFEA0, 8, HL);
     case 0x5F:
-      return Action(LD, 1, E, 0, 0, A);
+      return Action(LD, 1, E, 0xFEA0, 4, A);
     case 0x60:
-      return Action(LD, 1, H, 0, 0, B);
+      return Action(LD, 1, H, 0xFEA0, 4, B);
     case 0x61:
-      return Action(LD, 1, H, 0, 0, C);
+      return Action(LD, 1, H, 0xFEA0, 4, C);
     case 0x62:
-      return Action(LD, 1, H, 0, 0, D);
+      return Action(LD, 1, H, 0xFEA0, 4, D);
     case 0x63:
-      return Action(LD, 1, H, 0, 0, E);
+      return Action(LD, 1, H, 0xFEA0, 4, E);
     case 0x64:
-      return Action(LD, 1, H, 0, 0, H);
+      return Action(LD, 1, H, 0xFEA0, 4, H);
     case 0x65:
-      return Action(LD, 1, H, 0, 0, L);
+      return Action(LD, 1, H, 0xFEA0, 4, L);
     case 0x66:
-      return Action(LD, 1, H, 0, 0, HL);
+      return Action(LD, 1, H, 0xFEA0, 8, HL);
     case 0x67:
-      return Action(LD, 1, H, 0, 0, A);
+      return Action(LD, 1, H, 0xFEA0, 4, A);
     case 0x68:
-      return Action(LD, 1, L, 0, 0, B);
+      return Action(LD, 1, L, 0xFEA0, 4, B);
     case 0x69:
-      return Action(LD, 1, L, 0, 0, C);
+      return Action(LD, 1, L, 0xFEA0, 4, C);
     case 0x6A:
-      return Action(LD, 1, L, 0, 0, D);
+      return Action(LD, 1, L, 0xFEA0, 4, D);
     case 0x6B:
-      return Action(LD, 1, L, 0, 0, E);
+      return Action(LD, 1, L, 0xFEA0, 4, E);
     case 0x6C:
-      return Action(LD, 1, L, 0, 0, H);
+      return Action(LD, 1, L, 0xFEA0, 4, H);
     case 0x6D:
-      return Action(LD, 1, L, 0, 0, L);
+      return Action(LD, 1, L, 0xFEA0, 4, L);
     case 0x6E:
-      return Action(LD, 1, L, 0, 0, HL);
+      return Action(LD, 1, L, 0xFEA0, 8, HL);
     case 0x6F:
-      return Action(LD, 1, L, 0, 0, A);
+      return Action(LD, 1, L, 0xFEA0, 4, A);
     case 0x70:
-      return Action(LD, 1, HL, 0, 0, B);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, B);
     case 0x71:
-      return Action(LD, 1, HL, 0, 0, C);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, C);
     case 0x72:
-      return Action(LD, 1, HL, 0, 0, D);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, D);
     case 0x73:
-      return Action(LD, 1, HL, 0, 0, E);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, E);
     case 0x74:
-      return Action(LD, 1, HL, 0, 0, H);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, H);
     case 0x75:
-      return Action(LD, 1, HL, 0, 0, L);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, L);
     case 0x76:
       return Action(HALT, 0);
     case 0x77:
-      return Action(LD, 1, HL, 0, 0, A);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, A);
     case 0x78:
-      return Action(LD, 1, A, 0, 0, B);
+      return Action(LD, 1, A, 0xFEA0, 4, B);
     case 0x79:
-      return Action(LD, 1, A, 0, 0, C);
+      return Action(LD, 1, A, 0xFEA0, 4, C);
     case 0x7A:
-      return Action(LD, 1, A, 0, 0, D);
+      return Action(LD, 1, A, 0xFEA0, 4, D);
     case 0x7B:
-      return Action(LD, 1, A, 0, 0, E);
+      return Action(LD, 1, A, 0xFEA0, 4, E);
     case 0x7C:
-      return Action(LD, 1, A, 0, 0, H);
+      return Action(LD, 1, A, 0xFEA0, 4, H);
     case 0x7D:
-      return Action(LD, 1, A, 0, 0, L);
+      return Action(LD, 1, A, 0xFEA0, 4, L);
     case 0x7E:
-      return Action(LD, 1, A, 0, 0, HL);
+      return Action(LD, 1, A, 0xFEA0, 8, HL);
     case 0x7F:
-      return Action(LD, 1, A, 0, 0, A);
+      return Action(LD, 1, A, 0xFEA0, 4, A);
 
     case 0x80:
       return Action(ADD, 1, B);
@@ -70022,9 +70202,9 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xD0:
       return Action(RETNCARRY, 1);
     case 0xE0:
-      return Action(LD, 2, A8, 0, 0, A);
+      return Action(LD, 2, A8, 0xFF00 + static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 1)), 12, A);
     case 0xF0:
-      return Action(LD, 2, A, 0, 0, A8);
+      return Action(LD, 2, A, 0xFEA0, 12, A8);
     case 0xC1:
       return Action(POP, 1, BC);
     case 0xD1:
@@ -70038,9 +70218,9 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xD2:
       return Action(JPNCARRY, 3);
     case 0xE2:
-      return Action(LD, 1, CPTR, 0, 0, A);
+      return Action(LD, 1, CPTR, 0xFF00 + static_cast<uint16_t>(atual->registradores.c), 8, A);
     case 0xF2:
-      return Action(LD, 1, A, 0, 0, CPTR);
+      return Action(LD, 1, A, 0xFEA0, 8, CPTR);
     case 0xC3:
       return Action(JPALWAYS, 3);
     case 0xF3:
@@ -70093,10 +70273,14 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(JPZERO, 3);
     case 0xDA:
       return Action(JPCARRY, 3);
-    case 0xEA:
-      return Action(LD, 3, A16, 0, 0, A);
+    case 0xEA:{
+      uint16_t lower = static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 1));
+      uint16_t upper = (static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 2)) << 8);
+      uint16_t temp = lower | upper;
+      return Action(LD, 3, A16, temp, 16, A);
+      }
     case 0xFA:
-      return Action(LD, 3, A, 0, 0, A16);
+      return Action(LD, 3, A, 0xFEA0, 16, A16);
     case 0xFB:
       return Action(EI, 1);
     case 0xCC:

@@ -2,11 +2,10 @@
 
 namespace GB{
 
-void roda_cpu(CPU *atual){
+void roda_cpu(CPU *atual, Timer& timer){
+  if(!atual->stepping) return;
   atual->check();
-  atual->step();
-  if(atual->get_ie() & atual->get_if() & 0x1F)
-    atual->halted = false;
+  atual->step(timer);
 }
 
 void CPU::check(void){
@@ -31,7 +30,7 @@ void CPU::check(void){
   }
 }
 
-void CPU::step(void){
+void CPU::step(Timer& timer){
   if(this->halted || !this->stepping) return;
 
   bool set_ime {false};
@@ -45,6 +44,10 @@ void CPU::step(void){
   try{
     auto current_act = (this->haltbug) ? Action(GBInstruct::NOP, 1) : le_byte(inst_byte, this);
     current_act.execute(current_act, this);
+    if(current_act.execute == &GBInstruct::DI)
+      set_ime = false;
+
+    timer.step(this->last_ticks, this->bus);
 
     if(!this->jp_flag){
       this->pc+=current_act.tamanho;
@@ -158,8 +161,8 @@ uint16_t CPU::get_target_duplo(reg_target alvo) const{
     if(alvo == reg_target::SP)
       return this->sp;
     if(alvo == reg_target::n){
-      uint16_t lower = static_cast<uint16_t>(this->bus.read_byte_const(this->pc + 1));
-      uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte_const(this->pc + 2)) << 8);
+      uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc + 1));
+      uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8);
       return (lower | upper);
     }
     return this->registradores.get_duplo(alvo);
@@ -184,6 +187,8 @@ uint8_t CPU::get_bit(reg_target alvo, uint8_t bit) const{
       return ((this->registradores.h & (1 << bit)) > 0) ? 1 : 0;
     case L:
       return ((this->registradores.l & (1 << bit)) > 0) ? 1 : 0;
+    case HL:
+      return ((this->bus.read_byte(this->registradores.get_duplo(HL)) & (1 << bit)) > 0) ? 1 : 0;
     default:
       throw std::runtime_error("Registrador inválido.\n");
   }
