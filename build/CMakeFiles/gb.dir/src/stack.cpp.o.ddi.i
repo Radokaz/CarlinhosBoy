@@ -68919,14 +68919,46 @@ struct Registradores{
 };
 
 struct Memorybus{
-  std::array<uint8_t, 0xFFFF + 1> memoria{};
+  mutable std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
 
+  Memorybus(uint16_t *div): div_count{div} {}
+
   const uint8_t& read_byte(uint16_t endereco) const{
+    switch(endereco){
+        case 0xFF07:
+          memoria[endereco] |= 0b11111000;
+          break;
+        case 0xFF0F:
+          memoria[endereco] |= 0b11100000;
+          break;
+        case 0xFF00:
+          memoria[endereco] |= 0b11000000;
+          break;
+        case 0xFF41:
+          memoria[endereco] |= 0b10000000;
+          break;
+        default: break;
+    }
     return memoria[endereco];
   }
 
   uint8_t& read_byte(uint16_t endereco){
+    switch(endereco){
+        case 0xFF07:
+          memoria[endereco] |= 0b11111000;
+          break;
+        case 0xFF0F:
+          memoria[endereco] |= 0b11100000;
+          break;
+        case 0xFF00:
+          memoria[endereco] |= 0b11000000;
+          break;
+        case 0xFF41:
+          memoria[endereco] |= 0b10000000;
+          break;
+        default: break;
+    }
     return memoria[endereco];
   }
 
@@ -68941,10 +68973,18 @@ struct Memorybus{
 };
 
 struct Timer{
-    uint16_t div_count {};
+    uint16_t div_count {0xAB00};
     uint16_t tima_count {};
+    bool timaoverflow {false};
 
     void step(uint8_t ciclos, Memorybus& bus){
+
+      if(timaoverflow){
+        bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
+        bus.read_byte(0xFF0F) |= (1 << 2);
+        timaoverflow = false;
+      }
+
       div_count+=ciclos;
       bus.read_byte(0xFF04) = this->get_div();
 
@@ -68970,10 +69010,10 @@ struct Timer{
       tima_count+=ciclos;
       if(tima_count >= limite){
         tima_count -= limite;
-        uint16_t tima = static_cast<uint16_t>(bus.read_byte(0xFF05)) + 1;
-        if(tima > 0xFF){
-          bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
-          bus.read_byte(0xFF0F) |= (1 << 2);
+        uint8_t tima = bus.read_byte(0xFF05);
+        if(tima == 0xFF){
+          bus.read_byte(0xFF05) = 0;
+          timaoverflow = true;
         }
         else
           ++bus.read_byte(0xFF05);
@@ -68995,6 +69035,8 @@ struct CPU{
   bool stepping {true};
   bool ime {false};
   bool ime_ie {false};
+
+  CPU(uint16_t *div): bus(div) {}
 
   void step(Timer& timer);
   void check(void);

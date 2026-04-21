@@ -31,12 +31,10 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(LD, 1, DE, atual->registradores.get_duplo(DE), 8, A);
     case 0x22:{
       uint16_t temp = atual->registradores.get_duplo(HL);
-      atual->registradores.set_duplo(HL, temp + 1);
       return Action(LD, 1, HLI, temp, 8, A);
       }
     case 0x32:{
       uint16_t temp = atual->registradores.get_duplo(HL);
-      atual->registradores.set_duplo(HL, temp - 1);
       return Action(LD, 1, HLD, temp, 8, A);
       }
     case 0x03:

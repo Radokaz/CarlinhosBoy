@@ -96,32 +96,85 @@ struct Registradores{
 };
 
 struct Memorybus{
-  std::array<uint8_t, 0xFFFF + 1> memoria{};
+  mutable std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
 
+  Memorybus(uint16_t *div): div_count{div} {}
+
   const uint8_t& read_byte(uint16_t endereco) const{
+    switch(endereco){
+        case 0xFF07: //tac
+          memoria[endereco] |= 0b11111000; 
+          break;
+        case 0xFF0F: //if
+          memoria[endereco] |= 0b11100000; 
+          break;
+        case 0xFF00: //joypad
+          memoria[endereco] |= 0b11000000; 
+          break;
+        case 0xFF41: //stat
+          memoria[endereco] |= 0b10000000; 
+          break;
+        default: break;
+    }
     return memoria[endereco];
   }
 
   uint8_t& read_byte(uint16_t endereco){
+    switch(endereco){
+        case 0xFF07: //tac
+          memoria[endereco] |= 0b11111000; 
+          break;
+        case 0xFF0F: //if
+          memoria[endereco] |= 0b11100000; 
+          break;
+        case 0xFF00: //joypad
+          memoria[endereco] |= 0b11000000; 
+          break;
+        case 0xFF41: //stat
+          memoria[endereco] |= 0b10000000; 
+          break;
+        default: break;
+    }
     return memoria[endereco];
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
-    if(endereco == 0xFF04){
+    if(endereco == 0xFF04){ //div
       memoria[endereco] = 0;
       *div_count = 0;
       return;
+    }
+    if(endereco == 0xFF00){ //joypad
+      uint8_t temp = (memoria[0xFF00] & 0x3F);
+      memoria[0xFF00] = valor; 
+      if((temp & memoria[0xFF00] & 0x3F) != temp){
+        memoria[0xFF0F] |= BIT_JOYPAD;
+      }
+      return;
+    }
+    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
+      memoria[0xFF01] = 0xFF;
+      memoria[0xFF02] &= ~BIT_SERIAL;
+      memoria[0xFF0F] |= BIT_SERIAL;
     }
     memoria[endereco] = valor;
   }
 };
 
 struct Timer{
-    uint16_t div_count {};
+    uint16_t div_count {0xAC00};
     uint16_t tima_count {};
+    bool timaoverflow {false};
 
     void step(uint8_t ciclos, Memorybus& bus){
+
+      if(timaoverflow){
+        bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
+        bus.read_byte(0xFF0F) |= BIT_TIMER;
+        timaoverflow = false;
+      }
+
       div_count+=ciclos;
       bus.read_byte(0xFF04) = this->get_div();
 
@@ -147,10 +200,10 @@ struct Timer{
       tima_count+=ciclos;
       if(tima_count >= limite){
         tima_count -= limite;
-        uint16_t tima = static_cast<uint16_t>(bus.read_byte(0xFF05)) + 1;
-        if(tima > 0xFF){
-          bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
-          bus.read_byte(0xFF0F) |= BIT_TIMER;
+        uint8_t tima = bus.read_byte(0xFF05);
+        if(tima == 0xFF){
+          bus.read_byte(0xFF05) = 0;
+          timaoverflow = true;
         }
         else
           ++bus.read_byte(0xFF05);
@@ -173,6 +226,8 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
   
+  CPU(uint16_t *div): bus(div) {}
+
   void step(Timer& timer);
   void check(void);
 
