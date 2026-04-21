@@ -8,7 +8,9 @@ int main(int argc, char **argv){
   }
 
   GB::Timer timer;
-  GB::CPU cpu(&timer.div_count);
+  GB::Joypad pad;
+  GB::CPU cpu(&timer.div_count, &pad);
+  pad.p1 = &cpu.bus.memoria[0xFF00];
 
   GB::init_game(&cpu, timer, argv);
 

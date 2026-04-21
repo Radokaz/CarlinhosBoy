@@ -13,7 +13,12 @@ void CPU::push(reg_target alvo){
 void CPU::pop(reg_target alvo){
   uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->sp));
   uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp + 1)) << 8);
-  this->registradores.set_duplo(alvo, (lower | upper));
+  uint16_t valor = (lower | upper);
+
+  if(alvo == reg_target::AF)
+    valor &= 0xFFF0;
+
+  this->registradores.set_duplo(alvo, valor);
   this->sp+=2;
 }
 

@@ -14,16 +14,13 @@ namespace GB{
 
   struct Joypad{
     uint8_t output {0xFF};
-    uint8_t prev {0xFF};
+    uint8_t controles_prev {};
     bool select_dir {};
     bool select_but {};
     uint8_t *p1 {};
     uint8_t controles {};
 
-    Joypad(uint8_t *p1_): p1{p1_} {}
-
     uint8_t& get_output(void){
-      using enum jp_botoes;
       this->set_select();
       uint8_t result {0xCF};
 
@@ -51,12 +48,12 @@ namespace GB{
           result &= ~(1 << 3);
       }
 
-      prev = output;
       output = result | 0b11000000;
       return output;
     }
 
     void input(uint8_t in){
+      controles_prev = controles;
       controles = in;
     }
 

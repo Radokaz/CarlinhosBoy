@@ -3,8 +3,10 @@
 namespace GB{
 
 void roda_cpu(CPU *atual, Timer& timer){
-  if(cpu->check_joypad())
+  if(atual->check_joypad()){
     atual->stepping = true;
+    atual->halted = false;
+  }
   if(!atual->stepping) return;
   atual->check();
   atual->step(timer);
@@ -33,18 +35,15 @@ void CPU::check(void){
 }
 
 bool CPU::check_joypad(void){
-  uint8_t prev = this->bus.joypad->prev;
-  uint8_t curr = this->bus.joypad->output;
+  if((this->bus.memoria[0xFF00] & 0x30) == 0x30) return false;
+  uint8_t prev = this->bus.pad->controles_prev;
+  uint8_t curr = this->bus.pad->controles;
 
   if(prev & ~curr & 0x0F){
     this->get_if() |= BIT_JOYPAD;
-    this->bus.joypad->prev = curr;
     return true;
   }
-  if(prev ^ curr){
-    return true;
-  }
-
+  
   return false;
 }
 
@@ -66,7 +65,7 @@ void CPU::step(Timer& timer){
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
 
-    timer.step(this->last_ticks, this->bus);
+    timer.step(this->last_ticks*4, this->bus);
 
     if(!this->jp_flag){
       this->pc+=current_act.tamanho;
@@ -176,7 +175,7 @@ uint8_t& CPU::get_target(reg_target alvo){
   }
 }
 
-uint16_t CPU::get_target_duplo(reg_target alvo) const{
+uint16_t CPU::get_target_duplo(reg_target alvo){
     if(alvo == reg_target::SP)
       return this->sp;
     if(alvo == reg_target::n){
@@ -187,7 +186,7 @@ uint16_t CPU::get_target_duplo(reg_target alvo) const{
     return this->registradores.get_duplo(alvo);
 }
 
-uint8_t CPU::get_bit(reg_target alvo, uint8_t bit) const{
+uint8_t CPU::get_bit(reg_target alvo, uint8_t bit){
   switch(alvo){
     using enum reg_target;
     case A:

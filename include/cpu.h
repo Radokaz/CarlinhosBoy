@@ -101,7 +101,7 @@ struct Memorybus{
   uint16_t *div_count;
   Joypad *pad;
 
-  Memorybus(uint16_t *div): div_count{div} {}
+  Memorybus(uint16_t *div, Joypad *p): div_count{div}, pad{p} {}
 
   uint8_t& read_byte(uint16_t endereco){
     switch(endereco){
@@ -135,6 +135,7 @@ struct Memorybus{
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~BIT_SERIAL;
       memoria[0xFF0F] |= BIT_SERIAL;
+      return;
     }
     memoria[endereco] = valor;
   }
