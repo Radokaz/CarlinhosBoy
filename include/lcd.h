@@ -2,7 +2,6 @@
 #define LCD_H
 
 #include <utility>
-#include "memorybus.h"
 
 //registrador LCDC (0xFF40)
 #define LCDC_ENABLE (1 << 7) //se a tela está ligada ou não
@@ -29,75 +28,6 @@ enum class screen_mode: uint8_t{
   SOAMRAM,
   DRAWING
 };
-
-inline void set_lcd(Memorybus& bus, bool ligado){
-  if(ligado)
-    bus.read_byte(0xFF40) |= LCDC_ENABLE;
-  else
-    bus.read_byte(0xFF40) &= ~LCDC_ENABLE;
-}
-
-inline uint16_t atual_tilemap(Memorybus& bus){
-  return (bus.read_byte(0xFF40) & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
-}
-
-inline void set_window(Memorybus& bus, bool ligado){
-  if(ligado)
-    bus.read_byte(0xFF40) |= LCDC_WIN_ENABLE;
-  else
-    bus.read_byte(0xFF40) &= ~LCDC_WIN_ENABLE;
-}
-
-inline uint16_t atual_bgtiledata(Memorybus& bus){
-  return (bus.read_byte(0xFF40) & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
-}
-
-inline uint16_t atual_bgtilemap(Memorybus& bus){
-  return (bus.read_byte(0xFF40) & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
-}
-
-inline uint8_t atual_spritesize(Memorybus& bus){
-  return (bus.read_byte(0xFF40) & LCDC_OBJ_SIZE) ? 16 : 8;
-}
-
-inline void set_screen(Memorybus& bus, screen_mode modo){
-  uint8_t& stat = bus.read_byte(0xFF41);
-  stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
-}
-
-inline screen_mode get_mode(Memorybus& bus){
-    return static_cast<screen_mode>(bus.read_byte(0xFF41) & 0x03);
-}
-
-inline bool check_stat(Memorybus& bus){
-  if((bus.read_byte(0xFF40) & LCDC_ENABLE) != LCDC_ENABLE)
-    return false;
-
-  uint8_t ly = bus.read_byte(0xFF44);
-  uint8_t lyc = bus.read_byte(0xFF45);
-  uint8_t& stat = bus.read_byte(0xFF41);
-  screen_mode atual = get_mode(bus);
-  
-  return (((ly == lyc) && (stat & LYC_Comparison_Signal)) ||
-  ((atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
-  ((atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
-  ((atual == screen_mode::VBLANK) && ((stat & VBLANK_ENABLE) || (stat & OAM_ENABLE))));
-}
-
-inline void check_stat_interruption(Memorybus& bus, bool& stat_prev){
-  bool stat_atual = check_stat(bus);
-  if(stat_atual && !stat_prev)
-    cpu->get_if() |= BIT_LCDSTAT;
-
-  stat_prev = stat_atual;
-}
-
-inline void aumenta_ly(Memorybus& bus){
-  uint8_t ly = bus.read_byte(0xFF44);
-  ++ly;
-  if(ly > 153)
-    ly = 0;
-}
 
 }
 
