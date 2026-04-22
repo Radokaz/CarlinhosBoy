@@ -12,7 +12,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x00:
       return Action(NOP, 1);
     case 0x10:
-      return Action(STOP, 0);
+      return Action(STOP, 1);
     case 0x20:
       return Action(JRNZERO, 2);
     case 0x30:
@@ -251,7 +251,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x75:
       return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, L);
     case 0x76:
-      return Action(HALT, 0);
+      return Action(HALT, 1);
     case 0x77:
       return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, A);
     case 0x78:

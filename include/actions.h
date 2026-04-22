@@ -15,14 +15,11 @@ namespace GBInstruct{
     inline void STOP(const Action& atual, CPU *cpu){
       cpu->last_ticks = 4;
       cpu->stepping = false;
-      cpu->jp_flag = true;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      if(cpu->get_ie() & cpu->get_if() & 0x1F){
+      if(cpu->get_ie() & cpu->get_if() & 0x1F)
         cpu->haltbug = true;
-        cpu->jp_flag = true;
-      }
       else
         cpu->halted = true;
 
