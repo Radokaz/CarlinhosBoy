@@ -60,7 +60,7 @@ void CPU::step(Timer& timer){
   uint8_t inst_byte = this->bus.read_byte(this->pc);
 
   try{
-    auto current_act = (this->haltbug) ? Action(GBInstruct::NOP, 1) : le_byte(inst_byte, this);
+    auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
@@ -68,7 +68,8 @@ void CPU::step(Timer& timer){
     timer.step(this->last_ticks*4, this->bus);
 
     if(!this->jp_flag){
-      this->pc+=current_act.tamanho;
+      if(!this->haltbug)
+        this->pc+=current_act.tamanho;
       this->haltbug = false;
     }
   }

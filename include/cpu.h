@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <array>
 #include <stdexcept>
-#include "joypad.h"
+#include "memorybus.h"
 
 #define BIT_ZERO (1 << 7) //quando o resultado de uma instrução é zero
 #define BIT_SUBTRACT (1 << 6) //quando a ultima instrução foi uma subtração
@@ -96,54 +96,6 @@ struct Registradores{
   }
 };
 
-struct Memorybus{
-  std::array<uint8_t, 0xFFFF + 1> memoria{};
-  uint16_t *div_count;
-  Joypad *pad;
-
-  Memorybus(uint16_t *div, Joypad *p): div_count{div}, pad{p} {}
-
-  uint8_t& read_byte(uint16_t endereco){
-    switch(endereco){
-        case 0xFF07: //tac
-          memoria[endereco] |= 0b11111000; 
-          break;
-        case 0xFF0F: //if
-          memoria[endereco] |= 0b11100000; 
-          break;
-        case 0xFF00: //joypad
-          return pad->get_output(); 
-        case 0xFF41: //stat
-          memoria[endereco] |= 0b10000000; 
-          break;
-        default: break;
-    }
-    return memoria[endereco];
-  }
-
-  void write_byte(uint16_t endereco, uint8_t valor){
-    if(endereco == 0xFF04){ //div
-      memoria[endereco] = 0;
-      *div_count = 0;
-      return;
-    }
-    if(endereco == 0xFF00){ //joypad
-      memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
-      return;
-    }
-    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
-      memoria[0xFF01] = 0xFF;
-      memoria[0xFF02] &= ~BIT_SERIAL;
-      memoria[0xFF0F] |= BIT_SERIAL;
-      /*char c = memoria[0xFF01];
-      std::cout << c << std::flush;
-      c = memoria[0xFF02];
-      std::cout << c << std::flush;*/
-      return;
-    }
-    memoria[endereco] = valor;
-  }
-};
 
 struct Timer{
     uint16_t div_count {0xAC00};
