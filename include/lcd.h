@@ -1,6 +1,7 @@
 #ifndef LCD_H
 #define LCD_H
 
+#include <utility>
 #include "memorybus.h"
 
 //registrador LCDC (0xFF40)
@@ -20,6 +21,8 @@
 #define HBLANK_ENABLE (1 << 3) 
 #define LYC_Comparison_Signal (1 << 2)
 
+namespace GB{
+
 enum class screen_mode: uint8_t{
   HBLANK = 0,
   VBLANK,
@@ -29,9 +32,9 @@ enum class screen_mode: uint8_t{
 
 inline void set_lcd(Memorybus& bus, bool ligado){
   if(ligado)
-    cpu->bus.read_byte(0xFF40) |= LCDC_ENABLE;
+    bus.read_byte(0xFF40) |= LCDC_ENABLE;
   else
-    cpu->bus.read_byte(0xFF40) &= ~LCDC_ENABLE;
+    bus.read_byte(0xFF40) &= ~LCDC_ENABLE;
 }
 
 inline uint16_t atual_tilemap(Memorybus& bus){
@@ -96,5 +99,6 @@ inline void aumenta_ly(Memorybus& bus){
     ly = 0;
 }
 
+}
 
 #endif

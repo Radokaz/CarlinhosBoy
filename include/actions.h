@@ -15,6 +15,8 @@ namespace GBInstruct{
     inline void STOP(const Action& atual, CPU *cpu){
       cpu->last_ticks = 4;
       cpu->stepping = false;
+      cpu->jp_flag = true;
+      cpu->pc+=2;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
@@ -24,6 +26,8 @@ namespace GBInstruct{
         cpu->halted = true;
 
       cpu->last_ticks = 4;
+      cpu->jp_flag = true;
+      ++cpu->pc;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {

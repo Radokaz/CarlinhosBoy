@@ -179,6 +179,7 @@ CMakeFiles/gb.dir/src/main.cpp.o.ddi: \
  /usr/include/c++/15.2.1/bits/unicode-data.h \
  /usr/include/c++/15.2.1/bits/ostream.tcc /usr/include/c++/15.2.1/istream \
  /usr/include/c++/15.2.1/bits/istream.tcc \
+ /home/radokaz/Trabalho\ de\ metodologia/Emulador/include/memorybus.h \
  /home/radokaz/Trabalho\ de\ metodologia/Emulador/include/joypad.h \
  /usr/include/c++/15.2.1/fstream \
  /usr/include/c++/15.2.1/x86_64-pc-linux-gnu/bits/basic_file.h \

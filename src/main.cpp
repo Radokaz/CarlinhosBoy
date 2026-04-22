@@ -45,7 +45,9 @@ int main(int argc, char **argv){
 
   GB::Timer timer;
   GB::Joypad pad;
-  GB::CPU cpu(&timer.div_count, &pad);
+  GB::PPU ppu;
+  GB::CPU cpu(&timer.div_count, &pad, &ppu);
+  ppu.bus = &cpu.bus;
   pad.p1 = &cpu.bus.memoria[0xFF00];
 
   GB::init_game(&cpu, timer, argv);
