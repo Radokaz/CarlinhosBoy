@@ -1,12 +1,14 @@
 #ifndef MEMORYBUS_H
 #define MEMORYBUS_H
 
-namespace GB{
-struct Memorybus;
-}
-
 #include "joypad.h"
-#include "lcd.h"
+
+//flags de interrupção
+#define BIT_VBLANK (1 << 0)
+#define BIT_LCDSTAT (1 << 1)
+#define BIT_TIMER (1 << 2)
+#define BIT_SERIAL (1 << 3)
+#define BIT_JOYPAD (1 << 4)
 
 #define VRAM_INICIO 0x8000
 #define VRAM_FINAL  0xA000
@@ -18,7 +20,7 @@ struct Memorybus;
 
 namespace GB{
 
-struct PPU;
+struct Memorybus;
 
 enum class tile_pixel: uint8_t{
   BLACK = 0,
@@ -28,13 +30,33 @@ enum class tile_pixel: uint8_t{
   NULO
 };
 
+//cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
+//dando 64*2 = 128 bits = 16 bytes em cada tile
+
+struct Tile{
+  std::array<tile_pixel, 64> pixels;
+
+  Tile(){
+    pixels.fill(tile_pixel::NULO);
+  }
+};
+
+struct PPU{
+  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
+  Memorybus *bus {};
+  uint8_t sprite_size{8};
+
+  void write_vram(uint16_t endereco, uint8_t valor);
+  
+};
+
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
   Joypad *pad {};
   PPU *ppu {};
 
-  Memorybus(uint16_t *div, Joypad *p): div_count{div}, pad{p} {}
+  Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {}
 
   uint8_t& read_byte(uint16_t endereco){
     switch(endereco){
@@ -82,23 +104,7 @@ struct Memorybus{
   }
 };
 
-//cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
-//dando 64*2 = 128 bits = 16 bytes em cada tile
-
-struct Tile{
-  std::array<tile_pixel, 64> pixels;
-
-  Tile(){
-    pixels.fill(tile_pixel::NULO);
-  }
-};
-
-struct PPU{
-  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
-  Memorybus *bus {};
-  uint8_t sprite_size{8};
-
-  void write_vram(uint16_t endereco, uint8_t valor){
+inline void PPU::write_vram(uint16_t endereco, uint8_t valor){
     bus->memoria[endereco] = valor;
 
     if(endereco >= TILE_END) return;
@@ -131,9 +137,9 @@ struct PPU{
       }
     }
 
-  }
+}
 
-};
+
 
 }
 

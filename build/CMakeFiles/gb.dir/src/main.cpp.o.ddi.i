@@ -68852,6 +68852,10 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 
+# 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/memorybus.h" 1
+
+
+
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/joypad.h" 1
 # 13 "/home/radokaz/Trabalho de metodologia/Emulador/include/joypad.h"
 
@@ -68915,8 +68919,140 @@ namespace GB{
   };
 
 }
+# 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/memorybus.h" 2
+# 21 "/home/radokaz/Trabalho de metodologia/Emulador/include/memorybus.h"
+namespace GB{
+
+struct Memorybus;
+
+enum class tile_pixel: uint8_t{
+  BLACK = 0,
+  LGRAY,
+  DGRAY,
+  WHITE,
+  NULO
+};
+
+
+
+
+struct Tile{
+  std::array<tile_pixel, 64> pixels;
+
+  Tile(){
+    pixels.fill(tile_pixel::NULO);
+  }
+};
+
+struct PPU{
+  std::array<Tile, (0x9800 - 0x8000)/16> tile_set;
+  Memorybus *bus {};
+  uint8_t sprite_size{8};
+
+  void write_vram(uint16_t endereco, uint8_t valor);
+
+};
+
+struct Memorybus{
+  std::array<uint8_t, 0xFFFF + 1> memoria{};
+  uint16_t *div_count;
+  Joypad *pad {};
+  PPU *ppu {};
+
+  Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {}
+
+  uint8_t& read_byte(uint16_t endereco){
+    switch(endereco){
+        case 0xFF07:
+          memoria[endereco] |= 0b11111000;
+          break;
+        case 0xFF0F:
+          memoria[endereco] |= 0b11100000;
+          break;
+        case 0xFF00:
+          return pad->get_output();
+        case 0xFF41:
+          memoria[endereco] |= 0b10000000;
+          break;
+        default: break;
+    }
+    return memoria[endereco];
+  }
+
+  void write_byte(uint16_t endereco, uint8_t valor){
+    if(endereco >= 0x8000 && endereco < 0xA000){
+      ppu->write_vram(endereco, valor);
+      return;
+    }
+    if(endereco == 0xFF04){
+      memoria[endereco] = 0;
+      *div_count = 0;
+      return;
+    }
+    if(endereco == 0xFF00){
+      memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
+      return;
+    }
+    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){
+      memoria[0xFF01] = 0xFF;
+      memoria[0xFF02] &= ~(1 << 3);
+      memoria[0xFF0F] |= (1 << 3);
+
+
+
+
+      return;
+    }
+    memoria[endereco] = valor;
+  }
+};
+
+inline void PPU::write_vram(uint16_t endereco, uint8_t valor){
+    bus->memoria[endereco] = valor;
+
+    if(endereco >= 0x9800) return;
+
+    uint16_t index = 0xFFFE & endereco;
+
+    uint8_t byte1 = bus->memoria[index];
+    uint8_t byte2 = bus->memoria[index + 1];
+
+    uint16_t tile_index = (endereco - 0x8000)/16;
+    uint8_t linha = ((endereco - 0x8000) % 16)/2;
+
+    for(size_t i {}; i < 8; ++i){
+      uint8_t mask = 1 << (7 - i);
+      uint8_t bit1 = ((byte1 & mask) >> (7 - i));
+      uint8_t bit2 = ((byte2 & mask) >> (7 - i));
+      switch((bit1 << 1) | bit2){
+        case 0x00:
+          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::BLACK;
+          break;
+        case 0x01:
+          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::LGRAY;
+          break;
+        case 0x02:
+          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::DGRAY;
+          break;
+        case 0x03:
+          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::WHITE;
+          break;
+      }
+    }
+
+}
+
+
+
+}
 # 10 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
-# 23 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h"
+
+
+
+
+
+
+
 namespace GB{
 
 enum class reg_target: uint8_t{
@@ -68993,54 +69129,6 @@ struct Registradores{
   }
 };
 
-struct Memorybus{
-  std::array<uint8_t, 0xFFFF + 1> memoria{};
-  uint16_t *div_count;
-  Joypad *pad;
-
-  Memorybus(uint16_t *div, Joypad *p): div_count{div}, pad{p} {}
-
-  uint8_t& read_byte(uint16_t endereco){
-    switch(endereco){
-        case 0xFF07:
-          memoria[endereco] |= 0b11111000;
-          break;
-        case 0xFF0F:
-          memoria[endereco] |= 0b11100000;
-          break;
-        case 0xFF00:
-          return pad->get_output();
-        case 0xFF41:
-          memoria[endereco] |= 0b10000000;
-          break;
-        default: break;
-    }
-    return memoria[endereco];
-  }
-
-  void write_byte(uint16_t endereco, uint8_t valor){
-    if(endereco == 0xFF04){
-      memoria[endereco] = 0;
-      *div_count = 0;
-      return;
-    }
-    if(endereco == 0xFF00){
-      memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
-      return;
-    }
-    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){
-
-
-
-      char c = memoria[0xFF01];
-      std::cout << c << std::flush;
-      c = memoria[0xFF02];
-      std::cout << c << std::flush;
-      return;
-    }
-    memoria[endereco] = valor;
-  }
-};
 
 struct Timer{
     uint16_t div_count {0xAC00};
@@ -69106,7 +69194,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
 
-  CPU(uint16_t *div, Joypad *jp): bus(div, jp) {}
+  CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
   void step(Timer& timer);
   void check(void);
@@ -69165,17 +69253,18 @@ namespace GBInstruct{
       cpu->last_ticks = 4;
       cpu->stepping = false;
       cpu->jp_flag = true;
+      cpu->pc+=2;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      if(cpu->get_ie() & cpu->get_if() & 0x1F){
+      if(cpu->get_ie() & cpu->get_if() & 0x1F)
         cpu->haltbug = true;
-        cpu->jp_flag = true;
-      }
       else
         cpu->halted = true;
 
       cpu->last_ticks = 4;
+      cpu->jp_flag = true;
+      ++cpu->pc;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
@@ -69909,7 +69998,7 @@ namespace GBInstruct{
 
       cpu->last_ticks = 4;
     }
-# 771 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 772 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/init.h" 2
 
@@ -78702,7 +78791,9 @@ int main(int argc, char **argv){
 
   GB::Timer timer;
   GB::Joypad pad;
-  GB::CPU cpu(&timer.div_count, &pad);
+  GB::PPU ppu;
+  GB::CPU cpu(&timer.div_count, &pad, &ppu);
+  ppu.bus = &cpu.bus;
   pad.p1 = &cpu.bus.memoria[0xFF00];
 
   GB::init_game(&cpu, timer, argv);
@@ -78712,9 +78803,7 @@ int main(int argc, char **argv){
 
     for(size_t i {}; i < 70224; i+=cpu.last_ticks*4){
       roda_cpu(&cpu, timer);
-      std::cout << "PC: " << std::hex << cpu.pc
-          << " OP: " << static_cast<int>(cpu.bus.read_byte(cpu.pc)) <<
-          " Haltbug: " << cpu.haltbug << " IF: " << static_cast<int>(cpu.get_if()) << "\n";
+
     }
 
     BeginDrawing();

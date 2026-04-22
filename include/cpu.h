@@ -13,12 +13,6 @@
 #define BIT_HALFCARRY (1 << 5) //quando há estouro do bit 3 ou 11
 #define BIT_CARRY (1 << 4) //quando há estouro do bit 7 ou 15
 
-//flags de interrupção
-#define BIT_VBLANK (1 << 0)
-#define BIT_LCDSTAT (1 << 1)
-#define BIT_TIMER (1 << 2)
-#define BIT_SERIAL (1 << 3)
-#define BIT_JOYPAD (1 << 4)
 
 namespace GB{
 
@@ -161,7 +155,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
   
-  CPU(uint16_t *div, Joypad *jp): bus(div, jp) {}
+  CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
   void step(Timer& timer);
   void check(void);
