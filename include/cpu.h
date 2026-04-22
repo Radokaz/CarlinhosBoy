@@ -97,7 +97,7 @@ struct Registradores{
 };
 
 struct Memorybus{
-  mutable std::array<uint8_t, 0xFFFF + 1> memoria{};
+  std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
   Joypad *pad;
 
@@ -135,6 +135,10 @@ struct Memorybus{
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~BIT_SERIAL;
       memoria[0xFF0F] |= BIT_SERIAL;
+      /*char c = memoria[0xFF01];
+      std::cout << c << std::flush;
+      c = memoria[0xFF02];
+      std::cout << c << std::flush;*/
       return;
     }
     memoria[endereco] = valor;

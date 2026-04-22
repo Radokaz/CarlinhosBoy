@@ -1,0 +1,9 @@
+ninja_dyndep_version = 1.0
+build CMakeFiles/gb.dir/src/cpu.cpp.o: dyndep
+
+build CMakeFiles/gb.dir/src/instrucoes.cpp.o: dyndep
+
+build CMakeFiles/gb.dir/src/main.cpp.o: dyndep
+
+build CMakeFiles/gb.dir/src/stack.cpp.o: dyndep
+

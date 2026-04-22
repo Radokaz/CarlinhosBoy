@@ -16,6 +16,8 @@ add_executable(gb ${SOURCES})
 target_compile_options(gb PRIVATE -g)
 
 target_include_directories(gb PRIVATE include)
+add_subdirectory(include/raylib)
+target_link_libraries(gb PRIVATE raylib)
 # For multi-file projects with headers and separate .cpp files
 # or
 # add_executable(rooster main.cpp dog.cpp dog.h cat.cpp cat.h)
