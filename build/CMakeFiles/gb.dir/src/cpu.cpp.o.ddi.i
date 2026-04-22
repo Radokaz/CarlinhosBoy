@@ -68976,10 +68976,10 @@ struct Memorybus{
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
-    if(endereco >= 0x8000 && endereco < 0xA000){
-      ppu->write_vram(endereco, valor);
-      return;
-    }
+
+
+
+
     if(endereco == 0xFF04){
       memoria[endereco] = 0;
       *div_count = 0;
@@ -68990,13 +68990,13 @@ struct Memorybus{
       return;
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){
-      memoria[0xFF01] = 0xFF;
-      memoria[0xFF02] &= ~(1 << 3);
-      memoria[0xFF0F] |= (1 << 3);
 
 
 
-
+      char c = memoria[0xFF01];
+      std::cout << c << std::flush;
+      c = memoria[0xFF02];
+      std::cout << c << std::flush;
       return;
     }
     memoria[endereco] = valor;
@@ -69042,7 +69042,6 @@ inline void PPU::write_vram(uint16_t endereco, uint8_t valor){
 
 }
 # 10 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
-
 
 
 
