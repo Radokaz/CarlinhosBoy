@@ -41,9 +41,20 @@ struct Tile{
   }
 };
 
+struct PPU_fetcher{
+  std::array<tile_pixel, 16> fila;
+  uint8_t ultimo{};
+  uint8_t prim {};
+  uint16_t size {};
+
+  void push(tile_pixel *alvo);
+  tile_pixel *pop(void);
+};
+
 struct PPU{
   std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
   Memorybus *bus {};
+  uint16_t ciclos {};
   uint8_t sprite_size{8};
 
   void write_vram(uint16_t endereco, uint8_t valor);
@@ -77,10 +88,10 @@ struct Memorybus{
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
-    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
+    /*if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
       ppu->write_vram(endereco, valor);
       return;
-    }
+    }*/
     if(endereco == 0xFF04){ //div
       memoria[endereco] = 0;
       *div_count = 0;
@@ -94,11 +105,11 @@ struct Memorybus{
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~BIT_SERIAL;
       memoria[0xFF0F] |= BIT_SERIAL;
-      /*char c = memoria[0xFF01];
+     /* char c = memoria[0xFF01];
       std::cout << c << std::flush;
       c = memoria[0xFF02];
-      std::cout << c << std::flush;*/
-      return;
+      std::cout << c << std::flush;
+      return;*/
     }
     memoria[endereco] = valor;
   }

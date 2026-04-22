@@ -13,7 +13,6 @@
 #define BIT_HALFCARRY (1 << 5) //quando há estouro do bit 3 ou 11
 #define BIT_CARRY (1 << 4) //quando há estouro do bit 7 ou 15
 
-
 namespace GB{
 
 enum class reg_target: uint8_t{
