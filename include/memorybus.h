@@ -2,6 +2,7 @@
 #define MEMORYBUS_H
 
 #include "joypad.h"
+#include "lcd.h"
 
 //flags de interrupção
 #define BIT_VBLANK (1 << 0)
@@ -47,18 +48,81 @@ struct PPU_fetcher{
   uint8_t prim {};
   uint16_t size {};
 
+  PPU_fetcher(){
+    fila.fill(tile_pixel::NULO);
+  }
+
   void push(tile_pixel *alvo);
   tile_pixel *pop(void);
 };
 
 struct PPU{
   std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
+  PPU_fetcher fetcher;
   Memorybus *bus {};
   uint16_t ciclos {};
   uint8_t sprite_size{8};
+  bool stat_prev {false};
 
   void write_vram(uint16_t endereco, uint8_t valor);
+  void step();
+  void fetch();
+
+  uint16_t atual_tilemap(void){
+    return (bus.read_byte(0xFF40) & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
+  }
+
+  uint16_t atual_bgtiledata(void){
+    return (bus.read_byte(0xFF40) & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
+  }
+
+  uint16_t atual_bgtilemap(void){
+    return (bus.read_byte(0xFF40) & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
+  }
+
+  uint8_t atual_spritesize(void){
+    return (bus.read_byte(0xFF40) & LCDC_OBJ_SIZE) ? 16 : 8;
+  }
+
+  void set_screen(screen_mode modo){
+    uint8_t& stat = bus.read_byte(0xFF41);
+    stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
+  }
+
+  screen_mode get_mode(void){
+    return static_cast<screen_mode>(bus.read_byte(0xFF41) & 0x03);
+  }
+
+  bool check_stat(void){
+    if((bus.read_byte(0xFF40) & LCDC_ENABLE) != LCDC_ENABLE)
+      return false;
+
+    uint8_t ly = bus.read_byte(0xFF44);
+    uint8_t lyc = bus.read_byte(0xFF45);
+    uint8_t& stat = bus.read_byte(0xFF41);
+    screen_mode atual = get_mode(bus);
   
+    return (((ly == lyc) && (stat & LYC_Comparison_Signal)) ||
+    ((atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
+    ((atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
+    ((atual == screen_mode::VBLANK) && ((stat & VBLANK_ENABLE) || (stat & OAM_ENABLE))));
+  }
+
+  void check_stat_interruption(void){
+    bool stat_atual = this->check_stat();
+    if(stat_atual && !stat_prev)
+      cpu->get_if() |= BIT_LCDSTAT;
+
+    stat_prev = stat_atual;
+  }
+
+  void aumenta_ly(void){
+    uint8_t ly = void.read_byte(0xFF44);
+    ++ly;
+    if(ly > 153)
+      ly = 0;
+  }
+
 };
 
 struct Memorybus{
@@ -108,48 +172,12 @@ struct Memorybus{
      /* char c = memoria[0xFF01];
       std::cout << c << std::flush;
       c = memoria[0xFF02];
-      std::cout << c << std::flush;
-      return;*/
+      std::cout << c << std::flush;*/
+      return;
     }
     memoria[endereco] = valor;
   }
 };
-
-inline void PPU::write_vram(uint16_t endereco, uint8_t valor){
-    bus->memoria[endereco] = valor;
-
-    if(endereco >= TILE_END) return;
-
-    uint16_t index = 0xFFFE & endereco;
-
-    uint8_t byte1 = bus->memoria[index];
-    uint8_t byte2 = bus->memoria[index + 1];
-      
-    uint16_t tile_index = (endereco - FIRST_TILE1)/16;
-    uint8_t linha = ((endereco - FIRST_TILE1) % 16)/2;
-
-    for(size_t i {}; i < 8; ++i){
-      uint8_t mask = 1 << (7 - i);
-      uint8_t bit1 = ((byte1 & mask) >> (7 - i));
-      uint8_t bit2 = ((byte2 & mask) >> (7 - i));
-      switch((bit1 << 1) | bit2){
-        case 0x00:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::BLACK;
-          break;
-        case 0x01:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::LGRAY;
-          break;
-        case 0x02:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::DGRAY;
-          break;
-        case 0x03:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::WHITE;
-          break;
-      }
-    }
-
-}
-
 
 
 }
