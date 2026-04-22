@@ -172,25 +172,6 @@ inline void checa_validade(Header *header, CPU *cpu){
 inline void init_game(CPU *cpu, Timer& timer, char **argv){
   Header *header = init_rom(cpu, argv[1]);
   checa_validade(header, cpu);
-
-  while(1){
-    roda_cpu(cpu, timer);
-    /*std::cout << "a: " << static_cast<int>(cpu->registradores.a) << "\n";
-    std::cout << "b: " << static_cast<int>(cpu->registradores.b) << "\n";
-    std::cout << "c: " << static_cast<int>(cpu->registradores.c) << "\n";
-    std::cout << "d: " << static_cast<int>(cpu->registradores.d) << "\n";
-    std::cout << "e: " << static_cast<int>(cpu->registradores.e) << "\n";
-    std::cout << "h: " << static_cast<int>(cpu->registradores.h) << "\n";
-    std::cout << "l: " << static_cast<int>(cpu->registradores.l) << "\n";
-    std::cout << "f: " << static_cast<int>(cpu->registradores.f) << "\n";*/
-    //std::cout << "af: " << cpu->registradores.get_duplo(reg_target::AF) << "\n";
-    /*std::cout << "bc: " << cpu->registradores.get_duplo(reg_target::BC) << "\n";
-    std::cout << "de: " << cpu->registradores.get_duplo(reg_target::DE) << "\n";
-    std::cout << "hl: " << cpu->registradores.get_duplo(reg_target::HL) << "\n";*/
-    //std::cout << "pc: " << cpu->pc << "\n";
-    //std::cout << "sp: " << cpu->sp << "\n";
-    //std::cout << "ticks: " << static_cast<int>(cpu->last_ticks) << "\n";
-  }
 }
 
 
