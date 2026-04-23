@@ -8,7 +8,7 @@ void PPU_fetcher::push(tile_pixel alvo){
   ++size;
 }
 
-tile_pixel *PPU_fetcher::pop(void){
+tile_pixel PPU_fetcher::pop(void){
   tile_pixel result = fila[prim];
   prim = (prim + 1) % std::size(fila);
   --size;
@@ -59,26 +59,36 @@ void PPU::scan_oam(void){
     uint8_t y = this->bus->memoria[OAM_INICIO + i*4];
 
     if(ly >= y - 16 && ly < y - 16 + sprite_sz){
-      this->sprites_sel[sprites_count++] = Sprite(y, bus->memoria[OAM_INICIO + i*4 + 1],
-          bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]);
+      this->sprites_sel[sprites_count++] = Sprite{y, bus->memoria[OAM_INICIO + i*4 + 1],
+          bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
     }
   }
 }
 
 void PPU::fetch(void){
-  uint16_t endereco = this->atual_tilemap();
-  uint16_t ly = this->bus->memoria[0xFF44];
-  uint8_t& scy = this->get_scrolly();
-  uint8_t linha_atual = (ly + scy) % 256;
-  uint16_t tile_index = (endereco - FIRST_TILE1)/16;
+  
+}
 
-  if(fetcher.size <= 8){
-    for(size_t i {}; i < 8; ++i){
-      tile_pixel pixel = tile_set[tile_index].pixels[linha_atual * 8 + i];
-      fetcher.push(pixel);
+void PPU::step(uint8_t ciclos){
+  this->ciclos+=ciclios;
+
+  switch(this->modo_atual){
+    using enum screen_mode;
+
+    case HBLANK:{
+
     }
-  }
+    case VBLANK:{
 
+    }
+    case SOAMRAM:{
+
+    }
+    case DRAWING:{
+
+    }
+
+  }
 }
 
 }
