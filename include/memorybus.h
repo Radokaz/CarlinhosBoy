@@ -62,8 +62,8 @@ struct PPU_fetcher{
     fila.fill(tile_pixel::NULO);
   }
 
-  void push(tile_pixel *alvo);
-  tile_pixel *pop(void);
+  void push(tile_pixel alvo);
+  tile_pixel pop(void);
 };
 
 struct PPU{
@@ -72,7 +72,6 @@ struct PPU{
   std::array<Sprite, 10> sprites_index{};
   Memorybus *bus {};
   uint16_t ciclos {};
-
   screen_mode modo_atual {};
   bool stat_prev {false};
 
@@ -103,6 +102,7 @@ struct PPU{
   void set_screen(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
     stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
+    this->check_stat_interruption();
   }
 
   screen_mode get_mode(void){
@@ -132,11 +132,13 @@ struct PPU{
     stat_prev = stat_atual;
   }
 
-  void aumenta_ly(void){
+  //ly é o registrador que marca a linha sendo scaneada no momento
+  void avanca_ly(void){
     uint8_t ly = bus->memoria[0xFF44];
     ++ly;
     if(ly == 144){
       bus->memoria[0xFF0F] |= BIT_VBLANK;
+      this->modo_atual = screen_mode::VBLANK;
     }
     else if(ly > 153)
       ly = 0;
