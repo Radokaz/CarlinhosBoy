@@ -56,7 +56,8 @@ struct PPU_fetcher{
   std::array<tile_pixel, 16> fila;
   uint8_t ultimo{};
   uint8_t prim {};
-  uint16_t size {};
+  uint8_t size {};
+  uint8_t contador {};
 
   PPU_fetcher(){
     fila.fill(tile_pixel::NULO);
@@ -64,21 +65,25 @@ struct PPU_fetcher{
 
   void push(tile_pixel alvo);
   tile_pixel pop(void);
+  void operator++(){
+    ++contador;
+  }
 };
 
 struct PPU{
   std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
   PPU_fetcher fetcher;
-  std::array<Sprite, 10> sprites_index{};
+  std::array<Sprite, 10> sprites_sel{};
   Memorybus *bus {};
   uint16_t ciclos {};
-  screen_mode modo_atual {};
+  screen_mode modo_atual {screen_mode::SOAMRAM};
   bool stat_prev {false};
 
   void write_vram(uint16_t endereco, uint8_t valor);
-  void step(uint8_t cpu_ciclios);
-  void fetch(void);
+  void step(uint8_t cpu_ciclos);
   void scan_oam(void);
+  void draw(void);
+  void hblank(void);
 
   uint16_t atual_tilemap(void){
     return (bus->memoria[0xFF40] & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
@@ -99,9 +104,10 @@ struct PPU{
   uint8_t& get_scrolly(void) { return bus->memoria[0xFF42]; }
   uint8_t& get_scrollx(void) { return bus->memoria[0xFF43]; }
 
-  void set_screen(screen_mode modo){
+  void set_mode(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
     stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
+    this->modo_atual = modo;
     this->check_stat_interruption();
   }
 
@@ -136,11 +142,8 @@ struct PPU{
   void avanca_ly(void){
     uint8_t ly = bus->memoria[0xFF44];
     ++ly;
-    if(ly == 144){
-      bus->memoria[0xFF0F] |= BIT_VBLANK;
-      this->modo_atual = screen_mode::VBLANK;
-    }
-    else if(ly > 153)
+
+    if(ly > 153)
       ly = 0;
 
     this->check_stat_interruption();
@@ -175,10 +178,14 @@ struct Memorybus{
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
-    /*if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      ppu->write_vram(endereco, valor);
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
+      if(ppu->modo_atual != screen_mode::HBLANK)
+        ppu->write_vram(endereco, valor);
+      else
+        memoria[endereco] = valor;
+
       return;
-    }*/
+    }
     if(endereco == 0xFF04){ //div
       memoria[endereco] = 0;
       *div_count = 0;
@@ -201,7 +208,6 @@ struct Memorybus{
     memoria[endereco] = valor;
   }
 };
-
 
 }
 

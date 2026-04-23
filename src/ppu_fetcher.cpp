@@ -65,29 +65,67 @@ void PPU::scan_oam(void){
   }
 }
 
-void PPU::fetch(void){
-  
+void PPU::draw(void){
+  while(this->fetcher.contador < 160){
+    uint16_t tile_index = (16*i - FIRST_TILE1)/16;
+    uint8_t linha = ((16*i) % 16)/2;
+
+    if(this->fetcher.size <= 8){
+      for(size_t i {}; i < 8; ++i){
+        fetcher.push(this->tileset[tile_index].pixels[linha*8 + i]);
+      }
+    }
+
+    ++fetcher;
+  }
+
+  //TODO
 }
 
-void PPU::step(uint8_t ciclos){
-  this->ciclos+=ciclios;
+void PPU::step(uint8_t cpu_ciclos){
+  this->ciclos+=cpu_ciclos;
 
   switch(this->modo_atual){
     using enum screen_mode;
 
-    case HBLANK:{
-
-    }
-    case VBLANK:{
-
-    }
     case SOAMRAM:{
-
+      if(this->ciclos >= 80){
+        this->ciclos -= 80;
+        this->set_mode(screen_mode::DRAWING);
+      }
+      break;
     }
     case DRAWING:{
-
+      if(this->ciclos >= 172){
+        this->ciclos -= 172;
+        this->set_mode(screen_mode::HBLANK);
+      }
+      break;
     }
-
+    case HBLANK:{
+      if(this->ciclos >= 204){
+        this->ciclos -= 204;
+        this->avanca_ly();
+        if(this->bus->memoria[0xFF44] == 144){
+          this->bus->memoria[0xFF0F] |= BIT_VBLANK;
+          this->set_mode(screen_mode::VBLANK);
+        }
+        else{
+          this->set_mode(screen_mode::SOAMRAM);
+        }
+      }
+      break;
+    }
+    case VBLANK:{
+      if(this->ciclos >= 456){
+        this->ciclos -= 456;
+        this->avanca_ly();
+        if(this->bus->memoria[0xFF44] == 0x00){
+          this->set_mode(screen_mode::SOAMRAM);
+        }
+      }
+      break;
+    }
   }
 }
 
