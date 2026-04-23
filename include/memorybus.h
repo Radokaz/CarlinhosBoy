@@ -3,6 +3,8 @@
 
 #include "joypad.h"
 #include "lcd.h"
+#include "dma.h"
+#include <raylib.h>
 
 //flags de interrupção
 #define BIT_VBLANK (1 << 0)
@@ -57,7 +59,6 @@ struct PPU_fetcher{
   uint8_t ultimo{};
   uint8_t prim {};
   uint8_t size {};
-  uint8_t contador {};
 
   PPU_fetcher(){
     fila.fill(tile_pixel::NULO);
@@ -65,15 +66,15 @@ struct PPU_fetcher{
 
   void push(tile_pixel alvo);
   tile_pixel pop(void);
-  void operator++(){
-    ++contador;
-  }
+  void clear(void);
 };
 
 struct PPU{
-  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
+  std::array<Color, 160*144> framebuffer{};
+  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset;
   PPU_fetcher fetcher;
   std::array<Sprite, 10> sprites_sel{};
+  uint8_t sprites_count {};
   Memorybus *bus {};
   uint16_t ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
@@ -82,10 +83,11 @@ struct PPU{
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(uint8_t cpu_ciclos);
   void scan_oam(void);
-  void draw(void);
-  void hblank(void);
+  void merge_sprites(std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
+  void ppu_draw(const std::array<tile_pixel, 160>& pixels);
 
-  uint16_t atual_tilemap(void){
+  uint16_t atual_wintilemap(void){
     return (bus->memoria[0xFF40] & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
   }
 
@@ -154,8 +156,10 @@ struct PPU{
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
   uint16_t *div_count;
+  uint8_t dma_hack {0xFF};
   Joypad *pad {};
   PPU *ppu {};
+  DMA *dma;
 
   Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {}
 
@@ -174,6 +178,10 @@ struct Memorybus{
           break;
         default: break;
     }
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && dma->ativo){
+      dma_hack = 0xFF;
+      return dma_hack;
+    }
     return memoria[endereco];
   }
 
@@ -184,6 +192,9 @@ struct Memorybus{
       else
         memoria[endereco] = valor;
 
+      return;
+    }
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && dma->ativo){
       return;
     }
     if(endereco == 0xFF04){ //div
@@ -205,9 +216,15 @@ struct Memorybus{
       std::cout << c << std::flush;*/
       return;
     }
+    if(endereco == 0xFF46){
+      dma->start(valor);
+      return;
+    }
     memoria[endereco] = valor;
   }
 };
+
+void draw_ppu(std::array<tile_pixel, 160> pixels);
 
 }
 

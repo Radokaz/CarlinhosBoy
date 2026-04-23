@@ -67,6 +67,9 @@ void CPU::step(Timer& timer){
 
     timer.step(this->last_ticks*4, this->bus);
 
+    for(size_t i {}; i < this->last_ticks; i++)
+      this->bus.dma->step(this->bus.memoria.data());
+
     if(!this->jp_flag){
       if(!this->haltbug)
         this->pc+=current_act.tamanho;

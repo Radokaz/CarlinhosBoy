@@ -15,6 +15,12 @@ tile_pixel PPU_fetcher::pop(void){
   return result;
 }
 
+void PPU_fetcher::clear(void){
+  size = 0;
+  ultimo = 0;
+  prim = 0;
+}
+
 void PPU::write_vram(uint16_t endereco, uint8_t valor){
     bus->memoria[endereco] = valor;
 
@@ -32,7 +38,7 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
       uint8_t mask = 1 << (7 - i);
       uint8_t bit1 = ((byte1 & mask) >> (7 - i));
       uint8_t bit2 = ((byte2 & mask) >> (7 - i));
-      switch((bit2 << 1) | bit1){
+      switch((bit1 << 1) | bit2){
         case 0x00:
           tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::BLACK;
           break;
@@ -51,7 +57,7 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
 }
 
 void PPU::scan_oam(void){
-  uint8_t sprites_count {};
+  this->sprites_count = 0;
   uint8_t ly = this->bus->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
 
@@ -63,23 +69,6 @@ void PPU::scan_oam(void){
           bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
     }
   }
-}
-
-void PPU::draw(void){
-  while(this->fetcher.contador < 160){
-    uint16_t tile_index = (16*i - FIRST_TILE1)/16;
-    uint8_t linha = ((16*i) % 16)/2;
-
-    if(this->fetcher.size <= 8){
-      for(size_t i {}; i < 8; ++i){
-        fetcher.push(this->tileset[tile_index].pixels[linha*8 + i]);
-      }
-    }
-
-    ++fetcher;
-  }
-
-  //TODO
 }
 
 void PPU::step(uint8_t cpu_ciclos){
