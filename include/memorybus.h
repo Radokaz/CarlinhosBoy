@@ -19,6 +19,9 @@
 #define SECOND_TILE2 0x9000
 #define TILE_END 0x9800
 
+#define OAM_INICIO 0xFE00
+#define OAM_FIM 0xFE9F
+
 namespace GB{
 
 struct Memorybus;
@@ -42,6 +45,13 @@ struct Tile{
   }
 };
 
+struct Sprite{
+  uint8_t y;
+  uint8_t x;
+  uint8_t tile_index;
+  uint8_t flags;
+};
+
 struct PPU_fetcher{
   std::array<tile_pixel, 16> fila;
   uint8_t ultimo{};
@@ -59,47 +69,53 @@ struct PPU_fetcher{
 struct PPU{
   std::array<Tile, (TILE_END - FIRST_TILE1)/16> tile_set;
   PPU_fetcher fetcher;
+  std::array<Sprite, 10> sprites_index{};
   Memorybus *bus {};
   uint16_t ciclos {};
-  uint8_t sprite_size{8};
+
+  screen_mode modo_atual {};
   bool stat_prev {false};
 
   void write_vram(uint16_t endereco, uint8_t valor);
-  void step();
-  void fetch();
+  void step(uint8_t cpu_ciclios);
+  void fetch(void);
+  void scan_oam(void);
 
   uint16_t atual_tilemap(void){
-    return (bus.read_byte(0xFF40) & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
+    return (bus->memoria[0xFF40] & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
   }
 
   uint16_t atual_bgtiledata(void){
-    return (bus.read_byte(0xFF40) & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
+    return (bus->memoria[0xFF40] & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
   }
 
   uint16_t atual_bgtilemap(void){
-    return (bus.read_byte(0xFF40) & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
+    return (bus->memoria[0xFF40] & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
   }
 
   uint8_t atual_spritesize(void){
-    return (bus.read_byte(0xFF40) & LCDC_OBJ_SIZE) ? 16 : 8;
+    return (bus->memoria[0xFF40] & LCDC_OBJ_SIZE) ? 16 : 8;
   }
 
+  uint8_t& get_scrolly(void) { return bus->memoria[0xFF42]; }
+  uint8_t& get_scrollx(void) { return bus->memoria[0xFF43]; }
+
   void set_screen(screen_mode modo){
-    uint8_t& stat = bus.read_byte(0xFF41);
+    uint8_t& stat = bus->memoria[0xFF41];
     stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
   }
 
   screen_mode get_mode(void){
-    return static_cast<screen_mode>(bus.read_byte(0xFF41) & 0x03);
+    return static_cast<screen_mode>(bus->memoria[0xFF41] & 0x03);
   }
 
   bool check_stat(void){
-    if((bus.read_byte(0xFF40) & LCDC_ENABLE) != LCDC_ENABLE)
+    if((bus->memoria[0xFF40] & LCDC_ENABLE) != LCDC_ENABLE)
       return false;
 
-    uint8_t ly = bus.read_byte(0xFF44);
-    uint8_t lyc = bus.read_byte(0xFF45);
-    uint8_t& stat = bus.read_byte(0xFF41);
+    uint8_t ly = bus->memoria[0xFF44];
+    uint8_t lyc = bus->memoria[0xFF45];
+    uint8_t& stat = bus->memoria[0xFF41];
     screen_mode atual = get_mode(bus);
   
     return (((ly == lyc) && (stat & LYC_Comparison_Signal)) ||
@@ -111,16 +127,21 @@ struct PPU{
   void check_stat_interruption(void){
     bool stat_atual = this->check_stat();
     if(stat_atual && !stat_prev)
-      cpu->get_if() |= BIT_LCDSTAT;
+      bus->memoria[0xFF0F] |= BIT_LCDSTAT;
 
     stat_prev = stat_atual;
   }
 
   void aumenta_ly(void){
-    uint8_t ly = void.read_byte(0xFF44);
+    uint8_t ly = bus->memoria[0xFF44];
     ++ly;
-    if(ly > 153)
+    if(ly == 144){
+      bus->memoria[0xFF0F] |= BIT_VBLANK;
+    }
+    else if(ly > 153)
       ly = 0;
+
+    this->check_stat_interruption();
   }
 
 };

@@ -36,13 +36,18 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   cpu->bus.memoria[0xFF05] = 0x00;
   cpu->bus.memoria[0xFF06] = 0x00;
   cpu->bus.memoria[0xFF07] = 0xF8;
+  cpu->bus.memoria[0xFF10] = 0x80;
+  cpu->bus.memoria[0xFF11] = 0xBF;
+  cpu->bus.memoria[0xFF12] = 0xF3;
+  cpu->bus.memoria[0xFF14] = 0xBF;
+  cpu->bus.memoria[0xFF16] = 0x3F;
   cpu->bus.memoria[0xFF0F] = 0xE1;
   cpu->bus.memoria[0xFFFF] = 0x00;
   cpu->bus.memoria[0xFF00] = 0xFF;
   cpu->bus.memoria[0xFF40] = 0x91; // LCDC
   cpu->bus.memoria[0xFF41] = 0x85; // STAT
   cpu->bus.memoria[0xFF47] = 0xFC; // BGP
-                                   
+
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
 }
 
