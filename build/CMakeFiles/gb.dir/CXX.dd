@@ -5,5 +5,9 @@ build CMakeFiles/gb.dir/src/instrucoes.cpp.o: dyndep
 
 build CMakeFiles/gb.dir/src/main.cpp.o: dyndep
 
+build CMakeFiles/gb.dir/src/ppu_draw.cpp.o: dyndep
+
+build CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o: dyndep
+
 build CMakeFiles/gb.dir/src/stack.cpp.o: dyndep
 

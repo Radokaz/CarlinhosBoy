@@ -21,6 +21,69 @@ void PPU_fetcher::clear(void){
   prim = 0;
 }
 
+uint16_t PPU::atual_wintilemap(void){
+    return (bus->memoria[0xFF40] & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
+}
+
+uint16_t PPU::atual_bgtiledata(void){
+    return (bus->memoria[0xFF40] & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
+}
+
+uint16_t PPU::atual_bgtilemap(void){
+    return (bus->memoria[0xFF40] & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
+}
+
+uint8_t PPU::atual_spritesize(void){
+    return (bus->memoria[0xFF40] & LCDC_OBJ_SIZE) ? 16 : 8;
+}
+
+uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
+uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
+
+void PPU::set_mode(screen_mode modo){
+    uint8_t& stat = bus->memoria[0xFF41];
+    stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
+    this->modo_atual = modo;
+    this->check_stat_interruption();
+  }
+
+  screen_mode get_mode(void){
+    return static_cast<screen_mode>(bus->memoria[0xFF41] & 0x03);
+}
+
+bool PPU::check_stat(void){
+    if((bus->memoria[0xFF40] & LCDC_ENABLE) != LCDC_ENABLE)
+      return false;
+
+    uint8_t ly = bus->memoria[0xFF44];
+    uint8_t lyc = bus->memoria[0xFF45];
+    uint8_t& stat = bus->memoria[0xFF41];
+    screen_mode atual = get_mode();
+  
+    return (((ly == lyc) && (stat & LYC_Comparison_Signal)) ||
+    ((atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
+    ((atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
+    ((atual == screen_mode::VBLANK) && ((stat & VBLANK_ENABLE) || (stat & OAM_ENABLE))));
+}
+
+void PPU::check_stat_interruption(void){
+    bool stat_atual = this->check_stat();
+    if(stat_atual && !stat_prev)
+      bus->memoria[0xFF0F] |= BIT_LCDSTAT;
+
+    stat_prev = stat_atual;
+}
+
+void PPU::avanca_ly(void){
+    uint8_t ly = bus->memoria[0xFF44];
+    ++ly;
+
+    if(ly > 153)
+      ly = 0;
+
+    this->check_stat_interruption();
+}
+
 void PPU::write_vram(uint16_t endereco, uint8_t valor){
     bus->memoria[endereco] = valor;
 
@@ -71,7 +134,7 @@ void PPU::scan_oam(void){
   }
 }
 
-void PPU::step(uint8_t cpu_ciclos){
+void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
   this->ciclos+=cpu_ciclos;
 
   switch(this->modo_atual){
@@ -80,6 +143,7 @@ void PPU::step(uint8_t cpu_ciclos){
     case SOAMRAM:{
       if(this->ciclos >= 80){
         this->ciclos -= 80;
+        this->scan_oam();
         this->set_mode(screen_mode::DRAWING);
       }
       break;
@@ -87,6 +151,7 @@ void PPU::step(uint8_t cpu_ciclos){
     case DRAWING:{
       if(this->ciclos >= 172){
         this->ciclos -= 172;
+        this->draw_line();
         this->set_mode(screen_mode::HBLANK);
       }
       break;
@@ -109,6 +174,7 @@ void PPU::step(uint8_t cpu_ciclos){
       if(this->ciclos >= 456){
         this->ciclos -= 456;
         this->avanca_ly();
+        UpdateTexture(texture, this->framebuffer.data());
         if(this->bus->memoria[0xFF44] == 0x00){
           this->set_mode(screen_mode::SOAMRAM);
         }

@@ -1,5 +1,4 @@
 #include "init.h"
-#include <raylib.h>
 
 #define MAX_TICKS 70224
 #define apt(x) IsKeyDown(x)

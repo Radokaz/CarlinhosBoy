@@ -2,7 +2,6 @@
 #define ACTIONS_H
 
 #include "cpu.h"
-#include "joypad.h"
 
 namespace GBInstruct{
     using namespace GB;  

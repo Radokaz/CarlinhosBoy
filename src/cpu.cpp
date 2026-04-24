@@ -10,6 +10,8 @@ void roda_cpu(CPU *atual, Timer& timer){
   if(!atual->stepping) return;
   atual->check();
   atual->step(timer);
+  for(size_t i {}; i < atual->last_ticks; i++)
+      atual->bus.dma->step(atual->bus.memoria.data());
 }
 
 void CPU::check(void){
@@ -66,9 +68,6 @@ void CPU::step(Timer& timer){
       set_ime = false;
 
     timer.step(this->last_ticks*4, this->bus);
-
-    for(size_t i {}; i < this->last_ticks; i++)
-      this->bus.dma->step(this->bus.memoria.data());
 
     if(!this->jp_flag){
       if(!this->haltbug)
