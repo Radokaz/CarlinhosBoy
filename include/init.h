@@ -46,6 +46,7 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   cpu->bus.memoria[0xFF00] = 0xFF;
   cpu->bus.memoria[0xFF40] = 0x91; // LCDC
   cpu->bus.memoria[0xFF41] = 0x85; // STAT
+  cpu->bus.memoria[0xFF44] = 0x00; // LY
   cpu->bus.memoria[0xFF47] = 0xFC; // BGP
 
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);

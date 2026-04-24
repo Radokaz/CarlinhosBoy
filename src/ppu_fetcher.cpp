@@ -37,8 +37,26 @@ uint8_t PPU::atual_spritesize(void){
     return (bus->memoria[0xFF40] & LCDC_OBJ_SIZE) ? 16 : 8;
 }
 
+bool PPU::is_lcd_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_ENABLE) & 0x01);
+}
+
+bool PPU::is_win_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_WIN_ENABLE) & 0x01);
+}
+
+bool PPU::is_gb_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_BG_ENABLE) & 0x01);
+}
+
+bool PPU::is_sprite_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_OBJ_ENABLE) & 0x01);
+}
+
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
 uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
+uint8_t& PPU::get_winx(void) { return bus->memoria[0xFF4A]; }
+uint8_t& PPU::get_winy(void) {return bus-<memoria[0xFF4B]; }
 
 void PPU::set_mode(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
@@ -48,7 +66,7 @@ void PPU::set_mode(screen_mode modo){
 }
 
 bool PPU::check_stat(void){
-    if((bus->memoria[0xFF40] & LCDC_ENABLE) != LCDC_ENABLE)
+    if(!this->is_lcd_enabled())
       return false;
 
     uint8_t ly = bus->memoria[0xFF44];
@@ -110,21 +128,6 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
 
 }
 
-void PPU::scan_oam(void){
-  this->sprites_count = 0;
-  uint8_t ly = this->bus->memoria[0xFF44];
-  uint8_t sprite_sz = this->atual_spritesize();
-
-  for(size_t i {}; i < 40 && sprites_count < 10; ++i){
-    int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + i*4]) - 16;
-
-    if(ly >= y && ly < y + sprite_sz){
-      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + i*4], bus->memoria[OAM_INICIO + i*4 + 1],
-          bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
-    }
-  }
-}
-
 void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
   this->ciclos+=cpu_ciclos;
 
@@ -154,6 +157,7 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
         if(this->bus->memoria[0xFF44] == 144){
           this->bus->memoria[0xFF0F] |= BIT_VBLANK;
           this->set_mode(screen_mode::VBLANK);
+          UpdateTexture(texture, this->framebuffer.data());
         }
         else{
           this->set_mode(screen_mode::SOAMRAM);
@@ -165,7 +169,6 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
       if(this->ciclos >= 456){
         this->ciclos -= 456;
         this->avanca_ly();
-        UpdateTexture(texture, this->framebuffer.data());
         if(this->bus->memoria[0xFF44] == 0x00){
           this->set_mode(screen_mode::SOAMRAM);
         }

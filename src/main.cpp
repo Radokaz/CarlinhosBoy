@@ -51,7 +51,7 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  int escala {8};
+  float escala {8.0f};
   InitWindow(160*escala, 144*escala, "Game Boy");
   SetTargetFPS(60);
 
@@ -59,6 +59,7 @@ int main(int argc, char **argv){
   ImageFormat(&framebuffer, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
   Texture2D texture = LoadTextureFromImage(framebuffer);
   UnloadImage(framebuffer);
+  SetTextureFilter(texture, TEXTURE_FILTER_POINT);
 
   GB::Timer timer;
   GB::Joypad pad;
@@ -79,7 +80,7 @@ int main(int argc, char **argv){
     }
 
     BeginDrawing();
-    DrawTextureEx(texture, Vector2{0, 0}, 0, 3.0f, WHITE);
+    DrawTextureEx(texture, Vector2{0, 0}, 0, escala, WHITE);
     EndDrawing();
   }
 

@@ -82277,6 +82277,10 @@ struct PPU{
   uint16_t atual_bgtiledata(void);
   uint16_t atual_bgtilemap(void);
   uint8_t atual_spritesize(void);
+  bool is_lcd_enabled(void);
+  bool is_win_enabled(void);
+  bool is_gb_enabled(void);
+  bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
@@ -82361,8 +82365,6 @@ struct Memorybus{
     memoria[endereco] = valor;
   }
 };
-
-void draw_ppu(std::array<tile_pixel, 160> pixels);
 
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/cpu.h" 2
@@ -90297,6 +90299,7 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   cpu->bus.memoria[0xFF00] = 0xFF;
   cpu->bus.memoria[0xFF40] = 0x91;
   cpu->bus.memoria[0xFF41] = 0x85;
+  cpu->bus.memoria[0xFF44] = 0x00;
   cpu->bus.memoria[0xFF47] = 0xFC;
 
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
@@ -90478,7 +90481,7 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  int escala {8};
+  float escala {8.0f};
   InitWindow(160*escala, 144*escala, "Game Boy");
   SetTargetFPS(60);
 
@@ -90486,6 +90489,7 @@ int main(int argc, char **argv){
   ImageFormat(&framebuffer, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
   Texture2D texture = LoadTextureFromImage(framebuffer);
   UnloadImage(framebuffer);
+  SetTextureFilter(texture, TEXTURE_FILTER_POINT);
 
   GB::Timer timer;
   GB::Joypad pad;
@@ -90506,7 +90510,7 @@ int main(int argc, char **argv){
     }
 
     BeginDrawing();
-    DrawTextureEx(texture, Vector2{0, 0}, 0, 3.0f, Color{ 255, 255, 255, 255 });
+    DrawTextureEx(texture, Vector2{0, 0}, 0, escala, Color{ 255, 255, 255, 255 });
     EndDrawing();
   }
 

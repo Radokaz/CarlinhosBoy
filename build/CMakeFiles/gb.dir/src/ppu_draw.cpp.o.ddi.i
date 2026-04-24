@@ -82265,6 +82265,10 @@ struct PPU{
   uint16_t atual_bgtiledata(void);
   uint16_t atual_bgtilemap(void);
   uint8_t atual_spritesize(void);
+  bool is_lcd_enabled(void);
+  bool is_win_enabled(void);
+  bool is_gb_enabled(void);
+  bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
@@ -82349,8 +82353,6 @@ struct Memorybus{
     memoria[endereco] = valor;
   }
 };
-
-void draw_ppu(std::array<tile_pixel, 160> pixels);
 
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/ppu_draw.cpp" 2
