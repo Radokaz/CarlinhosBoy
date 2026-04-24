@@ -38,9 +38,27 @@ uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
 
 namespace GB{
 
+void PPU::scan_oam(void){
+  this->sprites_count = 0;
+  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t sprite_sz = this->atual_spritesize();
+
+  for(size_t i {}; i < 40 && sprites_count < 10; ++i){
+    int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + i*4]) - 16;
+
+    if(ly >= y && ly < y + sprite_sz){
+      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + i*4], bus->memoria[OAM_INICIO + i*4 + 1],
+          bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
+    }
+  }
+}
+
 void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
 
   uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t sprite_altura = this->atual_spritesize();
+  auto screenx = [](Sprite s) -> int16_t{ return static_cast<int16_t>(s.x) - 8; };
+  auto screeny = [](Sprite s) -> int16_t{ return static_cast<int16_t>(s.y) - 16; };
   //TODO
 
 }
@@ -58,7 +76,8 @@ void PPU::draw_line(void){
 
   //TODO
 
-  this->merge_sprites(px_prontos);
+  if(this->is_sprite_enabled())
+    this->merge_sprites(px_prontos);
   this->ppu_draw(px_prontos);
 }
 

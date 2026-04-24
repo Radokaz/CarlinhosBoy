@@ -43,8 +43,9 @@ enum class tile_pixel: uint8_t{
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
 //dando 64*2 = 128 bits = 16 bytes em cada tile
 
+template <size_t N>:
 struct Tile{
-  std::array<tile_pixel, 64> pixels;
+  std::array<tile_pixel, N> pixels;
 
   Tile(){
     pixels.fill(tile_pixel::PX_NULO);
@@ -77,10 +78,13 @@ struct Memorybus;
 
 struct PPU{
   std::array<uint32_t, 160*144> framebuffer;
-  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset{};
+  std::array<Tile<8*8>, (TILE_END - FIRST_TILE1)/16> tileset{};
+  std::array<Tile<32*32>, 2> vram_tileset{};
+  std::array<uint16_t, 
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
+  uint8_t win_count {};
   Memorybus *bus {};
   uint16_t ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
@@ -100,8 +104,14 @@ struct PPU{
   uint16_t atual_bgtiledata(void);
   uint16_t atual_bgtilemap(void);
   uint8_t atual_spritesize(void);
+  bool is_lcd_enabled(void);
+  bool is_win_enabled(void);
+  bool is_gb_enabled(void);
+  bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
+  uint8_t& get_winx(void);
+  uint8_t& get_winy(void);
   void set_mode(screen_mode modo);
   bool check_stat(void);
   void check_stat_interruption(void);
@@ -177,15 +187,13 @@ struct Memorybus{
       memoria[0xFF0F] |= BIT_SERIAL;
       return;
     }
-    if(endereco == 0xFF46){
+    if(endereco == 0xFF46){ //dma
       dma->start(valor);
       return;
     }
     memoria[endereco] = valor;
   }
 };
-
-void draw_ppu(std::array<tile_pixel, 160> pixels);
 
 }
 

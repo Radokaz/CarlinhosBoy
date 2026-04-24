@@ -82265,6 +82265,10 @@ struct PPU{
   uint16_t atual_bgtiledata(void);
   uint16_t atual_bgtilemap(void);
   uint8_t atual_spritesize(void);
+  bool is_lcd_enabled(void);
+  bool is_win_enabled(void);
+  bool is_gb_enabled(void);
+  bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
@@ -82350,8 +82354,6 @@ struct Memorybus{
   }
 };
 
-void draw_ppu(std::array<tile_pixel, 160> pixels);
-
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/ppu_fetcher.cpp" 2
 
@@ -82392,6 +82394,22 @@ uint8_t PPU::atual_spritesize(void){
     return (bus->memoria[0xFF40] & (1 << 2)) ? 16 : 8;
 }
 
+bool PPU::is_lcd_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 7)) & 0x01);
+}
+
+bool PPU::is_win_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 5)) & 0x01);
+}
+
+bool PPU::is_gb_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 0)) & 0x01);
+}
+
+bool PPU::is_sprite_enabled(void){
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 1)) & 0x01);
+}
+
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
 uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
 
@@ -82403,7 +82421,7 @@ void PPU::set_mode(screen_mode modo){
 }
 
 bool PPU::check_stat(void){
-    if((bus->memoria[0xFF40] & (1 << 7)) != (1 << 7))
+    if(!this->is_lcd_enabled())
       return false;
 
     uint8_t ly = bus->memoria[0xFF44];
@@ -82509,6 +82527,7 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
         if(this->bus->memoria[0xFF44] == 144){
           this->bus->memoria[0xFF0F] |= (1 << 0);
           this->set_mode(screen_mode::VBLANK);
+          UpdateTexture(texture, this->framebuffer.data());
         }
         else{
           this->set_mode(screen_mode::SOAMRAM);
@@ -82520,7 +82539,6 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
       if(this->ciclos >= 456){
         this->ciclos -= 456;
         this->avanca_ly();
-        UpdateTexture(texture, this->framebuffer.data());
         if(this->bus->memoria[0xFF44] == 0x00){
           this->set_mode(screen_mode::SOAMRAM);
         }
