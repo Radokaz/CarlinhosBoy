@@ -1,6 +1,11 @@
 #ifndef MEMORYBUS_H
 #define MEMORYBUS_H
 
+#include <iostream>
+#include <cstddef>
+#include <cstdint>
+#include <array>
+#include <stdexcept>
 #include "joypad.h"
 #include "lcd.h"
 #include "dma.h"
@@ -28,11 +33,11 @@
 namespace GB{
 
 enum class tile_pixel: uint8_t{
-  BLACK = 0,
-  LGRAY,
-  DGRAY,
-  WHITE,
-  NULO
+  PX_BLACK = 0,
+  PX_LGRAY,
+  PX_DGRAY,
+  PX_WHITE,
+  PX_NULO
 };
 
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
@@ -42,7 +47,7 @@ struct Tile{
   std::array<tile_pixel, 64> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::NULO);
+    pixels.fill(tile_pixel::PX_NULO);
   }
 };
 
@@ -60,7 +65,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::NULO);
+    fila.fill(tile_pixel::PX_NULO);
   }
 
   void push(tile_pixel alvo);
@@ -158,13 +163,13 @@ struct Memorybus{
       return;
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
-      memoria[0xFF01] = 0xFF;
+      /*memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~BIT_SERIAL;
-      memoria[0xFF0F] |= BIT_SERIAL;
-     /* char c = memoria[0xFF01];
+      memoria[0xFF0F] |= BIT_SERIAL;*/
+      char c = memoria[0xFF01];
       std::cout << c << std::flush;
       c = memoria[0xFF02];
-      std::cout << c << std::flush;*/
+      std::cout << c << std::flush;
       return;
     }
     if(endereco == 0xFF46){
