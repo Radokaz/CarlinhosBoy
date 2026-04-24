@@ -27,6 +27,23 @@ void le_input(GB::Joypad& pad){
   //std::cout << std::hex << static_cast<int32_t>(pad.controles) << "\n";
 }
 
+void degub_func(GB::CPU *cpu, GB::PPU *ppu){
+  std::cout << "PC: " << cpu->pc << "\n";
+  std::cout << "F: " << static_cast<int>(cpu->registradores.f) << "\n";
+  std::cout << "IF: " << static_cast<int>(cpu->get_if()) << "\n";
+  std::cout << "Stepping: " << std::boolalpha << cpu->stepping << "\n";
+  std::cout << "Halted: " << cpu->halted << "\n";
+  std::cout << "IME: " << cpu->ime << "\n";
+  /*std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";
+  std::cout << "\n";*/
+}
+
 int main(int argc, char **argv){
   
   if(argc < 2){
@@ -58,6 +75,7 @@ int main(int argc, char **argv){
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks*4){
       roda_cpu(&cpu, timer);
       ppu.step(cpu.last_ticks*4, texture);
+      //degub_func(&cpu, &ppu);
     }
 
     BeginDrawing();

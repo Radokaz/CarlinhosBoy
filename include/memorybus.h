@@ -28,7 +28,7 @@
 #define TILE_END 0x9800
 
 #define OAM_INICIO 0xFE00
-#define OAM_FIM 0xFE9F
+#define OAM_FIM 0xFEA0
 
 namespace GB{
 
@@ -76,9 +76,9 @@ struct PPU_fetcher{
 struct Memorybus;
 
 struct PPU{
-  std::array<Color, 160*144> framebuffer{};
-  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset;
-  PPU_fetcher fetcher;
+  std::array<uint32_t, 160*144> framebuffer;
+  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset{};
+  PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
   Memorybus *bus {};
@@ -86,12 +86,15 @@ struct PPU{
   screen_mode modo_atual {screen_mode::SOAMRAM};
   bool stat_prev {false};
 
+  PPU(){
+    framebuffer.fill(0xFFFFFFFF);
+  }
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -100,7 +103,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
   //ly é o registrador que marca a linha sendo scaneada no momento
@@ -134,23 +136,26 @@ struct Memorybus{
           break;
         default: break;
     }
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && dma->ativo){
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       dma_hack = 0xFF;
       return dma_hack;
     }
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL && ppu->modo_atual == screen_mode::DRAWING){
+      dma_hack = 0xFF;
+      return dma_hack;
+    }
+
     return memoria[endereco];
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
     if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      if(ppu->modo_atual != screen_mode::HBLANK)
+      if(ppu->modo_atual != screen_mode::DRAWING)
         ppu->write_vram(endereco, valor);
-      else
-        memoria[endereco] = valor;
 
       return;
     }
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && dma->ativo){
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
     if(endereco == 0xFF04){ //div
@@ -163,13 +168,13 @@ struct Memorybus{
       return;
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
-      /*memoria[0xFF01] = 0xFF;
-      memoria[0xFF02] &= ~BIT_SERIAL;
-      memoria[0xFF0F] |= BIT_SERIAL;*/
       char c = memoria[0xFF01];
       std::cout << c << std::flush;
       c = memoria[0xFF02];
       std::cout << c << std::flush;
+      memoria[0xFF01] = 0xFF;
+      memoria[0xFF02] &= ~BIT_SERIAL;
+      memoria[0xFF0F] |= BIT_SERIAL;
       return;
     }
     if(endereco == 0xFF46){
