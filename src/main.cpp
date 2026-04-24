@@ -38,7 +38,8 @@ int main(int argc, char **argv){
   InitWindow(160*escala, 144*escala, "Game Boy");
   SetTargetFPS(60);
 
-  Image framebuffer = GenImageColor(160, 144, BLACK);
+  Image framebuffer = GenImageColor(160, 144, RAYWHITE);
+  ImageFormat(&framebuffer, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
   Texture2D texture = LoadTextureFromImage(framebuffer);
   UnloadImage(framebuffer);
 
@@ -56,10 +57,11 @@ int main(int argc, char **argv){
     
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks*4){
       roda_cpu(&cpu, timer);
-         
+      ppu.step(cpu.last_ticks*4, texture);
     }
 
     BeginDrawing();
+    DrawTextureEx(texture, Vector2{0, 0}, 0, 3.0f, WHITE);
     EndDrawing();
   }
 

@@ -1,11 +1,6 @@
 #ifndef CPU_H
 #define CPU_H
 
-#include <iostream>
-#include <cstddef>
-#include <cstdint>
-#include <array>
-#include <stdexcept>
 #include "memorybus.h"
 
 #define BIT_ZERO (1 << 7) //quando o resultado de uma instrução é zero
@@ -156,4 +151,5 @@ Action le_byte_cb(uint8_t byte, CPU *atual);
 void roda_cpu(CPU *atual, Timer& timer);
 
 }
+
 #endif 

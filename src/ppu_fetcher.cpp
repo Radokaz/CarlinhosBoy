@@ -47,8 +47,8 @@ void PPU::set_mode(screen_mode modo){
     this->check_stat_interruption();
   }
 
-  screen_mode get_mode(void){
-    return static_cast<screen_mode>(bus->memoria[0xFF41] & 0x03);
+screen_mode PPU::get_mode(void){
+    return static_cast<screen_mode>(this->bus->memoria[0xFF41] & 0x03);
 }
 
 bool PPU::check_stat(void){
@@ -75,12 +75,8 @@ void PPU::check_stat_interruption(void){
 }
 
 void PPU::avanca_ly(void){
-    uint8_t ly = bus->memoria[0xFF44];
-    ++ly;
-
-    if(ly > 153)
-      ly = 0;
-
+    uint8_t& ly = bus->memoria[0xFF44];
+    ly = (ly + 1) % 154;
     this->check_stat_interruption();
 }
 
@@ -103,16 +99,16 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
       uint8_t bit2 = ((byte2 & mask) >> (7 - i));
       switch((bit1 << 1) | bit2){
         case 0x00:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::BLACK;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_BLACK;
           break;
         case 0x01:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::LGRAY;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_LGRAY;
           break;
         case 0x02:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::DGRAY;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_DGRAY;
           break;
         case 0x03:
-          tile_set[tile_index].pixels[linha*8 + i] = tile_pixel::WHITE;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_WHITE;
           break;
       }
     }

@@ -3,10 +3,10 @@
 Color tile_to_color(GB::tile_pixel px){
     switch(px){
       using namespace GB;
-      case tile_pixel::WHITE:  return {0xFF, 0xFF, 0xFF, 0xFF};
-      case tile_pixel::LGRAY:  return {0xAA, 0xAA, 0xAA, 0xFF};
-      case tile_pixel::DGRAY:  return {0x55, 0x55, 0x55, 0xFF};
-      case tile_pixel::BLACK:  return {0x00, 0x00, 0x00, 0xFF};
+      case tile_pixel::PX_WHITE:  return {0xFF, 0xFF, 0xFF, 0xFF};
+      case tile_pixel::PX_LGRAY:  return {0xAA, 0xAA, 0xAA, 0xFF};
+      case tile_pixel::PX_DGRAY:  return {0x55, 0x55, 0x55, 0xFF};
+      case tile_pixel::PX_BLACK:  return {0x00, 0x00, 0x00, 0xFF};
         default:                 return {0xFF, 0xFF, 0xFF, 0xFF};
     }
 }
@@ -19,17 +19,29 @@ void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
   for(size_t i {}; i < this->sprites_count; ++i){
     Sprite& sprite = this->sprites_sel[i];
 
-    uint8_t x {sprite.x - 8};
-    uint8_t y {sprite.y - 16};
+    uint8_t x = (sprite.x >= 8) ? sprite.x - 8 : 0;
+    uint8_t y = (sprite.y >= 16) ? sprite.y - 16 : 0;
 
+    if(ly < y) continue;
     uint8_t sprite_line = ly - y;
     uint8_t sprite_size = this->atual_spritesize();
+
+    if(sprite_line >= sprite_size) continue;
 
     if(sprite.flags & (1 << 6)){
       sprite_line = (sprite_size - 1) - sprite_line;
     }
 
     uint8_t tile_index = sprite.tile_index;
+    if(sprite_size == 16){
+      if(sprite_line >= 8){
+        tile_index = sprite.tile_index | 0x01;
+        sprite_line -= 8;
+      }
+      else{
+        tile_index = sprite.tile_index & 0xFE;
+      }
+    }
 
     for(int px = 0; px < 8; ++px){
 
@@ -44,14 +56,14 @@ void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
         pixel_index = 7 - px;
       }
 
-      tile_pixel cor = tile_set[tile_index].pixels[sprite_line * 8 + pixel_index];
+      tile_pixel cor = tileset[tile_index].pixels[sprite_line * 8 + pixel_index];
 
-      if(cor == tile_pixel::BLACK) 
+      if(cor == tile_pixel::PX_BLACK) 
         continue;
 
       bool bg_priority = sprite.flags & (1 << 7);
 
-      if(bg_priority && pixels[screen_x] != tile_pixel::BLACK)
+      if(bg_priority && pixels[screen_x] != tile_pixel::PX_BLACK)
         continue;
 
       pixels[screen_x] = cor;
@@ -61,6 +73,7 @@ void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
 
 void PPU::draw_line(void){
 
+  std::array<tile_pixel, 160> px_prontos;
   uint8_t ly = this->bus->memoria[0xFF44];
   uint8_t scy = this->get_scrolly();
   uint8_t scx = this->get_scrollx();
@@ -103,13 +116,13 @@ void PPU::draw_line(void){
   }
 
   this->merge_sprites(px_prontos);
-  return px_prontos;
+  this->ppu_draw(px_prontos);
 }
 
 void PPU::ppu_draw(const std::array<tile_pixel, 160>& pixels){
   uint8_t ly = this->bus->memoria[0xFF44];
   for(size_t i {}; i < 160; ++i){
-    this->framebuffer[160*ly + i] = tile_to_color(pixels[i])
+    this->framebuffer[160*ly + i] = tile_to_color(pixels[i]);
   }
 }
 
