@@ -82258,8 +82258,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -82268,7 +82268,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
 
@@ -82401,10 +82400,6 @@ void PPU::set_mode(screen_mode modo){
     stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
     this->modo_atual = modo;
     this->check_stat_interruption();
-  }
-
-screen_mode PPU::get_mode(void){
-    return static_cast<screen_mode>(this->bus->memoria[0xFF41] & 0x03);
 }
 
 bool PPU::check_stat(void){
@@ -82414,12 +82409,11 @@ bool PPU::check_stat(void){
     uint8_t ly = bus->memoria[0xFF44];
     uint8_t lyc = bus->memoria[0xFF45];
     uint8_t& stat = bus->memoria[0xFF41];
-    screen_mode atual = get_mode();
 
     return (((ly == lyc) && (stat & (1 << 2))) ||
-    ((atual == screen_mode::HBLANK) && (stat & (1 << 3) )) ||
-    ((atual == screen_mode::SOAMRAM) && (stat & (1 << 5))) ||
-    ((atual == screen_mode::VBLANK) && ((stat & (1 << 4)) || (stat & (1 << 5)))));
+    ((this->modo_atual == screen_mode::HBLANK) && (stat & (1 << 3) )) ||
+    ((this->modo_atual == screen_mode::SOAMRAM) && (stat & (1 << 5))) ||
+    ((this->modo_atual == screen_mode::VBLANK) && ((stat & (1 << 4)) || (stat & (1 << 5)))));
 }
 
 void PPU::check_stat_interruption(void){
@@ -82477,10 +82471,10 @@ void PPU::scan_oam(void){
   uint8_t sprite_sz = this->atual_spritesize();
 
   for(size_t i {}; i < 40 && sprites_count < 10; ++i){
-    uint8_t y = this->bus->memoria[0xFE00 + i*4];
+    int16_t y = static_cast<int16_t>(this->bus->memoria[0xFE00 + i*4]) - 16;
 
-    if(ly >= y - 16 && ly < y - 16 + sprite_sz){
-      this->sprites_sel[sprites_count++] = Sprite{y, bus->memoria[0xFE00 + i*4 + 1],
+    if(ly >= y && ly < y + sprite_sz){
+      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[0xFE00 + i*4], bus->memoria[0xFE00 + i*4 + 1],
           bus->memoria[0xFE00 + i*4 + 2], bus->memoria[0xFE00 + i*4 + 3]};
     }
   }

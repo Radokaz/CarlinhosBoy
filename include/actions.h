@@ -30,13 +30,16 @@ namespace GBInstruct{
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
-      if(atual.alvo == reg_target::HL)
+      if(atual.alvo == reg_target::HL){
         cpu->pc = cpu->registradores.get_duplo(reg_target::HL);
-      else
+        cpu->last_ticks = 4;
+      }
+      else{
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->last_ticks = 16;
+      }
 
       cpu->jp_flag = true;
-      cpu->last_ticks = 16;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {

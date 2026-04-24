@@ -82262,8 +82262,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -82272,7 +82272,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
 
@@ -82444,8 +82443,9 @@ struct Registradores{
 
 struct Timer{
     uint16_t div_count {0xAC00};
-    uint16_t tima_count {};
-    bool timaoverflow {false};
+    bool prev_bit {};
+    bool timaoverflow {};
+    uint8_t timaoverflow_count {};
 
     void step(uint8_t ciclos, Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
@@ -82466,7 +82466,7 @@ struct CPU{
 
   CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
-  void step(Timer& timer);
+  void step(void);
   void check(void);
   bool check_joypad(void);
 

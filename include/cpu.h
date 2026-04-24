@@ -87,8 +87,9 @@ struct Registradores{
 
 struct Timer{
     uint16_t div_count {0xAC00};
-    uint16_t tima_count {};
-    bool timaoverflow {false};
+    bool prev_bit {};
+    bool timaoverflow {};
+    uint8_t timaoverflow_count {};
 
     void step(uint8_t ciclos, Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
@@ -109,7 +110,7 @@ struct CPU{
   
   CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
-  void step(Timer& timer);
+  void step(void);
   void check(void);
   bool check_joypad(void);
 

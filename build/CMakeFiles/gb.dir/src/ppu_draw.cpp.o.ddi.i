@@ -82258,8 +82258,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -82268,7 +82268,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
 
@@ -82397,54 +82396,8 @@ namespace GB{
 void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
 
   uint8_t ly = this->bus->memoria[0xFF44];
-  for(size_t i {}; i < this->sprites_count; ++i){
-    Sprite& sprite = this->sprites_sel[i];
 
-    uint8_t x = (sprite.x >= 8) ? sprite.x - 8 : 0;
-    uint8_t y = (sprite.y >= 16) ? sprite.y - 16 : 0;
 
-    if(ly < y) continue;
-    uint8_t sprite_line = ly - y;
-    uint8_t sprite_size = this->atual_spritesize();
-
-    if(sprite_line >= sprite_size) continue;
-
-    if(sprite.flags & (1 << 6)){
-      sprite_line = (sprite_size - 1) - sprite_line;
-    }
-
-    uint8_t tile_index = sprite.tile_index;
-    if(sprite_size == 16){
-      if(sprite_line >= 8){
-        tile_index = sprite.tile_index | 0x01;
-        sprite_line -= 8;
-      }
-      else{
-        tile_index = sprite.tile_index & 0xFE;
-      }
-    }
-
-    for(int px = 0; px < 8; ++px){
-      int screen_x = x + px;
-      if(screen_x < 0 || screen_x >= 160)
-        continue;
-
-      int pixel_index = px;
-      if(sprite.flags & (1 << 5)){
-        pixel_index = 7 - px;
-      }
-
-      tile_pixel cor = tileset[tile_index].pixels[sprite_line * 8 + pixel_index];
-      if(cor == tile_pixel::PX_BLACK)
-        continue;
-
-      bool bg_priority = sprite.flags & (1 << 7);
-      if(bg_priority && pixels[screen_x] != tile_pixel::PX_BLACK)
-        continue;
-
-      pixels[screen_x] = cor;
-    }
-  }
 }
 
 void PPU::draw_line(void){
@@ -82458,60 +82411,7 @@ void PPU::draw_line(void){
   uint16_t tiledata = this->atual_bgtiledata();
   uint16_t tilemap = this->atual_bgtilemap();
 
-  uint8_t tilemap_line = (ly + scy) % 256;
-  uint8_t tile_line = tilemap_line / 8;
-  uint8_t tile_line_index = tilemap_line % 8;
-  uint8_t pixel_offset = scx % 8;
-  uint16_t first_tile = (tiledata == 0x8800) ?
-    static_cast<int16_t>(static_cast<int8_t>(this->bus->memoria[tilemap + tile_line*32 + (scx/8) % 32]) + 256) :
-    this->bus->memoria[tilemap + tile_line*32 + (scx/8) % 32];
 
-  fetcher.clear();
-
-  for(size_t i {}; i < 8; ++i){
-      fetcher.push(tileset[first_tile].pixels[tile_line_index*8 + i]);
-  }
-
-  for(size_t i {}; fetcher.size > 0 && i < pixel_offset; ++i){
-      fetcher.pop();
-  }
-
-  uint8_t wy = this->bus->memoria[0xFF4A];
-  uint8_t wx = this->bus->memoria[0xFF4B] - 7;
-  bool window_ativa = ((this->bus->memoria[0xFF40] & (1 << 5)) && ly >= wy);
-  uint8_t tile_x {};
-
-  for(size_t i {}; i < 160; ++i){
-    if(window_ativa && i >= wx){
-        uint8_t win_x = i - wx;
-        uint8_t win_y = ly - wy;
-        uint8_t win_tile_row = win_y / 8;
-        uint8_t win_tile_line = win_y % 8;
-        uint8_t win_tile_col = win_x / 8;
-        uint16_t win_tilemap = atual_wintilemap();
-        uint16_t win_tile_index = bus->memoria[win_tilemap + win_tile_row * 32 + win_tile_col];
-        if(tiledata == 0x8800)
-            win_tile_index = static_cast<uint16_t>(static_cast<int8_t>(win_tile_index) + 256);
-        px_prontos[i] = tileset[win_tile_index].pixels[win_tile_line * 8 + (win_x % 8)];
-    }
-    else{
-      uint8_t tile_offset = ((scx + tile_x)/8) % 32;
-      uint16_t tile_index = this->bus->memoria[tilemap + tile_line*32 + tile_offset];
-      if(tiledata == 0x8800){
-        tile_index = static_cast<uint16_t>(static_cast<int8_t>(tile_index) + 256);
-      }
-
-      if(this->fetcher.size <= 8){
-        for(size_t j {}; j < 8; ++j){
-          fetcher.push(this->tileset[tile_index].pixels[tile_line_index*8 + j]);
-        }
-        ++tile_x;
-      }
-
-      if(fetcher.size > 0)
-        px_prontos[i] = fetcher.pop();
-    }
-  }
 
   this->merge_sprites(px_prontos);
   this->ppu_draw(px_prontos);
