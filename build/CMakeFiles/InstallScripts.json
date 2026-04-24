@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/radokaz/Trabalho de metodologia/Emulador/build/cmake_install.cmake",
+		"/home/radokaz/Trabalho de metodologia/Emulador/build/include/raylib/cmake_install.cmake",
+		"/home/radokaz/Trabalho de metodologia/Emulador/build/include/raylib/raylib/cmake_install.cmake",
+		"/home/radokaz/Trabalho de metodologia/Emulador/build/include/raylib/raylib/external/glfw/cmake_install.cmake",
+		"/home/radokaz/Trabalho de metodologia/Emulador/build/include/raylib/raylib/external/glfw/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

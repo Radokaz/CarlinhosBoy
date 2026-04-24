@@ -3,9 +3,8 @@
 namespace GB{
 
 void roda_cpu(CPU *atual, Timer& timer){
-  if(atual->check_joypad()){
+  if(atual->check_joypad() || (atual->get_if() & 0x1F)){
     atual->stepping = true;
-    atual->halted = false;
   }
   if(!atual->stepping) return;
   atual->check();
@@ -15,25 +14,28 @@ void roda_cpu(CPU *atual, Timer& timer){
 }
 
 void CPU::check(void){
-  if(this->ime){
     uint8_t Ie = this->get_ie();
     uint8_t If = this->get_if();
-    if(Ie & If & BIT_VBLANK){
-      this->jump_vblank();
+    if(Ie & If)
+      this->halted = false;
+
+    if(this->ime){
+      if(Ie & If & BIT_VBLANK){
+        this->jump_vblank();
+      }
+      else if(Ie & If & BIT_LCDSTAT){
+        this->jump_lcdstat();
+      }
+      else if(Ie & If & BIT_TIMER){
+        this->jump_timer();
+      }
+      else if(Ie & If & BIT_SERIAL){
+        this->jump_serial();
+      }
+      else if(Ie & If & BIT_JOYPAD){
+        this->jump_joypad();
+      }
     }
-    else if(Ie & If & BIT_LCDSTAT){
-      this->jump_lcdstat();
-    }
-    else if(Ie & If & BIT_TIMER){
-      this->jump_timer();
-    }
-    else if(Ie & If & BIT_SERIAL){
-      this->jump_serial();
-    }
-    else if(Ie & If & BIT_JOYPAD){
-      this->jump_joypad();
-    }
-  }
 }
 
 bool CPU::check_joypad(void){
@@ -51,7 +53,10 @@ bool CPU::check_joypad(void){
 
 
 void CPU::step(Timer& timer){
-  if(this->halted || !this->stepping) return;
+  if(this->halted){
+    timer.step(16, this->bus);
+    return;
+  };
 
   bool set_ime {false};
   if(this->ime_ie){
@@ -90,7 +95,6 @@ void CPU::jump_vblank(void){
   this->pc = 0x0040;
   this->ime = 0;
   this->get_if() &= ~BIT_VBLANK;
-  this->halted = false;
 }
 
 void CPU::jump_serial(void){
@@ -98,8 +102,6 @@ void CPU::jump_serial(void){
   this->pc = 0x0058;
   this->ime = 0;
   this->get_if() &= ~BIT_SERIAL;
-  this->halted = false;
-
 }
 
 void CPU::jump_timer(void){
@@ -107,7 +109,6 @@ void CPU::jump_timer(void){
   this->pc = 0x0050;
   this->ime = 0;
   this->get_if() &= ~BIT_TIMER;
-  this->halted = false;
 }
 
 void CPU::jump_lcdstat(void){
@@ -115,7 +116,6 @@ void CPU::jump_lcdstat(void){
   this->pc = 0x0048;
   this->ime = 0;
   this->get_if() &= ~BIT_LCDSTAT;
-  this->halted = false;
 }
 
 void CPU::jump_joypad(void){
@@ -123,7 +123,6 @@ void CPU::jump_joypad(void){
   this->pc = 0x0060;
   this->ime = 0;
   this->get_if() &= ~BIT_JOYPAD;
-  this->halted = false;
 }
 
 uint8_t& CPU::get_target(reg_target alvo){
