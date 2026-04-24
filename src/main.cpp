@@ -72,9 +72,9 @@ int main(int argc, char **argv){
   while(!WindowShouldClose()){
     le_input(pad);
     
-    for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks*4){
+    for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
       roda_cpu(&cpu, timer);
-      ppu.step(cpu.last_ticks*4, texture);
+      ppu.step(cpu.last_ticks, texture);
       //degub_func(&cpu, &ppu);
     }
 

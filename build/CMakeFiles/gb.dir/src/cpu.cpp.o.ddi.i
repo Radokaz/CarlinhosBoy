@@ -82266,8 +82266,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -82276,7 +82276,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
 
@@ -82448,8 +82447,9 @@ struct Registradores{
 
 struct Timer{
     uint16_t div_count {0xAC00};
-    uint16_t tima_count {};
-    bool timaoverflow {false};
+    bool prev_bit {};
+    bool timaoverflow {};
+    uint8_t timaoverflow_count {};
 
     void step(uint8_t ciclos, Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
@@ -82470,7 +82470,7 @@ struct CPU{
 
   CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
-  void step(Timer& timer);
+  void step(void);
   void check(void);
   bool check_joypad(void);
 
@@ -82541,13 +82541,16 @@ namespace GBInstruct{
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
-      if(atual.alvo == reg_target::HL)
+      if(atual.alvo == reg_target::HL){
         cpu->pc = cpu->registradores.get_duplo(reg_target::HL);
-      else
+        cpu->last_ticks = 4;
+      }
+      else{
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
+        cpu->last_ticks = 16;
+      }
 
       cpu->jp_flag = true;
-      cpu->last_ticks = 16;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {
@@ -83271,7 +83274,7 @@ namespace GBInstruct{
 
       cpu->last_ticks = 4;
     }
-# 771 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 774 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/cpu.cpp" 2
 
@@ -83283,8 +83286,9 @@ void roda_cpu(CPU *atual, Timer& timer){
   }
   if(!atual->stepping) return;
   atual->check();
-  atual->step(timer);
-  for(size_t i {}; i < atual->last_ticks; i++)
+  atual->step();
+  timer.step(atual->last_ticks, atual->bus);
+  for(size_t i {}; i < atual->last_ticks; i+=4)
       atual->bus.dma->step(atual->bus.memoria.data());
 }
 
@@ -83327,9 +83331,9 @@ bool CPU::check_joypad(void){
 }
 
 
-void CPU::step(Timer& timer){
+void CPU::step(){
   if(this->halted){
-    timer.step(16, this->bus);
+    this->last_ticks = 4;
     return;
   };
 
@@ -83346,8 +83350,6 @@ void CPU::step(Timer& timer){
     current_act.execute(current_act, this);
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
-
-    timer.step(this->last_ticks*4, this->bus);
 
     if(!this->jp_flag){
       if(!this->haltbug)

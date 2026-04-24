@@ -82262,8 +82262,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void draw_line(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -82272,7 +82272,6 @@ struct PPU{
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
   void set_mode(screen_mode modo);
-  screen_mode get_mode(void);
   bool check_stat(void);
   void check_stat_interruption(void);
 
@@ -82444,8 +82443,9 @@ struct Registradores{
 
 struct Timer{
     uint16_t div_count {0xAC00};
-    uint16_t tima_count {};
-    bool timaoverflow {false};
+    bool prev_bit {};
+    bool timaoverflow {};
+    uint8_t timaoverflow_count {};
 
     void step(uint8_t ciclos, Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
@@ -82466,7 +82466,7 @@ struct CPU{
 
   CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
 
-  void step(Timer& timer);
+  void step(void);
   void check(void);
   bool check_joypad(void);
 
@@ -82513,45 +82513,64 @@ void roda_cpu(CPU *atual, Timer& timer);
 namespace GB{
 
 void Timer::step(uint8_t ciclos, Memorybus& bus){
-      if(timaoverflow){
+  for(size_t i {}; i < ciclos; ++i){
+    ++div_count;
+    bus.read_byte(0xFF04) = this->get_div();
+
+    uint8_t tac = bus.read_byte(0xFF07);
+    if(!(tac & 0x04)){
+      if(timaoverflow_count)
+        --timaoverflow_count;
+
+      if(timaoverflow && timaoverflow_count <= 0){
         bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
         bus.read_byte(0xFF0F) |= (1 << 2);
         timaoverflow = false;
+        timaoverflow_count = 0;
+        continue;
+      }
+    }
+
+    uint8_t bit{};
+    switch(tac & 0x03){
+    case 0x00:
+      bit = 9;
+      break;
+    case 0x01:
+      bit = 3;
+      break;
+    case 0x02:
+      bit = 5;
+      break;
+    case 0x03:
+      bit = 7;
+      break;
+    }
+
+    uint8_t bit_atual = (div_count >> bit) & 0x01;
+    if(!bit_atual && prev_bit){
+      uint8_t& tima = bus.read_byte(0xFF05);
+      if(tima == 0xFF){
+        tima = 0;
+        timaoverflow = true;
+        timaoverflow_count += 4;
+      }
+      else
+        ++tima;
       }
 
-      div_count+=ciclos;
-      bus.read_byte(0xFF04) = this->get_div();
+    prev_bit = bit_atual;
 
-      uint8_t tac = bus.read_byte(0xFF07);
-      if(!(tac & 0x04)) return;
+    if(timaoverflow_count)
+      --timaoverflow_count;
 
-      uint16_t limite{};
-      switch(tac & 0x03){
-        case 0x00:
-          limite = 1024;
-          break;
-        case 0x01:
-          limite = 16;
-          break;
-        case 0x02:
-          limite = 64;
-          break;
-        case 0x03:
-          limite = 256;
-          break;
-      }
-
-      tima_count+=ciclos;
-      if(tima_count >= limite){
-        tima_count -= limite;
-        uint8_t tima = bus.read_byte(0xFF05);
-        if(tima == 0xFF){
-          bus.read_byte(0xFF05) = 0;
-          timaoverflow = true;
-        }
-        else
-          ++bus.read_byte(0xFF05);
-      }
+    if(timaoverflow && timaoverflow_count <= 0){
+      bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
+      bus.read_byte(0xFF0F) |= (1 << 2);
+      timaoverflow = false;
+      timaoverflow_count = 0;
+    }
+  }
 }
 
 }

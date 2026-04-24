@@ -8,8 +8,9 @@ void roda_cpu(CPU *atual, Timer& timer){
   }
   if(!atual->stepping) return;
   atual->check();
-  atual->step(timer);
-  for(size_t i {}; i < atual->last_ticks; i++)
+  atual->step();
+  timer.step(atual->last_ticks, atual->bus);
+  for(size_t i {}; i < atual->last_ticks; i+=4)
       atual->bus.dma->step(atual->bus.memoria.data());
 }
 
@@ -52,9 +53,9 @@ bool CPU::check_joypad(void){
 }
 
 
-void CPU::step(Timer& timer){
+void CPU::step(){
   if(this->halted){
-    timer.step(16, this->bus);
+    this->last_ticks = 4;
     return;
   };
 
@@ -71,8 +72,6 @@ void CPU::step(Timer& timer){
     current_act.execute(current_act, this);
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
-
-    timer.step(this->last_ticks*4, this->bus);
 
     if(!this->jp_flag){
       if(!this->haltbug)
