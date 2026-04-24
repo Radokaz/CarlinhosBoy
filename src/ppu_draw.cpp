@@ -1,5 +1,18 @@
 #include "memorybus.h"
 
+Color tile_to_color(GB::tile_pixel px){
+    switch(px){
+      using namespace GB;
+      case tile_pixel::WHITE:  return {0xFF, 0xFF, 0xFF, 0xFF};
+      case tile_pixel::LGRAY:  return {0xAA, 0xAA, 0xAA, 0xFF};
+      case tile_pixel::DGRAY:  return {0x55, 0x55, 0x55, 0xFF};
+      case tile_pixel::BLACK:  return {0x00, 0x00, 0x00, 0xFF};
+        default:                 return {0xFF, 0xFF, 0xFF, 0xFF};
+    }
+}
+
+namespace GB{
+
 void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
 
   uint8_t ly = this->bus->memoria[0xFF44];
@@ -101,16 +114,4 @@ void PPU::ppu_draw(const std::array<tile_pixel, 160>& pixels){
 }
 
 }
-
-Color tile_to_color(tile_pixel px){
-    switch(px){
-      using enum tile_pixel;
-        case WHITE:  return {0xFF, 0xFF, 0xFF, 0xFF};
-        case LGRAY:  return {0xAA, 0xAA, 0xAA, 0xFF};
-        case DGRAY:  return {0x55, 0x55, 0x55, 0xFF};
-        case BLACK:  return {0x00, 0x00, 0x00, 0xFF};
-        default:                 return {0xFF, 0xFF, 0xFF, 0xFF};
-    }
-}
-
 

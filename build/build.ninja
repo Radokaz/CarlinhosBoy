@@ -110,6 +110,50 @@ build CMakeFiles/gb.dir/src/main.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz/
   TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
   dyndep = CMakeFiles/gb.dir/CXX.dd
 
+build CMakeFiles/gb.dir/src/ppu_draw.cpp.o.ddi: CXX_SCAN__gb_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/ppu_draw.cpp || cmake_object_order_depends_target_gb
+  DEFINES = -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP
+  DEP_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o.ddi.d
+  DYNDEP_INTERMEDIATE_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o.ddi
+  FLAGS = -std=c++23 -g
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include" -I"/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src"
+  OBJ_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o
+  PREPROCESSED_OUTPUT_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o.ddi.i
+
+build CMakeFiles/gb.dir/src/ppu_draw.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/ppu_draw.cpp | CMakeFiles/gb.dir/src/ppu_draw.cpp.o.modmap || cmake_object_order_depends_target_gb CMakeFiles/gb.dir/CXX.dd
+  DEFINES = -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP
+  DEP_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o.d
+  DYNDEP_MODULE_MAP_FILE = CMakeFiles/gb.dir/src/ppu_draw.cpp.o.modmap
+  FLAGS = -std=c++23 -g
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include" -I"/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src"
+  OBJECT_DIR = CMakeFiles/gb.dir
+  OBJECT_FILE_DIR = CMakeFiles/gb.dir/src
+  TARGET_COMPILE_PDB = CMakeFiles/gb.dir/
+  TARGET_PDB = gb.pdb
+  TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
+  dyndep = CMakeFiles/gb.dir/CXX.dd
+
+build CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.ddi: CXX_SCAN__gb_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/ppu_fetcher.cpp || cmake_object_order_depends_target_gb
+  DEFINES = -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP
+  DEP_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.ddi.d
+  DYNDEP_INTERMEDIATE_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.ddi
+  FLAGS = -std=c++23 -g
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include" -I"/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src"
+  OBJ_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o
+  PREPROCESSED_OUTPUT_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.ddi.i
+
+build CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/ppu_fetcher.cpp | CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.modmap || cmake_object_order_depends_target_gb CMakeFiles/gb.dir/CXX.dd
+  DEFINES = -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP
+  DEP_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.d
+  DYNDEP_MODULE_MAP_FILE = CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.modmap
+  FLAGS = -std=c++23 -g
+  INCLUDES = -I"/home/radokaz/Trabalho de metodologia/Emulador/include" -I"/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src"
+  OBJECT_DIR = CMakeFiles/gb.dir
+  OBJECT_FILE_DIR = CMakeFiles/gb.dir/src
+  TARGET_COMPILE_PDB = CMakeFiles/gb.dir/
+  TARGET_PDB = gb.pdb
+  TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
+  dyndep = CMakeFiles/gb.dir/CXX.dd
+
 build CMakeFiles/gb.dir/src/stack.cpp.o.ddi: CXX_SCAN__gb_ /home/radokaz/Trabalho$ de$ metodologia/Emulador/src/stack.cpp || cmake_object_order_depends_target_gb
   DEFINES = -DGRAPHICS_API_OPENGL_33 -DPLATFORM_DESKTOP
   DEP_FILE = CMakeFiles/gb.dir/src/stack.cpp.o.ddi.d
@@ -132,7 +176,7 @@ build CMakeFiles/gb.dir/src/stack.cpp.o: CXX_COMPILER__gb_scanned_ /home/radokaz
   TARGET_SUPPORT_DIR = CMakeFiles/gb.dir
   dyndep = CMakeFiles/gb.dir/CXX.dd
 
-build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb.dir/src/cpu.cpp.o.modmap CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap CMakeFiles/gb.dir/src/main.cpp.o.modmap CMakeFiles/gb.dir/src/stack.cpp.o.modmap: CXX_DYNDEP__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o.ddi CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi CMakeFiles/gb.dir/src/main.cpp.o.ddi CMakeFiles/gb.dir/src/stack.cpp.o.ddi | /home/radokaz/Trabalho$ de$ metodologia/Emulador/build/CMakeFiles/gb.dir/CXXDependInfo.json
+build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb.dir/src/cpu.cpp.o.modmap CMakeFiles/gb.dir/src/instrucoes.cpp.o.modmap CMakeFiles/gb.dir/src/main.cpp.o.modmap CMakeFiles/gb.dir/src/ppu_draw.cpp.o.modmap CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.modmap CMakeFiles/gb.dir/src/stack.cpp.o.modmap: CXX_DYNDEP__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o.ddi CMakeFiles/gb.dir/src/instrucoes.cpp.o.ddi CMakeFiles/gb.dir/src/main.cpp.o.ddi CMakeFiles/gb.dir/src/ppu_draw.cpp.o.ddi CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o.ddi CMakeFiles/gb.dir/src/stack.cpp.o.ddi | /home/radokaz/Trabalho$ de$ metodologia/Emulador/build/CMakeFiles/gb.dir/CXXDependInfo.json
 
 
 # =============================================================================
@@ -142,7 +186,7 @@ build CMakeFiles/gb.dir/CXX.dd | CMakeFiles/gb.dir/CXXModules.json CMakeFiles/gb
 #############################################
 # Link the executable gb
 
-build gb: CXX_EXECUTABLE_LINKER__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o CMakeFiles/gb.dir/src/instrucoes.cpp.o CMakeFiles/gb.dir/src/main.cpp.o CMakeFiles/gb.dir/src/stack.cpp.o | include/raylib/raylib/libraylib.a /usr/lib/libOpenGL.so /usr/lib/libGLX.so /usr/lib/libGLU.so /usr/lib/librt.a /usr/lib/libm.so /usr/lib/libSM.so /usr/lib/libICE.so /usr/lib/libX11.so /usr/lib/libXext.so || include/raylib/raylib/external/glfw/src/glfw include/raylib/raylib/libraylib.a
+build gb: CXX_EXECUTABLE_LINKER__gb_ CMakeFiles/gb.dir/src/cpu.cpp.o CMakeFiles/gb.dir/src/instrucoes.cpp.o CMakeFiles/gb.dir/src/main.cpp.o CMakeFiles/gb.dir/src/ppu_draw.cpp.o CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o CMakeFiles/gb.dir/src/stack.cpp.o | include/raylib/raylib/libraylib.a /usr/lib/libOpenGL.so /usr/lib/libGLX.so /usr/lib/libGLU.so /usr/lib/librt.a /usr/lib/libm.so /usr/lib/libSM.so /usr/lib/libICE.so /usr/lib/libX11.so /usr/lib/libXext.so || include/raylib/raylib/external/glfw/src/glfw include/raylib/raylib/libraylib.a
   DEP_FILE = CMakeFiles/gb.dir/link.d
   LINK_FLAGS = -Wl,--dependency-file=CMakeFiles/gb.dir/link.d
   LINK_LIBRARIES = include/raylib/raylib/libraylib.a  -lpthread  /usr/lib/libOpenGL.so  /usr/lib/libGLX.so  /usr/lib/libGLU.so  /usr/lib/librt.a  -lm  -ldl  -lm  /usr/lib/libSM.so  /usr/lib/libICE.so  /usr/lib/libX11.so  /usr/lib/libXext.so

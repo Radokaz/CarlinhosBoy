@@ -5,6 +5,7 @@
 #include "lcd.h"
 #include "dma.h"
 #include <raylib.h>
+#include <memory>
 
 //flags de interrupção
 #define BIT_VBLANK (1 << 0)
@@ -25,8 +26,6 @@
 #define OAM_FIM 0xFE9F
 
 namespace GB{
-
-struct Memorybus;
 
 enum class tile_pixel: uint8_t{
   BLACK = 0,
@@ -69,6 +68,8 @@ struct PPU_fetcher{
   void clear(void);
 };
 
+struct Memorybus;
+
 struct PPU{
   std::array<Color, 160*144> framebuffer{};
   std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset;
@@ -81,76 +82,24 @@ struct PPU{
   bool stat_prev {false};
 
   void write_vram(uint16_t endereco, uint8_t valor);
-  void step(uint8_t cpu_ciclos);
+  void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
 
-  uint16_t atual_wintilemap(void){
-    return (bus->memoria[0xFF40] & LCDC_WIN_MAP) ? 0x9C00 : 0x9800;
-  }
-
-  uint16_t atual_bgtiledata(void){
-    return (bus->memoria[0xFF40] & LCDC_TILE_DATA) ? 0x8000 : 0x8800;
-  }
-
-  uint16_t atual_bgtilemap(void){
-    return (bus->memoria[0xFF40] & LCDC_BG_MAP) ? 0x9C00 : 0x9800;
-  }
-
-  uint8_t atual_spritesize(void){
-    return (bus->memoria[0xFF40] & LCDC_OBJ_SIZE) ? 16 : 8;
-  }
-
-  uint8_t& get_scrolly(void) { return bus->memoria[0xFF42]; }
-  uint8_t& get_scrollx(void) { return bus->memoria[0xFF43]; }
-
-  void set_mode(screen_mode modo){
-    uint8_t& stat = bus->memoria[0xFF41];
-    stat = (stat & 0b11111100) | std::to_underlying<screen_mode>(modo);
-    this->modo_atual = modo;
-    this->check_stat_interruption();
-  }
-
-  screen_mode get_mode(void){
-    return static_cast<screen_mode>(bus->memoria[0xFF41] & 0x03);
-  }
-
-  bool check_stat(void){
-    if((bus->memoria[0xFF40] & LCDC_ENABLE) != LCDC_ENABLE)
-      return false;
-
-    uint8_t ly = bus->memoria[0xFF44];
-    uint8_t lyc = bus->memoria[0xFF45];
-    uint8_t& stat = bus->memoria[0xFF41];
-    screen_mode atual = get_mode(bus);
-  
-    return (((ly == lyc) && (stat & LYC_Comparison_Signal)) ||
-    ((atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
-    ((atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
-    ((atual == screen_mode::VBLANK) && ((stat & VBLANK_ENABLE) || (stat & OAM_ENABLE))));
-  }
-
-  void check_stat_interruption(void){
-    bool stat_atual = this->check_stat();
-    if(stat_atual && !stat_prev)
-      bus->memoria[0xFF0F] |= BIT_LCDSTAT;
-
-    stat_prev = stat_atual;
-  }
-
+  uint16_t atual_wintilemap(void);
+  uint16_t atual_bgtiledata(void);
+  uint16_t atual_bgtilemap(void);
+  uint8_t atual_spritesize(void);
+  uint8_t& get_scrolly(void);
+  uint8_t& get_scrollx(void);
+  void set_mode(screen_mode modo);
+  screen_mode get_mode(void);
+  bool check_stat(void);
+  void check_stat_interruption(void);
   //ly é o registrador que marca a linha sendo scaneada no momento
-  void avanca_ly(void){
-    uint8_t ly = bus->memoria[0xFF44];
-    ++ly;
-
-    if(ly > 153)
-      ly = 0;
-
-    this->check_stat_interruption();
-  }
-
+  void avanca_ly(void);
 };
 
 struct Memorybus{
@@ -159,9 +108,11 @@ struct Memorybus{
   uint8_t dma_hack {0xFF};
   Joypad *pad {};
   PPU *ppu {};
-  DMA *dma;
+  std::unique_ptr<DMA> dma;
 
-  Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {}
+  Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {
+    dma = std::make_unique<DMA>();
+  }
 
   uint8_t& read_byte(uint16_t endereco){
     switch(endereco){

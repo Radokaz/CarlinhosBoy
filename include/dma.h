@@ -1,6 +1,8 @@
 #ifndef DMA_H
 #define DMA_H
 
+namespace GB{
+
 struct DMA{
   bool ativo {false};
   uint8_t byte {};
@@ -31,5 +33,7 @@ struct DMA{
     }
   }
 };
+
+}
 
 #endif

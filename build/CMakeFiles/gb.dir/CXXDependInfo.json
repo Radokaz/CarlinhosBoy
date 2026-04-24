@@ -37,6 +37,16 @@
 			"language" : "CXX",
 			"source" : "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp"
 		},
+		"CMakeFiles/gb.dir/src/ppu_draw.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/radokaz/Trabalho de metodologia/Emulador/src/ppu_draw.cpp"
+		},
+		"CMakeFiles/gb.dir/src/ppu_fetcher.cpp.o" : 
+		{
+			"language" : "CXX",
+			"source" : "/home/radokaz/Trabalho de metodologia/Emulador/src/ppu_fetcher.cpp"
+		},
 		"CMakeFiles/gb.dir/src/stack.cpp.o" : 
 		{
 			"language" : "CXX",
