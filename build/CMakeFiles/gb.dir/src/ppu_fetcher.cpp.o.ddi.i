@@ -82246,6 +82246,7 @@ struct PPU{
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
+  uint8_t win_line {};
   Memorybus *bus {};
   uint16_t ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
@@ -82254,9 +82255,11 @@ struct PPU{
   PPU(){
     framebuffer.fill(0xFFFFFFFF);
   }
+
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
+  void discard_first_tile(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
@@ -82267,10 +82270,12 @@ struct PPU{
   uint8_t atual_spritesize(void);
   bool is_lcd_enabled(void);
   bool is_win_enabled(void);
-  bool is_gb_enabled(void);
+  bool is_bg_enabled(void);
   bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
+  uint8_t& get_winx(void);
+  uint8_t& get_winy(void);
   void set_mode(screen_mode modo);
   bool check_stat(void);
   void check_stat_interruption(void);
@@ -82402,7 +82407,7 @@ bool PPU::is_win_enabled(void){
   return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 5)) & 0x01);
 }
 
-bool PPU::is_gb_enabled(void){
+bool PPU::is_bg_enabled(void){
   return static_cast<bool>((this->bus->read_byte(0xFF40) & (1 << 0)) & 0x01);
 }
 
@@ -82412,6 +82417,8 @@ bool PPU::is_sprite_enabled(void){
 
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
 uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
+uint8_t& PPU::get_winx(void) { return bus->memoria[0xFF4A]; }
+uint8_t& PPU::get_winy(void) {return bus->memoria[0xFF4B]; }
 
 void PPU::set_mode(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
@@ -82483,21 +82490,6 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
 
 }
 
-void PPU::scan_oam(void){
-  this->sprites_count = 0;
-  uint8_t ly = this->bus->memoria[0xFF44];
-  uint8_t sprite_sz = this->atual_spritesize();
-
-  for(size_t i {}; i < 40 && sprites_count < 10; ++i){
-    int16_t y = static_cast<int16_t>(this->bus->memoria[0xFE00 + i*4]) - 16;
-
-    if(ly >= y && ly < y + sprite_sz){
-      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[0xFE00 + i*4], bus->memoria[0xFE00 + i*4 + 1],
-          bus->memoria[0xFE00 + i*4 + 2], bus->memoria[0xFE00 + i*4 + 3]};
-    }
-  }
-}
-
 void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
   this->ciclos+=cpu_ciclos;
 
@@ -82527,6 +82519,7 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
         if(this->bus->memoria[0xFF44] == 144){
           this->bus->memoria[0xFF0F] |= (1 << 0);
           this->set_mode(screen_mode::VBLANK);
+          this->win_line = 0;
           UpdateTexture(texture, this->framebuffer.data());
         }
         else{

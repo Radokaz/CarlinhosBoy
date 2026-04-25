@@ -33,26 +33,25 @@
 namespace GB{
 
 enum class tile_pixel: uint8_t{
-  PX_BLACK = 0,
-  PX_LGRAY,
-  PX_DGRAY,
-  PX_WHITE,
-  PX_NULO
+  INDEX_ZERO = 0,
+  INDEX_ONE,
+  INDEX_TWO,
+  INDEX_THREE
 };
 
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
 //dando 64*2 = 128 bits = 16 bytes em cada tile
 
-template <size_t N>:
 struct Tile{
-  std::array<tile_pixel, N> pixels;
+  std::array<tile_pixel, 64> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::PX_NULO);
+    pixels.fill(tile_pixel::INDEX_ZERO);
   }
 };
 
 struct Sprite{
+  uint32_t cor {0x00};
   uint8_t y;
   uint8_t x;
   uint8_t tile_index;
@@ -66,7 +65,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::PX_NULO);
+    fila.fill(tile_pixel::INDEX_ZERO);
   }
 
   void push(tile_pixel alvo);
@@ -78,13 +77,11 @@ struct Memorybus;
 
 struct PPU{
   std::array<uint32_t, 160*144> framebuffer;
-  std::array<Tile<8*8>, (TILE_END - FIRST_TILE1)/16> tileset{};
-  std::array<Tile<32*32>, 2> vram_tileset{};
-  std::array<uint16_t, 
+  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset{};
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
-  uint8_t win_count {};
+  uint8_t win_line {};
   Memorybus *bus {};
   uint16_t ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
@@ -93,9 +90,11 @@ struct PPU{
   PPU(){
     framebuffer.fill(0xFFFFFFFF);
   }
+
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
+  void discard_first_tile(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
@@ -106,7 +105,7 @@ struct PPU{
   uint8_t atual_spritesize(void);
   bool is_lcd_enabled(void);
   bool is_win_enabled(void);
-  bool is_gb_enabled(void);
+  bool is_bg_enabled(void);
   bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
