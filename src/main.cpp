@@ -34,6 +34,7 @@ void degub_func(GB::CPU *cpu, GB::PPU *ppu){
   std::cout << "Stepping: " << std::boolalpha << cpu->stepping << "\n";
   std::cout << "Halted: " << cpu->halted << "\n";
   std::cout << "IME: " << cpu->ime << "\n";
+  std::cout << "Haltbug: " << cpu->haltbug << "\n";
   /*std::cout << "\n";
   std::cout << "\n";
   std::cout << "\n";
@@ -76,7 +77,7 @@ int main(int argc, char **argv){
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
       roda_cpu(&cpu, timer);
       ppu.step(cpu.last_ticks, texture);
-      //degub_func(&cpu, &ppu);
+      degub_func(&cpu, &ppu);
     }
 
     BeginDrawing();

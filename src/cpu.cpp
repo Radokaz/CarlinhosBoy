@@ -70,6 +70,7 @@ void CPU::step(){
   try{
     auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
+    std::cout << "Last inst: " << std::hex << static_cast<int>(inst_byte) << std::dec << "\n";
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
 

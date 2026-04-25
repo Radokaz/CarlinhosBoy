@@ -82210,11 +82210,10 @@ uninitialized_value_construct_n(_ExecutionPolicy&& __exec, _ForwardIterator __fi
 namespace GB{
 
 enum class tile_pixel: uint8_t{
-  PX_BLACK = 0,
-  PX_LGRAY,
-  PX_DGRAY,
-  PX_WHITE,
-  PX_NULO
+  INDEX_ZERO = 0,
+  INDEX_ONE,
+  INDEX_TWO,
+  INDEX_THREE
 };
 
 
@@ -82224,7 +82223,7 @@ struct Tile{
   std::array<tile_pixel, 64> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::PX_NULO);
+    pixels.fill(tile_pixel::INDEX_ZERO);
   }
 };
 
@@ -82242,7 +82241,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::PX_NULO);
+    fila.fill(tile_pixel::INDEX_ZERO);
   }
 
   void push(tile_pixel alvo);
@@ -82272,8 +82271,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void discard_first_tile(void);
-  void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void merge_sprites();
+  void draw_bg(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
 
   uint16_t atual_wintilemap(void);
@@ -82293,6 +82292,7 @@ struct PPU{
   void check_stat_interruption(void);
 
   void avanca_ly(void);
+  uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
 struct Memorybus{
@@ -82313,6 +82313,7 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000;
           break;
         case 0xFF0F:
+        case 0xFFFF:
           memoria[endereco] |= 0b11100000;
           break;
         case 0xFF00:
@@ -82561,13 +82562,15 @@ namespace GBInstruct{
         cpu->last_ticks = 16;
       }
 
-      cpu->jp_flag = true;
+      if(!cpu->haltbug)
+        cpu->jp_flag = true;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {
       if(cpu->registradores.f & (1 << 7)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82577,7 +82580,8 @@ namespace GBInstruct{
     inline void JPCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 4)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82587,7 +82591,8 @@ namespace GBInstruct{
     inline void JPNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 7))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82597,7 +82602,8 @@ namespace GBInstruct{
     inline void JPNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 4))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82607,7 +82613,8 @@ namespace GBInstruct{
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
       int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
       cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-      cpu->jp_flag = true;
+      if(!cpu->haltbug)
+        cpu->jp_flag = true;
       cpu->last_ticks = 12;
     }
 
@@ -82615,7 +82622,8 @@ namespace GBInstruct{
       if(cpu->registradores.f & (1 << 7)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82626,7 +82634,8 @@ namespace GBInstruct{
       if(cpu->registradores.f & (1 << 4)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82637,7 +82646,8 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & (1 << 7))){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82648,7 +82658,8 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & (1 << 4))){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -83285,7 +83296,7 @@ namespace GBInstruct{
 
       cpu->last_ticks = 4;
     }
-# 774 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 784 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 5 "/home/radokaz/Trabalho de metodologia/Emulador/include/init.h" 2
 
@@ -90476,7 +90487,8 @@ void degub_func(GB::CPU *cpu, GB::PPU *ppu){
   std::cout << "Stepping: " << std::boolalpha << cpu->stepping << "\n";
   std::cout << "Halted: " << cpu->halted << "\n";
   std::cout << "IME: " << cpu->ime << "\n";
-# 45 "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp"
+  std::cout << "Haltbug: " << cpu->haltbug << "\n";
+# 46 "/home/radokaz/Trabalho de metodologia/Emulador/src/main.cpp"
 }
 
 int main(int argc, char **argv){
@@ -90511,7 +90523,7 @@ int main(int argc, char **argv){
     for(size_t i {}; i < 70224; i+=cpu.last_ticks){
       roda_cpu(&cpu, timer);
       ppu.step(cpu.last_ticks, texture);
-
+      degub_func(&cpu, &ppu);
     }
 
     BeginDrawing();

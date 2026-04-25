@@ -1,7 +1,7 @@
 #include "memorybus.h"
 #include <algorithm>
 
-uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
+uint32_t decide_bg_color(GB::tile_pixel px, GB::Memorybus *bus){
 
     uint8_t cor_final{};
     uint8_t bgp {bus->read_byte(0xFF47)};
@@ -39,18 +39,14 @@ uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
 
 namespace GB{
 
-void PPU::scan_oam(void){
-  this->sprites_count = 0;
-  uint8_t ly = this->bus->memoria[0xFF44];
-  uint8_t sprite_sz = this->atual_spritesize();
-
-  auto decide_cor = [](uint8_t flags) -> uint32_t{
+uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
     using enum tile_pixel;
-    uint8_t obj_palette = (flags & (1 << 4)) ? this->bus->memoria[0xFF49] : this->bus->memoria[0xFF48];
+    uint8_t obj_palette = (sprite.flags & (1 << 4)) ? this->bus->memoria[0xFF49] : this->bus->memoria[0xFF48];
     uint8_t cor_final {};
 
+    switch(pos){
       case INDEX_ZERO: 
-        cor_final = (obj_palette >> 0) & 0x03;
+        return 0x00; //transparente
         break;
       case INDEX_ONE:
         cor_final = (obj_palette >> 2) & 0x03;
@@ -65,7 +61,7 @@ void PPU::scan_oam(void){
 
     switch(cor_final){
       case 0:
-        return 0x00;
+        return 0xFFFFFFFF;
       case 1:
         return 0xFFAAAAAA;
       case 2:
@@ -73,16 +69,20 @@ void PPU::scan_oam(void){
       case 3:
         return 0xFF000000;
       default:
-        return 0xFFFFFFFF;
+        return 0x00;
     }
-  };
+}
+
+void PPU::scan_oam(void){
+  this->sprites_count = 0;
+  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t sprite_sz = this->atual_spritesize();
 
   for(size_t i {}; i < 40 && sprites_count < 10; ++i){
     int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + i*4]) - 16;
 
     if(ly >= y && ly < y + sprite_sz){
-      uint32_t sprite_cor = decide_cor(this->bus->memoria[OAM_INICIO + i*4 + 3]);
-      this->sprites_sel[sprites_count++] = Sprite{sprite_cor, bus->memoria[OAM_INICIO + i*4], bus->memoria[OAM_INICIO + i*4 + 1],
+      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + i*4], bus->memoria[OAM_INICIO + i*4 + 1],
           bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
     }
   }
@@ -131,16 +131,43 @@ void PPU::merge_sprites(){
     int16_t linha = ly - sy;
     if(linha < 0 || linha >= sprite_altura) continue;
 
-     if(yflip)
-      linha = ((sprite_altura == 16) ? 15 : 7) - linha;
+    if(yflip)
+      linha = sprite_altura - 1 - linha;
 
+    uint8_t tile_index = sprite.tile_index;
+
+    if(sprite_altura == 16){
+      if(linha >= 8){
+        tile_index |= 0x01;
+        linha-=8;
+      }
+      else
+        tile_index &= 0xFE;
+    }
+
+    for(int px = 0; px < 8; ++px){
+      int16_t screen_x = sx + px;
+      if(screen_x < 0 || screen_x >= 160) continue;
+
+      int pixel_index = xflip ? (7 - px) : px;
+      tile_pixel cor = tileset[tile_index].pixels[linha * 8 + pixel_index];
+
+      if(cor == tile_pixel::INDEX_ZERO) continue; // transparente
+
+      uint32_t cor_final = decide_obj_color(sprite, cor);
+
+      if(bg_prio && framebuffer[ly * 160 + screen_x] != 0xFFFFFFFF)
+          continue;
+
+      framebuffer[ly*160 + screen_x] = cor_final;
+    }  
   }
 }
 
 void PPU::draw_line(void){
   
   std::array<tile_pixel, 160> px_prontos;
-  px_prontos.fill(tile_pixel::PX_WHITE);
+  px_prontos.fill(tile_pixel::INDEX_ZERO);
 
   constexpr uint8_t max_tiles = 32;
   constexpr uint8_t max_pixels = 160;
@@ -203,7 +230,7 @@ void PPU::draw_line(void){
       }
       else{
         for(size_t i {}; i < 8; ++i)
-          this->fetcher.push(tile_pixel::PX_WHITE);
+          this->fetcher.push(tile_pixel::INDEX_ZERO);
       }
       ++tiles_buscados;
     }
@@ -215,15 +242,15 @@ void PPU::draw_line(void){
   if(window_renderizada)
     ++win_line;
 
-  this->ppu_draw(px_prontos);
+  this->draw_bg(px_prontos);
   if(this->is_sprite_enabled())
     this->merge_sprites();
 }
 
-void PPU::ppu_draw(const std::array<tile_pixel, 160>& pixels){
+void PPU::draw_bg(const std::array<tile_pixel, 160>& pixels){
   uint8_t ly = this->bus->memoria[0xFF44];
   for(size_t i {}; i < 160; ++i){
-    this->framebuffer[160*ly + i] = tile_to_color(pixels[i], this->bus);
+    this->framebuffer[160*ly + i] = decide_bg_color(pixels[i], this->bus);
   }
 }
 

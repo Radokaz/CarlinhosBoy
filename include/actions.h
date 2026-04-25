@@ -83,7 +83,7 @@ namespace GBInstruct{
     }
 
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
-      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0: 1)));
       cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
       cpu->jp_flag = true;
       cpu->last_ticks = 12;
@@ -93,7 +93,8 @@ namespace GBInstruct{
       if(cpu->registradores.f & BIT_ZERO){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -104,7 +105,8 @@ namespace GBInstruct{
       if(cpu->registradores.f & BIT_CARRY){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -115,7 +117,8 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & BIT_ZERO)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -126,7 +129,8 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & BIT_CARRY)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        cpu->jp_flag = true;
+        if(!cpu->haltbug)
+          cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
