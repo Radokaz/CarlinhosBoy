@@ -82202,11 +82202,10 @@ uninitialized_value_construct_n(_ExecutionPolicy&& __exec, _ForwardIterator __fi
 namespace GB{
 
 enum class tile_pixel: uint8_t{
-  PX_BLACK = 0,
-  PX_LGRAY,
-  PX_DGRAY,
-  PX_WHITE,
-  PX_NULO
+  INDEX_ZERO = 0,
+  INDEX_ONE,
+  INDEX_TWO,
+  INDEX_THREE
 };
 
 
@@ -82216,7 +82215,7 @@ struct Tile{
   std::array<tile_pixel, 64> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::PX_NULO);
+    pixels.fill(tile_pixel::INDEX_ZERO);
   }
 };
 
@@ -82234,7 +82233,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::PX_NULO);
+    fila.fill(tile_pixel::INDEX_ZERO);
   }
 
   void push(tile_pixel alvo);
@@ -82264,8 +82263,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void discard_first_tile(void);
-  void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void merge_sprites();
+  void draw_bg(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
 
   uint16_t atual_wintilemap(void);
@@ -82285,6 +82284,7 @@ struct PPU{
   void check_stat_interruption(void);
 
   void avanca_ly(void);
+  uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
 struct Memorybus{
@@ -82305,6 +82305,7 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000;
           break;
         case 0xFF0F:
+        case 0xFFFF:
           memoria[endereco] |= 0b11100000;
           break;
         case 0xFF00:

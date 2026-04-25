@@ -82198,11 +82198,10 @@ uninitialized_value_construct_n(_ExecutionPolicy&& __exec, _ForwardIterator __fi
 namespace GB{
 
 enum class tile_pixel: uint8_t{
-  PX_BLACK = 0,
-  PX_LGRAY,
-  PX_DGRAY,
-  PX_WHITE,
-  PX_NULO
+  INDEX_ZERO = 0,
+  INDEX_ONE,
+  INDEX_TWO,
+  INDEX_THREE
 };
 
 
@@ -82212,7 +82211,7 @@ struct Tile{
   std::array<tile_pixel, 64> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::PX_NULO);
+    pixels.fill(tile_pixel::INDEX_ZERO);
   }
 };
 
@@ -82230,7 +82229,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::PX_NULO);
+    fila.fill(tile_pixel::INDEX_ZERO);
   }
 
   void push(tile_pixel alvo);
@@ -82260,8 +82259,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void discard_first_tile(void);
-  void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void merge_sprites();
+  void draw_bg(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
 
   uint16_t atual_wintilemap(void);
@@ -82281,6 +82280,7 @@ struct PPU{
   void check_stat_interruption(void);
 
   void avanca_ly(void);
+  uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
 struct Memorybus{
@@ -82301,6 +82301,7 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000;
           break;
         case 0xFF0F:
+        case 0xFFFF:
           memoria[endereco] |= 0b11100000;
           break;
         case 0xFF00:
@@ -86937,7 +86938,7 @@ lexicographical_compare(_ExecutionPolicy&& __exec, _ForwardIterator1 __first1, _
 
 
 # 4 "/home/radokaz/Trabalho de metodologia/Emulador/src/ppu_draw.cpp"
-uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
+uint32_t decide_bg_color(GB::tile_pixel px, GB::Memorybus *bus){
 
     uint8_t cor_final{};
     uint8_t bgp {bus->read_byte(0xFF47)};
@@ -86945,16 +86946,16 @@ uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
       using namespace GB;
       using enum tile_pixel;
 
-      case PX_WHITE:
+      case INDEX_ZERO:
         cor_final = (bgp >> 0) & 0x03;
         break;
-      case PX_LGRAY:
+      case INDEX_ONE:
         cor_final = (bgp >> 2) & 0x03;
         break;
-      case PX_DGRAY:
+      case INDEX_TWO:
         cor_final = (bgp >> 4) & 0x03;
         break;
-      case PX_BLACK:
+      case INDEX_THREE:
         cor_final = (bgp >> 6) & 0x03;;
         break;
     }
@@ -86974,6 +86975,40 @@ uint32_t tile_to_color(GB::tile_pixel px, GB::Memorybus *bus){
 }
 
 namespace GB{
+
+uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
+    using enum tile_pixel;
+    uint8_t obj_palette = (sprite.flags & (1 << 4)) ? this->bus->memoria[0xFF49] : this->bus->memoria[0xFF48];
+    uint8_t cor_final {};
+
+    switch(pos){
+      case INDEX_ZERO:
+        return 0x00;
+        break;
+      case INDEX_ONE:
+        cor_final = (obj_palette >> 2) & 0x03;
+        break;
+      case INDEX_TWO:
+        cor_final = (obj_palette >> 4) & 0x03;
+        break;
+      case INDEX_THREE:
+        cor_final = (obj_palette >> 6) & 0x03;;
+        break;
+    }
+
+    switch(cor_final){
+      case 0:
+        return 0xFFFFFFFF;
+      case 1:
+        return 0xFFAAAAAA;
+      case 2:
+        return 0xFF555555;
+      case 3:
+        return 0xFF000000;
+      default:
+        return 0x00;
+    }
+}
 
 void PPU::scan_oam(void){
   this->sprites_count = 0;
@@ -87010,7 +87045,7 @@ void PPU::discard_first_tile(void){
   }
 }
 
-void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
+void PPU::merge_sprites(){
 
   uint8_t ly = this->bus->memoria[0xFF44];
   uint8_t sprite_altura = this->atual_spritesize();
@@ -87029,39 +87064,39 @@ void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
     bool xflip = sprite.flags & (1 << 5);
     bool yflip = sprite.flags & (1 << 6);
     bool bg_prio = sprite.flags & (1 << 7);
-    bool palette = sprite.flags & (1 << 4);
 
     int16_t linha = ly - sy;
     if(linha < 0 || linha >= sprite_altura) continue;
 
-     if(yflip)
-      linha = ((sprite_altura == 16) ? 15 : 7) - linha;
+    if(yflip)
+      linha = sprite_altura - 1 - linha;
 
-    uint16_t tile_index = sprite.tile_index;
+    uint8_t tile_index = sprite.tile_index;
 
     if(sprite_altura == 16){
-      tile_index &= 0xFE;
       if(linha >= 8){
-        tile_index |= 1;
-        linha -= 8;
+        tile_index |= 0x01;
+        linha-=8;
       }
+      else
+        tile_index &= 0xFE;
     }
 
-    const auto& tile = tileset[tile_index];
-
-    for(size_t px {0}; px < 8; ++px){
+    for(int px = 0; px < 8; ++px){
       int16_t screen_x = sx + px;
       if(screen_x < 0 || screen_x >= 160) continue;
 
-      int16_t tile_px = (xflip != 0) ? (7 - px) : px;
-      tile_pixel cor = tile.pixels[linha * 8 + tile_px];
-      if(bg_prio || cor == tile_pixel::PX_BLACK)
-        continue;
+      int pixel_index = xflip ? (7 - px) : px;
+      tile_pixel cor = tileset[tile_index].pixels[linha * 8 + pixel_index];
 
-      uint8_t obgp = (palette) ? this->bus->memoria[0xFF49] : this->bus->memoria[0xFF48];
-      uint8_t cor_final = (obgp >> (static_cast<uint8_t>(cor) * 2)) & 0x03;
-      if(bg_prio && pixels[screen_x] != tile_pixel::PX_BLACK)
-        pixels[screen_x] = static_cast<tile_pixel>(cor_final);
+      if(cor == tile_pixel::INDEX_ZERO) continue;
+
+      uint32_t cor_final = decide_obj_color(sprite, cor);
+
+      if(bg_prio && framebuffer[ly * 160 + screen_x] != 0xFFFFFFFF)
+          continue;
+
+      framebuffer[ly*160 + screen_x] = cor_final;
     }
   }
 }
@@ -87069,7 +87104,7 @@ void PPU::merge_sprites(std::array<tile_pixel, 160>& pixels){
 void PPU::draw_line(void){
 
   std::array<tile_pixel, 160> px_prontos;
-  px_prontos.fill(tile_pixel::PX_WHITE);
+  px_prontos.fill(tile_pixel::INDEX_ZERO);
 
   constexpr uint8_t max_tiles = 32;
   constexpr uint8_t max_pixels = 160;
@@ -87132,7 +87167,7 @@ void PPU::draw_line(void){
       }
       else{
         for(size_t i {}; i < 8; ++i)
-          this->fetcher.push(tile_pixel::PX_WHITE);
+          this->fetcher.push(tile_pixel::INDEX_ZERO);
       }
       ++tiles_buscados;
     }
@@ -87144,16 +87179,15 @@ void PPU::draw_line(void){
   if(window_renderizada)
     ++win_line;
 
+  this->draw_bg(px_prontos);
   if(this->is_sprite_enabled())
-    this->merge_sprites(px_prontos);
-
-  this->ppu_draw(px_prontos);
+    this->merge_sprites();
 }
 
-void PPU::ppu_draw(const std::array<tile_pixel, 160>& pixels){
+void PPU::draw_bg(const std::array<tile_pixel, 160>& pixels){
   uint8_t ly = this->bus->memoria[0xFF44];
   for(size_t i {}; i < 160; ++i){
-    this->framebuffer[160*ly + i] = tile_to_color(pixels[i], this->bus);
+    this->framebuffer[160*ly + i] = decide_bg_color(pixels[i], this->bus);
   }
 }
 

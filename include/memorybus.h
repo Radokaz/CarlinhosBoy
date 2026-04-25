@@ -51,7 +51,6 @@ struct Tile{
 };
 
 struct Sprite{
-  uint32_t cor {0x00};
   uint8_t y;
   uint8_t x;
   uint8_t tile_index;
@@ -95,8 +94,8 @@ struct PPU{
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
   void discard_first_tile(void);
-  void merge_sprites(std::array<tile_pixel, 160>& pixels);
-  void ppu_draw(const std::array<tile_pixel, 160>& pixels);
+  void merge_sprites();
+  void draw_bg(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
 
   uint16_t atual_wintilemap(void);
@@ -116,6 +115,7 @@ struct PPU{
   void check_stat_interruption(void);
   //ly é o registrador que marca a linha sendo scaneada no momento
   void avanca_ly(void);
+  uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
 struct Memorybus{
@@ -136,6 +136,7 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000; 
           break;
         case 0xFF0F: //if
+        case 0xFFFF: //ie
           memoria[endereco] |= 0b11100000; 
           break;
         case 0xFF00: //joypad
