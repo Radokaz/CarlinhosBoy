@@ -45,7 +45,7 @@ bool PPU::is_win_enabled(void){
   return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_WIN_ENABLE) & 0x01);
 }
 
-bool PPU::is_gb_enabled(void){
+bool PPU::is_bg_enabled(void){
   return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_BG_ENABLE) & 0x01);
 }
 
@@ -56,7 +56,7 @@ bool PPU::is_sprite_enabled(void){
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
 uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
 uint8_t& PPU::get_winx(void) { return bus->memoria[0xFF4A]; }
-uint8_t& PPU::get_winy(void) {return bus-<memoria[0xFF4B]; }
+uint8_t& PPU::get_winy(void) {return bus->memoria[0xFF4B]; }
 
 void PPU::set_mode(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
@@ -110,18 +110,18 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
       uint8_t mask = 1 << (7 - i);
       uint8_t bit1 = ((byte1 & mask) >> (7 - i));
       uint8_t bit2 = ((byte2 & mask) >> (7 - i));
-      switch((bit1 << 1) | bit2){
+      switch((bit2 << 1) | bit1){
         case 0x00:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_BLACK;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ZERO;
           break;
         case 0x01:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_LGRAY;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ONE;
           break;
         case 0x02:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_DGRAY;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_TWO;
           break;
         case 0x03:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::PX_WHITE;
+          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_THREE;
           break;
       }
     }
@@ -157,6 +157,7 @@ void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
         if(this->bus->memoria[0xFF44] == 144){
           this->bus->memoria[0xFF0F] |= BIT_VBLANK;
           this->set_mode(screen_mode::VBLANK);
+          this->win_line = 0;
           UpdateTexture(texture, this->framebuffer.data());
         }
         else{

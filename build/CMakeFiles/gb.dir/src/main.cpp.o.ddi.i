@@ -82258,6 +82258,7 @@ struct PPU{
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
+  uint8_t win_line {};
   Memorybus *bus {};
   uint16_t ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
@@ -82266,9 +82267,11 @@ struct PPU{
   PPU(){
     framebuffer.fill(0xFFFFFFFF);
   }
+
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(uint8_t cpu_ciclos, Texture2D& texture);
   void scan_oam(void);
+  void discard_first_tile(void);
   void merge_sprites(std::array<tile_pixel, 160>& pixels);
   void ppu_draw(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
@@ -82279,10 +82282,12 @@ struct PPU{
   uint8_t atual_spritesize(void);
   bool is_lcd_enabled(void);
   bool is_win_enabled(void);
-  bool is_gb_enabled(void);
+  bool is_bg_enabled(void);
   bool is_sprite_enabled(void);
   uint8_t& get_scrolly(void);
   uint8_t& get_scrollx(void);
+  uint8_t& get_winx(void);
+  uint8_t& get_winy(void);
   void set_mode(screen_mode modo);
   bool check_stat(void);
   void check_stat_interruption(void);
