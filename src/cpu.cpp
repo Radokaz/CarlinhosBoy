@@ -17,7 +17,7 @@ void roda_cpu(CPU *atual, Timer& timer){
 void CPU::check(void){
     uint8_t Ie = this->get_ie();
     uint8_t If = this->get_if();
-    if(Ie & If)
+    if(Ie & If & 0x1F)
       this->halted = false;
 
     if(this->ime){
@@ -44,7 +44,7 @@ bool CPU::check_joypad(void){
   uint8_t prev = this->bus.pad->controles_prev;
   uint8_t curr = this->bus.pad->controles;
 
-  if(prev & ~curr & 0x0F){
+  if(prev & ~curr){
     this->get_if() |= BIT_JOYPAD;
     return true;
   }
@@ -66,19 +66,20 @@ void CPU::step(){
   }
 
   uint8_t inst_byte = this->bus.read_byte(this->pc);
+  this->last_instruct = inst_byte;
 
   try{
     auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
-    std::cout << "Last inst: " << std::hex << static_cast<int>(inst_byte) << std::dec << "\n";
+    //std::cout << "Last inst: " << std::hex << static_cast<int>(inst_byte) << std::dec << "\n";
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
 
-    if(!this->jp_flag){
-      if(!this->haltbug)
-        this->pc+=current_act.tamanho;
+    if(!this->jp_flag)
+      this->pc+=current_act.tamanho;
+
+    if(this->haltbug && current_act.execute != &GBInstruct::HALT)
       this->haltbug = false;
-    }
   }
   catch(std::exception& ex){
     std::cerr << "Erro: " << ex.what() << "\n";
@@ -88,41 +89,50 @@ void CPU::step(){
   this->jp_flag = false;
   if(set_ime)
     this->ime = true;
+
+  /*if(this->ime)
+    std::cout << "ime: " << std::boolalpha << this->ime << "\n";*/
+  
 }
 
 void CPU::jump_vblank(void){
   this->push(this->pc);
   this->pc = 0x0040;
-  this->ime = 0;
+  this->ime = false;
   this->get_if() &= ~BIT_VBLANK;
+  std::cout << "Interrupção: VBLANK\n"; 
 }
 
 void CPU::jump_serial(void){
   this->push(this->pc);
   this->pc = 0x0058;
-  this->ime = 0;
+  this->ime = false;
   this->get_if() &= ~BIT_SERIAL;
+  std::cout << "Interrupção: SERIAL\n"; 
 }
 
 void CPU::jump_timer(void){
   this->push(this->pc);
   this->pc = 0x0050;
-  this->ime = 0;
+  this->ime = false;
   this->get_if() &= ~BIT_TIMER;
+  std::cout << "Interrupção: TIMER\n"; 
 }
 
 void CPU::jump_lcdstat(void){
   this->push(this->pc);
   this->pc = 0x0048;
-  this->ime = 0;
+  this->ime = false;
   this->get_if() &= ~BIT_LCDSTAT;
+  std::cout << "Interrupção: STAT\n"; 
 }
 
 void CPU::jump_joypad(void){
   this->push(this->pc);
   this->pc = 0x0060;
-  this->ime = 0;
+  this->ime = false;
   this->get_if() &= ~BIT_JOYPAD;
+  std::cout << "Interrupção: JOYPAD\n"; 
 }
 
 uint8_t& CPU::get_target(reg_target alvo){

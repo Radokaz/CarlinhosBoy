@@ -77,7 +77,8 @@ int main(int argc, char **argv){
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
       roda_cpu(&cpu, timer);
       ppu.step(cpu.last_ticks, texture);
-      degub_func(&cpu, &ppu);
+      // cpu.check();
+      //degub_func(&cpu, &ppu);
     }
 
     BeginDrawing();

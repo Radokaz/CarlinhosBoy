@@ -82301,7 +82301,6 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000;
           break;
         case 0xFF0F:
-        case 0xFFFF:
           memoria[endereco] |= 0b11100000;
           break;
         case 0xFF00:
@@ -82344,8 +82343,6 @@ struct Memorybus{
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){
       char c = memoria[0xFF01];
-      std::cout << c << std::flush;
-      c = memoria[0xFF02];
       std::cout << c << std::flush;
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~(1 << 3);
@@ -82418,8 +82415,8 @@ bool PPU::is_sprite_enabled(void){
 
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
 uint8_t& PPU::get_scrollx(void) { return bus->memoria[0xFF43]; }
-uint8_t& PPU::get_winx(void) { return bus->memoria[0xFF4A]; }
-uint8_t& PPU::get_winy(void) {return bus->memoria[0xFF4B]; }
+uint8_t& PPU::get_winy(void) { return bus->memoria[0xFF4A]; }
+uint8_t& PPU::get_winx(void) {return bus->memoria[0xFF4B]; }
 
 void PPU::set_mode(screen_mode modo){
     uint8_t& stat = bus->memoria[0xFF41];
@@ -82436,7 +82433,7 @@ bool PPU::check_stat(void){
     uint8_t lyc = bus->memoria[0xFF45];
     uint8_t& stat = bus->memoria[0xFF41];
 
-    return (((ly == lyc) && (stat & (1 << 2))) ||
+    return (((ly == lyc) && (stat & (1 << 6))) ||
     ((this->modo_atual == screen_mode::HBLANK) && (stat & (1 << 3) )) ||
     ((this->modo_atual == screen_mode::SOAMRAM) && (stat & (1 << 5))) ||
     ((this->modo_atual == screen_mode::VBLANK) && ((stat & (1 << 4)) || (stat & (1 << 5)))));

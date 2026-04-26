@@ -119,48 +119,7 @@ void PPU::merge_sprites(){
       });
 
   for(size_t i {}; i < sprites_count; ++i){
-    Sprite& sprite = sprites_sel[i];
-    int16_t sx = static_cast<int16_t>(sprite.x) - 8;
-    int16_t sy = static_cast<int16_t>(sprite.y) - 16;
-    if(sx >= 160 || sx <= -8) continue;
-
-    bool xflip = sprite.flags & (1 << 5);
-    bool yflip = sprite.flags & (1 << 6);
-    bool bg_prio = sprite.flags & (1 << 7);
-
-    int16_t linha = ly - sy;
-    if(linha < 0 || linha >= sprite_altura) continue;
-
-    if(yflip)
-      linha = sprite_altura - 1 - linha;
-
-    uint8_t tile_index = sprite.tile_index;
-
-    if(sprite_altura == 16){
-      if(linha >= 8){
-        tile_index |= 0x01;
-        linha-=8;
-      }
-      else
-        tile_index &= 0xFE;
-    }
-
-    for(int px = 0; px < 8; ++px){
-      int16_t screen_x = sx + px;
-      if(screen_x < 0 || screen_x >= 160) continue;
-
-      int pixel_index = xflip ? (7 - px) : px;
-      tile_pixel cor = tileset[tile_index].pixels[linha * 8 + pixel_index];
-
-      if(cor == tile_pixel::INDEX_ZERO) continue; // transparente
-
-      uint32_t cor_final = decide_obj_color(sprite, cor);
-
-      if(bg_prio && framebuffer[ly * 160 + screen_x] != 0xFFFFFFFF)
-          continue;
-
-      framebuffer[ly*160 + screen_x] = cor_final;
-    }  
+    //TODO   
   }
 }
 
@@ -200,48 +159,8 @@ void PPU::draw_line(void){
   }
      
   for(size_t x {}; x < max_pixels; ++x){
-    if(renderiza_window && x >= tela_x){
-      window_renderizada = true;
-      renderiza_window = false;
-      this->fetcher.clear();
-      tiles_buscados = 0;
-    }
-
-    if(this->fetcher.size <= 8){
-      uint16_t tile_i {};
-      if(window_renderizada){
-        uint8_t win_x = tiles_buscados;
-        uint8_t win_tile_line = this->win_line % 8;
-        uint8_t win_tile_row = this->win_line / 8;
-        tile_i = bus->memoria[tilemap + win_tile_row*32 + (win_x % 32)];
-        if(tiledata == 0x8800)
-          tile_i = static_cast<uint16_t>(static_cast<int8_t>(tile_i) + 128);
-
-        for(size_t i {}; i < 8; ++i)
-          this->fetcher.push(tileset[tile_i].pixels[win_tile_line * 8 + i]);
-      } 
-      else if(this->is_bg_enabled() && !renderiza_window){
-        uint8_t coluna = ((tela_x/8) + tiles_buscados) % 32;
-        tile_i = bus->memoria[tilemap + (((tela_y + ly) % 256)/8)*32 + coluna];
-        if(tiledata == 0x8800)
-          tile_i = static_cast<uint16_t>(static_cast<int8_t>(tile_i) + 128);
-        for(size_t i {}; i < 8; ++i)
-          this->fetcher.push(tileset[tile_i].pixels[(((tela_y + ly) % 256) % 8)*8 + i]);
-      }
-      else{
-        for(size_t i {}; i < 8; ++i)
-          this->fetcher.push(tile_pixel::INDEX_ZERO);
-      }
-      ++tiles_buscados;
-    }
-        
-    if(this->fetcher.size > 0)
-      px_prontos[x] = fetcher.pop();
+    //TODO
   }
-
-  if(window_renderizada)
-    ++win_line;
-
   this->draw_bg(px_prontos);
   if(this->is_sprite_enabled())
     this->merge_sprites();

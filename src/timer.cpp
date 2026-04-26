@@ -17,8 +17,8 @@ void Timer::step(uint8_t ciclos, Memorybus& bus){
         bus.read_byte(0xFF0F) |= BIT_TIMER;
         timaoverflow = false;
         timaoverflow_count = 0;
-        continue;
       }
+      continue;
     }
 
     uint8_t bit{};

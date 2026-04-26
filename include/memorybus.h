@@ -136,7 +136,6 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000; 
           break;
         case 0xFF0F: //if
-        case 0xFFFF: //ie
           memoria[endereco] |= 0b11100000; 
           break;
         case 0xFF00: //joypad
@@ -179,8 +178,6 @@ struct Memorybus{
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
       char c = memoria[0xFF01];
-      std::cout << c << std::flush;
-      c = memoria[0xFF02];
       std::cout << c << std::flush;
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~BIT_SERIAL;
