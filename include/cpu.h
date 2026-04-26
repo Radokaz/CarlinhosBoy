@@ -86,7 +86,7 @@ struct Registradores{
 
 
 struct Timer{
-    uint16_t div_count {0xAC00};
+    uint16_t div_count {0xAB00};
     bool prev_bit {};
     bool timaoverflow {};
     uint8_t timaoverflow_count {};
@@ -101,6 +101,7 @@ struct CPU{
   uint16_t pc {0x0100}; 
   uint16_t sp {0xFFFE}; 
   uint8_t last_ticks {};
+  uint8_t last_instruct {};
   bool jp_flag {false};
   bool halted {false};
   bool haltbug {false};

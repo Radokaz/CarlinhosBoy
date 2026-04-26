@@ -82309,7 +82309,6 @@ struct Memorybus{
           memoria[endereco] |= 0b11111000;
           break;
         case 0xFF0F:
-        case 0xFFFF:
           memoria[endereco] |= 0b11100000;
           break;
         case 0xFF00:
@@ -82352,8 +82351,6 @@ struct Memorybus{
     }
     if(endereco == 0xFF02 && (valor & 0x81) == 0x81){
       char c = memoria[0xFF01];
-      std::cout << c << std::flush;
-      c = memoria[0xFF02];
       std::cout << c << std::flush;
       memoria[0xFF01] = 0xFF;
       memoria[0xFF02] &= ~(1 << 3);
@@ -82454,7 +82451,7 @@ struct Registradores{
 
 
 struct Timer{
-    uint16_t div_count {0xAC00};
+    uint16_t div_count {0xAB00};
     bool prev_bit {};
     bool timaoverflow {};
     uint8_t timaoverflow_count {};
@@ -82469,6 +82466,7 @@ struct CPU{
   uint16_t pc {0x0100};
   uint16_t sp {0xFFFE};
   uint8_t last_ticks {};
+  uint8_t last_instruct {};
   bool jp_flag {false};
   bool halted {false};
   bool haltbug {false};
@@ -82538,7 +82536,7 @@ namespace GBInstruct{
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      if(cpu->get_ie() & cpu->get_if() & 0x1F)
+      if((cpu->get_ie() & cpu->get_if() & 0x1F) && !cpu->ime)
         cpu->haltbug = true;
       else
         cpu->halted = true;
@@ -82558,15 +82556,13 @@ namespace GBInstruct{
         cpu->last_ticks = 16;
       }
 
-      if(!cpu->haltbug)
-        cpu->jp_flag = true;
+      cpu->jp_flag = true;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {
       if(cpu->registradores.f & (1 << 7)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82576,8 +82572,7 @@ namespace GBInstruct{
     inline void JPCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & (1 << 4)){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82587,8 +82582,7 @@ namespace GBInstruct{
     inline void JPNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 7))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82598,8 +82592,7 @@ namespace GBInstruct{
     inline void JPNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & (1 << 4))){
         cpu->pc = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) | (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8));
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 16;
       }
       else
@@ -82609,8 +82602,7 @@ namespace GBInstruct{
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
       int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
       cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-      if(!cpu->haltbug)
-        cpu->jp_flag = true;
+      cpu->jp_flag = true;
       cpu->last_ticks = 12;
     }
 
@@ -82618,8 +82610,7 @@ namespace GBInstruct{
       if(cpu->registradores.f & (1 << 7)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82630,8 +82621,7 @@ namespace GBInstruct{
       if(cpu->registradores.f & (1 << 4)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82642,8 +82632,7 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & (1 << 7))){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -82654,8 +82643,7 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & (1 << 4))){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -83091,6 +83079,7 @@ namespace GBInstruct{
 
     inline void DI(const Action& atual, CPU *cpu){
       cpu->ime = false;
+      cpu->ime_ie = false;
       cpu->last_ticks = 4;
     }
 
@@ -83292,7 +83281,7 @@ namespace GBInstruct{
 
       cpu->last_ticks = 4;
     }
-# 784 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
+# 775 "/home/radokaz/Trabalho de metodologia/Emulador/include/actions.h"
 }
 # 2 "/home/radokaz/Trabalho de metodologia/Emulador/src/instrucoes.cpp" 2
 

@@ -41,13 +41,19 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   cpu->bus.memoria[0xFF12] = 0xF3;
   cpu->bus.memoria[0xFF14] = 0xBF;
   cpu->bus.memoria[0xFF16] = 0x3F;
-  cpu->bus.memoria[0xFF0F] = 0xE1;
-  cpu->bus.memoria[0xFFFF] = 0x00;
-  cpu->bus.memoria[0xFF00] = 0xFF;
+  cpu->bus.memoria[0xFF0F] = 0xE1; //IF
+  cpu->bus.memoria[0xFFFF] = 0x00; //IE
+  cpu->bus.memoria[0xFF00] = 0xFF; //Joypad
   cpu->bus.memoria[0xFF40] = 0x91; // LCDC
   cpu->bus.memoria[0xFF41] = 0x85; // STAT
   cpu->bus.memoria[0xFF44] = 0x00; // LY
+  cpu->bus.memoria[0xFF45] = 0x00; // LYC
+  cpu->bus.memoria[0xFF46] = 0xFF; // DMA
   cpu->bus.memoria[0xFF47] = 0xFC; // BGP
+  cpu->bus.memoria[0xFF48] = 0xFF; // OBP0
+  cpu->bus.memoria[0xFF49] = 0xFF; // OBP1
+  cpu->bus.memoria[0xFF4A] = 0x00; // WY
+  cpu->bus.memoria[0xFF4B] = 0x00; // WX
 
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
 }

@@ -19,7 +19,7 @@ namespace GBInstruct{
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      if(cpu->get_ie() & cpu->get_if() & 0x1F)
+      if((cpu->get_ie() & cpu->get_if() & 0x1F) && !cpu->ime)
         cpu->haltbug = true;
       else
         cpu->halted = true;
@@ -83,7 +83,7 @@ namespace GBInstruct{
     }
 
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
-      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0: 1)));
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
       cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
       cpu->jp_flag = true;
       cpu->last_ticks = 12;
@@ -93,8 +93,7 @@ namespace GBInstruct{
       if(cpu->registradores.f & BIT_ZERO){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -105,8 +104,7 @@ namespace GBInstruct{
       if(cpu->registradores.f & BIT_CARRY){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -117,8 +115,7 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & BIT_ZERO)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -129,8 +126,7 @@ namespace GBInstruct{
       if(!(cpu->registradores.f & BIT_CARRY)){
         int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + 1));
         cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
-        if(!cpu->haltbug)
-          cpu->jp_flag = true;
+        cpu->jp_flag = true;
         cpu->last_ticks = 12;
       }
       else
@@ -566,6 +562,7 @@ namespace GBInstruct{
 
     inline void DI(const Action& atual, CPU *cpu){
       cpu->ime = false;
+      cpu->ime_ie = false;
       cpu->last_ticks = 4;
     }
 
