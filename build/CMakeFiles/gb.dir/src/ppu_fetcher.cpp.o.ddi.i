@@ -69098,13 +69098,13 @@ struct DMA{
   bool ativo {false};
   uint8_t byte {};
   uint8_t valor {};
-  uint8_t atraso {};
+  int8_t atraso {};
 
   void start(uint8_t valor){
     ativo = true;
     byte = 0;
     this->valor = valor;
-    atraso = 2;
+    atraso = 1;
   }
 
   void step(uint8_t *memoria){
@@ -82201,17 +82201,19 @@ enum class tile_pixel: uint8_t{
   INDEX_ZERO = 0,
   INDEX_ONE,
   INDEX_TWO,
-  INDEX_THREE
+  INDEX_THREE,
+  INDEX_NULO
 };
 
 
 
 
 struct Tile{
-  std::array<tile_pixel, 64> pixels;
+  std::array<std::array<tile_pixel, 8>, 8> pixels;
 
   Tile(){
-    pixels.fill(tile_pixel::INDEX_ZERO);
+    for(size_t i {}; i < pixels.size(); ++i)
+      pixels[i].fill(tile_pixel::INDEX_NULO);
   }
 };
 
@@ -82229,7 +82231,7 @@ struct PPU_fetcher{
   uint8_t size {};
 
   PPU_fetcher(){
-    fila.fill(tile_pixel::INDEX_ZERO);
+    fila.fill(tile_pixel::INDEX_NULO);
   }
 
   void push(tile_pixel alvo);
@@ -82240,7 +82242,7 @@ struct PPU_fetcher{
 struct Memorybus;
 
 struct PPU{
-  std::array<uint32_t, 160*144> framebuffer;
+  std::array<std::array<uint32_t, 160>, 144> framebuffer;
   std::array<Tile, (0x9800 - 0x8000)/16> tileset{};
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
@@ -82252,7 +82254,8 @@ struct PPU{
   bool stat_prev {false};
 
   PPU(){
-    framebuffer.fill(0xFFFFFFFF);
+    for(size_t i {}; i < framebuffer.size(); ++i)
+      framebuffer[i].fill(0xFFFFFFFF);
   }
 
   void write_vram(uint16_t endereco, uint8_t valor);
@@ -82260,7 +82263,9 @@ struct PPU{
   void scan_oam(void);
   void discard_first_tile(void);
   void merge_sprites();
-  void draw_bg(const std::array<tile_pixel, 160>& pixels);
+  void draw_window(std::array<tile_pixel, 160>& pixels);
+  void draw_background(std::array<tile_pixel, 160>& pixels);
+  void draw_framebuffer(const std::array<tile_pixel, 160>& pixels);
   void draw_line(void);
 
   uint16_t atual_wintilemap(void);
@@ -82280,6 +82285,7 @@ struct PPU{
   void check_stat_interruption(void);
 
   void avanca_ly(void);
+  uint32_t decide_bg_color(tile_pixel px);
   uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
@@ -82314,7 +82320,7 @@ struct Memorybus{
       dma_hack = 0xFF;
       return dma_hack;
     }
-    if(endereco >= 0x8000 && endereco < 0xA000 && ppu->modo_atual == screen_mode::DRAWING){
+    if(endereco >= 0x8000 && endereco < 0xA000 && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING)){
       dma_hack = 0xFF;
       return dma_hack;
     }
@@ -82472,16 +82478,16 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
       uint8_t bit2 = ((byte2 & mask) >> (7 - i));
       switch((bit2 << 1) | bit1){
         case 0x00:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ZERO;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ZERO;
           break;
         case 0x01:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ONE;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ONE;
           break;
         case 0x02:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_TWO;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_TWO;
           break;
         case 0x03:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_THREE;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_THREE;
           break;
       }
     }

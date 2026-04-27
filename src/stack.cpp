@@ -38,7 +38,7 @@ uint16_t CPU::pop(void){
 }
 
 void CPU::call(uint16_t endereco){
-  uint16_t pc_prox = this->pc + 3;
+  uint16_t pc_prox = (!this->haltbug) ? this->pc + 3 : this->pc + 2;
   this->push(pc_prox);
   this->pc = endereco;
 }

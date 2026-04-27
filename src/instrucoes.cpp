@@ -468,7 +468,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xD9:
       return Action(RETI, 0);
     case 0xE9:
-      return Action(JPALWAYS, 3, HL);
+      return Action(JPALWAYS, 1, HL);
     case 0xF9:
       return Action(LDDUP, 1, SP, 0, 0, HL);
     case 0xCA:

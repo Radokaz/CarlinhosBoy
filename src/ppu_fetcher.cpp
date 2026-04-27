@@ -112,16 +112,16 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
       uint8_t bit2 = ((byte2 & mask) >> (7 - i));
       switch((bit2 << 1) | bit1){
         case 0x00:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ZERO;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ZERO;
           break;
         case 0x01:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_ONE;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ONE;
           break;
         case 0x02:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_TWO;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_TWO;
           break;
         case 0x03:
-          tileset[tile_index].pixels[linha*8 + i] = tile_pixel::INDEX_THREE;
+          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_THREE;
           break;
       }
     }

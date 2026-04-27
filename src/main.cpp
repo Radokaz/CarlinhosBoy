@@ -75,9 +75,7 @@ int main(int argc, char **argv){
     le_input(pad);
     
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
-      roda_cpu(&cpu, timer);
-      ppu.step(cpu.last_ticks, texture);
-      // cpu.check();
+      roda_cpu(&cpu, timer, ppu, texture);
       //degub_func(&cpu, &ppu);
     }
 
