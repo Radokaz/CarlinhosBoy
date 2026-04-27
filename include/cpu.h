@@ -150,7 +150,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
-void roda_cpu(CPU *atual, Timer& timer);
+void roda_cpu(CPU *atual, Timer& timer, PPU& ppu, Texture2D& texture);
 
 }
 

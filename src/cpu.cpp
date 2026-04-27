@@ -2,7 +2,7 @@
 
 namespace GB{
 
-void roda_cpu(CPU *atual, Timer& timer){
+void roda_cpu(CPU *atual, Timer& timer, PPU& ppu, Texture2D& texture){
   if(atual->check_joypad() || (atual->get_if() & 0x1F)){
     atual->stepping = true;
   }
@@ -12,6 +12,8 @@ void roda_cpu(CPU *atual, Timer& timer){
   timer.step(atual->last_ticks, atual->bus);
   for(size_t i {}; i < atual->last_ticks; i+=4)
       atual->bus.dma->step(atual->bus.memoria.data());
+
+  ppu.step(atual->last_ticks, texture);
 }
 
 void CPU::check(void){
@@ -75,7 +77,7 @@ void CPU::step(){
     if(current_act.execute == &GBInstruct::DI)
       set_ime = false;
 
-    if(!this->jp_flag)
+    if(!this->jp_flag && !this->haltbug)
       this->pc+=current_act.tamanho;
 
     if(this->haltbug && current_act.execute != &GBInstruct::HALT)
@@ -90,9 +92,6 @@ void CPU::step(){
   if(set_ime)
     this->ime = true;
 
-  /*if(this->ime)
-    std::cout << "ime: " << std::boolalpha << this->ime << "\n";*/
-  
 }
 
 void CPU::jump_vblank(void){
@@ -172,14 +171,24 @@ uint8_t& CPU::get_target(reg_target alvo){
       return this->bus.read_byte(temp);
     }
     case A8:
-      return this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)));
+      if(!this->haltbug)
+        return this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)));
+      else
+        return this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->bus.read_byte(this->pc)));
     case A16:{
-      uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc + 1));
-      uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8);
-      return this->bus.read_byte(lower | upper);
+      if(!this->haltbug){
+        uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc + 1));
+        uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8);
+        return this->bus.read_byte(lower | upper);
+      }
+      else{
+        uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc));
+        uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) << 8);
+        return this->bus.read_byte(lower | upper);
+      }
     }
     case n:
-      return this->bus.read_byte(this->pc + 1);
+      return (!this->haltbug) ? this->bus.read_byte(this->pc + 1) : this->bus.read_byte(this->pc);
     case CPTR:
       return this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->registradores.c));
     default:
@@ -191,9 +200,16 @@ uint16_t CPU::get_target_duplo(reg_target alvo){
     if(alvo == reg_target::SP)
       return this->sp;
     if(alvo == reg_target::n){
-      uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc + 1));
-      uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8);
-      return (lower | upper);
+      if(!this->haltbug){
+        uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc + 1));
+        uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 2)) << 8);
+        return (lower | upper);
+      }
+      else{
+        uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc));
+        uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc + 1)) << 8);
+        return (lower | upper);
+      }
     }
     return this->registradores.get_duplo(alvo);
 }

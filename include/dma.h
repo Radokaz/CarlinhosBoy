@@ -7,13 +7,13 @@ struct DMA{
   bool ativo {false};
   uint8_t byte {};
   uint8_t valor {};
-  uint8_t atraso {};
+  int8_t atraso {};
 
   void start(uint8_t valor){
     ativo = true;
     byte = 0;
     this->valor = valor;
-    atraso = 2;
+    atraso = 1;
   }
 
   void step(uint8_t *memoria){
