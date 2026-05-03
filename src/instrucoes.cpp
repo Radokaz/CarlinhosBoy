@@ -7,8 +7,12 @@ Action le_byte(uint8_t byte, CPU *atual){
     using enum reg_target;
     using namespace GBInstruct;
 
-    case 0xCB:
-      return le_byte_cb(atual->bus.read_byte(atual->pc + 1), atual);
+    case 0xCB:{
+      uint8_t prox = atual->bus.read_byte(atual->pc + 1);
+      roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
+      atual->last_instruct+=0xCB00;
+      return le_byte_cb(prox, atual);
+    }
     case 0x00:
       return Action(NOP, 1);
     case 0x10:
@@ -403,8 +407,11 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(RETNZERO, 1);
     case 0xD0:
       return Action(RETNCARRY, 1);
-    case 0xE0:
-      return Action(LD, 2, A8, 0xFF00 + static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 1)), 12, A);
+    case 0xE0:{
+      uint16_t byte = static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 1));
+      roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
+      return Action(LD, 2, A8, 0xFF00 + byte, 12, A);
+      }
     case 0xF0:
       return Action(LD, 2, A, 0xFEA0, 12, A8);
     case 0xC1:
@@ -439,14 +446,18 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(PUSH, 1, HL);
     case 0xF5:
       return Action(PUSH, 1, AF);
-    case 0xC6:
-      return Action(ADD, 2, n, atual->bus.read_byte(atual->pc + 1));
-    case 0xD6:
-      return Action(SUB, 2, n, atual->bus.read_byte(atual->pc + 1));
-    case 0xE6:
-      return Action(AND, 2, n, atual->bus.read_byte(atual->pc + 1));
-    case 0xF6:
-      return Action(OR, 2, n, atual->bus.read_byte(atual->pc + 1));
+    case 0xC6:{
+      return Action(ADD, 2, n);
+    }
+    case 0xD6:{
+      return Action(SUB, 2, n);
+    }
+    case 0xE6:{
+      return Action(AND, 2, n);
+    }
+    case 0xF6:{
+      return Action(OR, 2, n);
+    }
     case 0xC7:
       return Action(RST, 1, NULO, 0x00);
     case 0xD7:
@@ -477,7 +488,9 @@ Action le_byte(uint8_t byte, CPU *atual){
       return Action(JPCARRY, 3);
     case 0xEA:{
       uint16_t lower = static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 1));
+      roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
       uint16_t upper = (static_cast<uint16_t>(atual->bus.read_byte(atual->pc + 2)) << 8);
+      roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
       uint16_t temp = lower | upper;
       return Action(LD, 3, A16, temp, 16, A);
       }
@@ -492,13 +505,13 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xCD:
       return Action(CALLALWAYS, 3, NULO, atual->get_target_duplo(n));
     case 0xCE:
-      return Action(ADC, 2, n, atual->bus.read_byte(atual->pc + 1));
+      return Action(ADC, 2, n);
     case 0xDE:
-      return Action(SBC, 2, n, atual->bus.read_byte(atual->pc + 1));
+      return Action(SBC, 2, n);
     case 0xEE:
-      return Action(XOR, 2, n, atual->bus.read_byte(atual->pc + 1));
+      return Action(XOR, 2, n);
     case 0xFE:
-      return Action(CP, 2, n, atual->bus.read_byte(atual->pc + 1));
+      return Action(CP, 2, n);
     case 0xCF:
       return Action(RST, 1, NULO, 0x08);
     case 0xDF:

@@ -11,6 +11,7 @@
 #include "dma.h"
 #include <raylib.h>
 #include <memory>
+#include <functional>
 
 //flags de interrupção
 #define BIT_VBLANK (1 << 0)
@@ -21,6 +22,9 @@
 
 #define VRAM_INICIO 0x8000
 #define VRAM_FINAL  0xA000
+
+#define WRAM_INICIO 0xC000
+#define WRAM_FINAL 0xD000
 
 #define FIRST_TILE1 0x8000
 #define SECOND_TILE1 0x8800
@@ -40,17 +44,15 @@ enum class tile_pixel: uint8_t{
   INDEX_NULO
 };
 
+enum class fetcher_estado: uint8_t{
+  READ_ID,
+  READ_LOW,
+  READ_HIGH,
+  PUSH
+};
+
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
 //dando 64*2 = 128 bits = 16 bytes em cada tile
-
-struct Tile{
-  std::array<std::array<tile_pixel, 8>, 8> pixels;
-
-  Tile(){
-    for(size_t i {}; i < pixels.size(); ++i)
-      pixels[i].fill(tile_pixel::INDEX_NULO);
-  }
-};
 
 struct Sprite{
   uint8_t y;
@@ -59,11 +61,32 @@ struct Sprite{
   uint8_t flags;
 };
 
+struct Coordenadas{
+  int16_t x {};
+  int16_t y {};
+  uint16_t tilemap {};
+  uint16_t tiledata {};
+};
+
+struct Memorybus;
+struct PPU;
+
 struct PPU_fetcher{
   std::array<tile_pixel, 16> fila;
+  Coordenadas info;
   uint8_t ultimo{};
   uint8_t prim {};
   uint8_t size {};
+
+  uint8_t tile_id {};
+  uint8_t tile_low {};
+  uint8_t tile_high {};
+
+  uint8_t ciclos {};
+  uint8_t x_pos {};
+  uint8_t tiles_buscados {};
+  uint8_t drop_pixels {};
+  fetcher_estado atual {fetcher_estado::READ_ID};
 
   PPU_fetcher(){
     fila.fill(tile_pixel::INDEX_NULO);
@@ -72,36 +95,32 @@ struct PPU_fetcher{
   void push(tile_pixel alvo);
   tile_pixel pop(void);
   void clear(void);
+
+  void step(PPU *ppu);
 };
 
-struct Memorybus;
 
 struct PPU{
-  std::array<std::array<uint32_t, 160>, 144> framebuffer;
-  std::array<Tile, (TILE_END - FIRST_TILE1)/16> tileset{};
+  std::array<uint32_t, 160*144> framebuffer;
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
   uint8_t win_line {};
   Memorybus *bus {};
   uint16_t ciclos {};
+  uint16_t draw_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
   bool stat_prev {false};
+  Texture2D *raylib_texture;
 
-  PPU(){
-    for(size_t i {}; i < framebuffer.size(); ++i)
-      framebuffer[i].fill(0xFFFFFFFF);
+  PPU(Texture2D *texture): raylib_texture{texture}{
+    framebuffer.fill(0xFFFFFFFF);
   }
 
   void write_vram(uint16_t endereco, uint8_t valor);
-  void step(uint8_t cpu_ciclos, Texture2D& texture);
+  void step(void);
   void scan_oam(void);
-  void discard_first_tile(void);
-  void merge_sprites();
-  void draw_window(std::array<tile_pixel, 160>& pixels);
-  void draw_background(std::array<tile_pixel, 160>& pixels);
-  void draw_framebuffer(const std::array<tile_pixel, 160>& pixels);
-  void draw_line(void);
+  void draw_step(void);
 
   uint16_t atual_wintilemap(void);
   uint16_t atual_bgtiledata(void);
@@ -124,15 +143,26 @@ struct PPU{
   uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
 
+struct Timer{
+    uint16_t div_count {0xAB00};
+    bool prev_bit {};
+    bool timaoverflow {};
+    uint8_t timaoverflow_count {};
+
+    void step(Memorybus& bus);
+    uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
+};
+
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
-  uint16_t *div_count;
-  uint8_t dma_hack {0xFF};
+  Timer *timer;
   Joypad *pad {};
   PPU *ppu {};
   std::unique_ptr<DMA> dma;
+  std::function<void()> restaura_rom;
+  uint8_t dma_hack {0xFF};
 
-  Memorybus(uint16_t *div, Joypad *p, PPU *pp): div_count{div}, pad{p}, ppu{pp} {
+  Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     dma = std::make_unique<DMA>();
   }
 
@@ -155,7 +185,7 @@ struct Memorybus{
       dma_hack = 0xFF;
       return dma_hack;
     }
-    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING)){
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL && (ppu->modo_atual == screen_mode::DRAWING)){
       dma_hack = 0xFF;
       return dma_hack;
     }
@@ -165,24 +195,24 @@ struct Memorybus{
 
   void write_byte(uint16_t endereco, uint8_t valor){
     if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      if(ppu->modo_atual != screen_mode::DRAWING)
+      //if(ppu->modo_atual != screen_mode::DRAWING)
         ppu->write_vram(endereco, valor);
-
+      
       return;
     }
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    else if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
-    if(endereco == 0xFF04){ //div
+    else if(endereco == 0xFF04){ //div
       memoria[endereco] = 0;
-      *div_count = 0;
+      timer->div_count = 0;
       return;
     }
-    if(endereco == 0xFF00){ //joypad
+    else if(endereco == 0xFF00){ //joypad
       memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
       return;
     }
-    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
+    else if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
       char c = memoria[0xFF01];
       std::cout << c << std::flush;
       memoria[0xFF01] = 0xFF;
@@ -190,8 +220,12 @@ struct Memorybus{
       memoria[0xFF0F] |= BIT_SERIAL;
       return;
     }
-    if(endereco == 0xFF46){ //dma
+    else if(endereco == 0xFF46){ //dma
       dma->start(valor);
+      return;
+    }
+    else if(endereco == 0xFF50 && valor != 0){
+      restaura_rom();
       return;
     }
     memoria[endereco] = valor;

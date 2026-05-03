@@ -25,7 +25,7 @@ struct DMA{
       }
     
 
-    memoria[0xFE00 + this->byte] = memoria[(this->valor * 0x100) + this->byte];
+    memoria[0xFE00 + this->byte] = memoria[(this->valor*0x100) + this->byte];
     ++this->byte;
 
     if(this->byte >= 0xA0)

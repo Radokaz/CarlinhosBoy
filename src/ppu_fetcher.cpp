@@ -16,6 +16,10 @@ tile_pixel PPU_fetcher::pop(void){
 }
 
 void PPU_fetcher::clear(void){
+  atual = fetcher_estado::READ_ID;
+  ciclos = 0;
+  x_pos = 0;
+  tiles_buscados = 0;
   size = 0;
   ultimo = 0;
   prim = 0;
@@ -95,85 +99,153 @@ void PPU::avanca_ly(void){
 
 void PPU::write_vram(uint16_t endereco, uint8_t valor){
     bus->memoria[endereco] = valor;
-
-    if(endereco >= TILE_END) return;
-
-    uint16_t index = 0xFFFE & endereco;
-
-    uint8_t byte1 = bus->memoria[index];
-    uint8_t byte2 = bus->memoria[index + 1];
-      
-    uint16_t tile_index = (endereco - FIRST_TILE1)/16;
-    uint8_t linha = ((endereco - FIRST_TILE1) % 16)/2;
-
-    for(size_t i {}; i < 8; ++i){
-      uint8_t mask = 1 << (7 - i);
-      uint8_t bit1 = ((byte1 & mask) >> (7 - i));
-      uint8_t bit2 = ((byte2 & mask) >> (7 - i));
-      switch((bit2 << 1) | bit1){
-        case 0x00:
-          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ZERO;
-          break;
-        case 0x01:
-          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_ONE;
-          break;
-        case 0x02:
-          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_TWO;
-          break;
-        case 0x03:
-          tileset[tile_index].pixels[linha][i] = tile_pixel::INDEX_THREE;
-          break;
-      }
-    }
-
 }
 
-void PPU::step(uint8_t cpu_ciclos, Texture2D& texture){
-  this->ciclos+=cpu_ciclos;
+void PPU::step(void){
+  for(size_t i {}; i < 4; ++i){
+    ++this->ciclos;
 
-  switch(this->modo_atual){
-    using enum screen_mode;
+    switch(this->modo_atual){
+      using enum screen_mode;
 
-    case SOAMRAM:{
-      if(this->ciclos >= 80){
-        this->ciclos -= 80;
-        this->scan_oam();
-        this->set_mode(screen_mode::DRAWING);
+      case SOAMRAM:{
+        if(this->ciclos >= 80){
+          this->ciclos -= 80;
+          this->scan_oam();
+          this->fetcher.clear();
+          this->fetcher.drop_pixels = this->get_scrollx() % 8;
+          this->set_mode(screen_mode::DRAWING);
+        }
+        break;
       }
-      break;
-    }
-    case DRAWING:{
-      if(this->ciclos >= 172){
-        this->ciclos -= 172;
-        this->draw_line();
-        this->set_mode(screen_mode::HBLANK);
-      }
-      break;
-    }
-    case HBLANK:{
-      if(this->ciclos >= 204){
-        this->ciclos -= 204;
-        this->avanca_ly();
-        if(this->bus->memoria[0xFF44] == 144){
-          this->bus->memoria[0xFF0F] |= BIT_VBLANK;
-          this->set_mode(screen_mode::VBLANK);
-          this->win_line = 0;
-          UpdateTexture(texture, this->framebuffer.data());
+      case DRAWING:{
+        if(this->fetcher.x_pos < 160){
+          this->draw_step();
+          ++this->draw_ciclos;
         }
         else{
-          this->set_mode(screen_mode::SOAMRAM);
+          this->ciclos -= this->draw_ciclos;
+          this->draw_ciclos = 0;
+          this->set_mode(screen_mode::HBLANK);
         }
+        break;
       }
+      case HBLANK:{
+        if(this->ciclos >= 204){
+          this->ciclos -= 204;
+          this->avanca_ly();
+          if(this->bus->memoria[0xFF44] == 144){
+            this->bus->memoria[0xFF0F] |= BIT_VBLANK;
+            this->set_mode(screen_mode::VBLANK);
+            this->win_line = 0;
+            UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
+          }
+          else{
+            this->set_mode(screen_mode::SOAMRAM);
+          }
+        }
+        break;
+      }
+      case VBLANK:{
+        if(this->ciclos >= 456){
+          this->ciclos -= 456;
+          this->avanca_ly();
+          if(this->bus->memoria[0xFF44] == 0x00){
+            this->set_mode(screen_mode::SOAMRAM);
+          }
+        }
+        break;
+      }
+    }
+  }
+}
+
+void PPU_fetcher::step(PPU *ppu){
+  ++this->ciclos;
+
+  if(this->ciclos < 2) return;
+  this->ciclos = 0;
+
+  switch(this->atual){
+    using enum fetcher_estado;
+
+    case READ_ID:{
+      uint8_t ly = ppu->bus->memoria[0xFF44];
+      uint8_t scx = ppu->get_scrollx();
+      uint8_t scy = ppu->get_scrolly();
+      uint16_t tilemap = ppu->atual_bgtilemap();
+
+      uint8_t tilex = ((scx/8) + this->tiles_buscados) & 31;
+      uint8_t tiley = (((scy + ly) % 256)/8) & 31;
+
+      this->tile_id = ppu->bus->memoria[tilemap + tiley*32 + tilex];
+      this->atual = fetcher_estado::READ_LOW;
       break;
     }
-    case VBLANK:{
-      if(this->ciclos >= 456){
-        this->ciclos -= 456;
-        this->avanca_ly();
-        if(this->bus->memoria[0xFF44] == 0x00){
-          this->set_mode(screen_mode::SOAMRAM);
-        }
+    case READ_LOW:{
+      uint8_t ly = ppu->bus->memoria[0xFF44];
+      uint8_t scy = ppu->get_scrolly();
+      uint16_t tilemap = ppu->atual_bgtilemap();
+
+      uint8_t linha = ((scy + ly) % 256) % 8;
+      uint16_t tile_addr {};
+
+      if(ppu->atual_bgtiledata() == 0x8000){
+        tile_addr = 0x8000 + this->tile_id*16;
       }
+      else{
+        tile_addr = 0x9000 + static_cast<int8_t>(this->tile_id)*16;
+      }
+      
+      this->tile_low = ppu->bus->memoria[tile_addr + linha*2];
+      this->atual = fetcher_estado::READ_HIGH;
+      break;
+    }
+    case READ_HIGH:{
+      uint8_t ly = ppu->bus->memoria[0xFF44];
+      uint8_t scy = ppu->get_scrolly();
+      uint16_t tilemap = ppu->atual_bgtilemap();
+
+      uint8_t linha = ((scy + ly) % 256) % 8;
+      uint16_t tile_addr {};
+
+      if(ppu->atual_bgtiledata() == 0x8000){
+        tile_addr = 0x8000 + this->tile_id*16;
+      }
+      else{
+        tile_addr = 0x9000 + static_cast<int8_t>(this->tile_id)*16;
+      }
+      
+      this->tile_high = ppu->bus->memoria[tile_addr + linha*2 + 1];
+
+      this->atual = fetcher_estado::PUSH;
+      break;
+    }
+    case PUSH:{
+      if(this->size <= 8){
+        for(size_t i {}; i < 8; ++i){
+          uint8_t mask = 1 << (7 - i);
+          uint8_t bit1 = ((this->tile_low & mask) >> (7 - i));
+          uint8_t bit2 = ((this->tile_high & mask) >> (7 - i));
+          switch((bit2 << 1) | bit1){
+            case 0x00:
+              this->push(tile_pixel::INDEX_ZERO);
+              break;
+            case 0x01:
+              this->push(tile_pixel::INDEX_ONE);
+              break;
+            case 0x02:
+              this->push(tile_pixel::INDEX_TWO);
+              break;
+            case 0x03:
+              this->push(tile_pixel::INDEX_THREE);
+              break;
+          }
+        }
+        ++this->tiles_buscados;
+        this->atual = fetcher_estado::READ_ID;
+      }
+      
       break;
     }
   }
