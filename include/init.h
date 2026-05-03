@@ -6,6 +6,8 @@
 #include <fstream>
 #include <map>
 
+#define BOOT_SOURCE "dmg_boot.bin"
+
 namespace GB{
 
 struct __attribute__((packed)) Header{
@@ -24,6 +26,43 @@ struct __attribute__((packed)) Header{
   uint16_t global_checksum;
 };
 
+inline void merge_boot_rom(CPU *cpu, std::string_view src){
+  std::fstream bootrom(BOOT_SOURCE, bootrom.binary | bootrom.in);
+  if(!bootrom){
+    std::cerr << "BOOTROM INDISPONÍVEL\n";
+    cpu->bus.memoria[0xFF04] = 0xAB;
+    cpu->bus.memoria[0xFF05] = 0x00;
+    cpu->bus.memoria[0xFF06] = 0x00;
+    cpu->bus.memoria[0xFF07] = 0xF8;
+    cpu->bus.memoria[0xFF10] = 0x80;
+    cpu->bus.memoria[0xFF11] = 0xBF;
+    cpu->bus.memoria[0xFF12] = 0xF3;
+    cpu->bus.memoria[0xFF14] = 0xBF;
+    cpu->bus.memoria[0xFF16] = 0x3F;
+    cpu->bus.memoria[0xFF0F] = 0xE1; //IF
+    cpu->bus.memoria[0xFFFF] = 0x00; //IE
+    cpu->bus.memoria[0xFF00] = 0xFF; //Joypad
+    cpu->bus.memoria[0xFF40] = 0x91; // LCDC
+    cpu->bus.memoria[0xFF41] = 0x85; // STAT
+    cpu->bus.memoria[0xFF44] = 0x00; // LY
+    cpu->bus.memoria[0xFF45] = 0x00; // LYC
+    cpu->bus.memoria[0xFF46] = 0xFF; // DMA
+    cpu->bus.memoria[0xFF47] = 0xFC; // BGP
+    cpu->bus.memoria[0xFF48] = 0xFF; // OBP0
+    cpu->bus.memoria[0xFF49] = 0xFF; // OBP1
+    cpu->bus.memoria[0xFF4A] = 0x00; // WY
+    cpu->bus.memoria[0xFF4B] = 0x00; // WX
+    return;
+  }
+
+  bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+  cpu->pc = 0;
+  cpu->bus.restaura_rom = [src, cpu](){
+    std::fstream rom(src.data(), rom.binary | rom.in);
+    rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+  };
+}
+
 inline Header *init_rom(CPU *cpu, std::string_view src){
   std::fstream arquivo(src.data(), arquivo.binary | arquivo.in);
   if(!arquivo){
@@ -32,28 +71,7 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   }
 
   arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
-  cpu->bus.memoria[0xFF04] = 0xAB;
-  cpu->bus.memoria[0xFF05] = 0x00;
-  cpu->bus.memoria[0xFF06] = 0x00;
-  cpu->bus.memoria[0xFF07] = 0xF8;
-  cpu->bus.memoria[0xFF10] = 0x80;
-  cpu->bus.memoria[0xFF11] = 0xBF;
-  cpu->bus.memoria[0xFF12] = 0xF3;
-  cpu->bus.memoria[0xFF14] = 0xBF;
-  cpu->bus.memoria[0xFF16] = 0x3F;
-  cpu->bus.memoria[0xFF0F] = 0xE1; //IF
-  cpu->bus.memoria[0xFFFF] = 0x00; //IE
-  cpu->bus.memoria[0xFF00] = 0xFF; //Joypad
-  cpu->bus.memoria[0xFF40] = 0x91; // LCDC
-  cpu->bus.memoria[0xFF41] = 0x85; // STAT
-  cpu->bus.memoria[0xFF44] = 0x00; // LY
-  cpu->bus.memoria[0xFF45] = 0x00; // LYC
-  cpu->bus.memoria[0xFF46] = 0xFF; // DMA
-  cpu->bus.memoria[0xFF47] = 0xFC; // BGP
-  cpu->bus.memoria[0xFF48] = 0xFF; // OBP0
-  cpu->bus.memoria[0xFF49] = 0xFF; // OBP1
-  cpu->bus.memoria[0xFF4A] = 0x00; // WY
-  cpu->bus.memoria[0xFF4B] = 0x00; // WX
+  merge_boot_rom(cpu, src);
 
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
 }

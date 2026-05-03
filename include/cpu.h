@@ -84,24 +84,13 @@ struct Registradores{
   }
 };
 
-
-struct Timer{
-    uint16_t div_count {0xAB00};
-    bool prev_bit {};
-    bool timaoverflow {};
-    uint8_t timaoverflow_count {};
-
-    void step(uint8_t ciclos, Memorybus& bus);
-    uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
-  };
-
 struct CPU{
   Memorybus bus;
   Registradores registradores;
   uint16_t pc {0x0100}; 
   uint16_t sp {0xFFFE}; 
   uint8_t last_ticks {};
-  uint8_t last_instruct {};
+  uint16_t last_instruct {};
   bool jp_flag {false};
   bool halted {false};
   bool haltbug {false};
@@ -109,7 +98,7 @@ struct CPU{
   bool ime {false};
   bool ime_ie {false};
   
-  CPU(uint16_t *div, Joypad *jp, PPU *b): bus(div, jp, b) {}
+  CPU(Timer *tm, Joypad *jp, PPU *b): bus(tm, jp, b) {}
 
   void step(void);
   void check(void);
@@ -131,7 +120,8 @@ struct CPU{
   uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
   uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
   uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
-  uint8_t& get_target(reg_target alvo);
+  uint8_t& get_target_ref(reg_target alvo);
+  uint8_t get_target_value(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo);
   uint8_t get_bit(reg_target alvo, uint8_t bit);
 };
@@ -150,7 +140,8 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
-void roda_cpu(CPU *atual, Timer& timer, PPU& ppu, Texture2D& texture);
+void roda_cpu(CPU *atual, Timer *timer, PPU *ppu);
+void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu);
 
 }
 

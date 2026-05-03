@@ -28,16 +28,16 @@ void le_input(GB::Joypad& pad){
 }
 
 void degub_func(GB::CPU *cpu, GB::PPU *ppu){
-  std::cout << "PC: " << cpu->pc << "\n";
+  std::cout << "PC: " << std::hex << cpu->pc << "\n";
   std::cout << "F: " << static_cast<int>(cpu->registradores.f) << "\n";
   std::cout << "IF: " << static_cast<int>(cpu->get_if()) << "\n";
   std::cout << "Stepping: " << std::boolalpha << cpu->stepping << "\n";
   std::cout << "Halted: " << cpu->halted << "\n";
   std::cout << "IME: " << cpu->ime << "\n";
   std::cout << "Haltbug: " << cpu->haltbug << "\n";
+  std::cout << "Ultima instrução: " << static_cast<int>(cpu->last_instruct) << "\n";
+  std::cout << "Tac :" << static_cast<int>(cpu->bus.memoria[0xFF07]) << "\n";
   /*std::cout << "\n";
-  std::cout << "\n";
-  std::cout << "\n";
   std::cout << "\n";
   std::cout << "\n";
   std::cout << "\n";
@@ -64,8 +64,8 @@ int main(int argc, char **argv){
 
   GB::Timer timer;
   GB::Joypad pad;
-  GB::PPU ppu;
-  GB::CPU cpu(&timer.div_count, &pad, &ppu);
+  GB::PPU ppu(&texture);
+  GB::CPU cpu(&timer, &pad, &ppu);
   ppu.bus = &cpu.bus;
   pad.p1 = &cpu.bus.memoria[0xFF00];
 
@@ -75,7 +75,7 @@ int main(int argc, char **argv){
     le_input(pad);
     
     for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
-      roda_cpu(&cpu, timer, ppu, texture);
+      roda_cpu(&cpu, &timer, &ppu);
       //degub_func(&cpu, &ppu);
     }
 

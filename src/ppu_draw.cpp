@@ -92,111 +92,28 @@ void PPU::scan_oam(void){
   }
 }
 
-void PPU::discard_first_tile(void){
-  uint8_t ly = this->bus->memoria[0xFF44];
-  constexpr uint8_t max_tiles = 32;
+void PPU::draw_step(void){
+  this->fetcher.step(this);
 
-  uint8_t first_tilex = (this->get_scrollx()/8) % max_tiles;
-  uint8_t first_tiley = (this->get_scrolly() + ly) % (max_tiles*8);
-  uint16_t first_tile_i = static_cast<uint16_t>(bus->memoria[this->atual_bgtilemap() + (first_tiley/8)*32 + first_tilex]);
-  if(this->atual_bgtiledata() == 0x8800)
-    first_tile_i = static_cast<uint16_t>(static_cast<int16_t>(first_tile_i) + 256);
+  if(this->fetcher.size <= 0) return;
 
-  this->fetcher.clear();
-  for(size_t i {}; i < 8; ++i){
-    this->fetcher.push(tileset[first_tile_i].pixels[first_tiley % 8][i]);
-  }
-
-  for(size_t i {}; i < (this->get_scrollx() % 8); ++i){
+  if(this->fetcher.drop_pixels > 0){
     this->fetcher.pop();
+    --this->fetcher.drop_pixels;
+    return;
   }
-}
 
-void PPU::merge_sprites(){
+  if(this->fetcher.x_pos >= 160) return;
 
   uint8_t ly = this->bus->memoria[0xFF44];
-  uint8_t sprite_altura = this->atual_spritesize();
+  tile_pixel px = this->fetcher.pop();
+  this->framebuffer[ly*160 + this->fetcher.x_pos] = this->decide_bg_color(px);
 
-  std::stable_sort(sprites_sel.begin(), sprites_sel.begin() + sprites_count, [](const Sprite& a, const Sprite& b){
-      if(a.x == b.x) return false;
-      return a.x < b.x;
-      });
-
-  for(size_t i {}; i < sprites_count; ++i){
-    //TODO
-  }
-}
-
-void PPU::draw_window(std::array<tile_pixel, 160>& pixels){
-  constexpr uint8_t max_tiles = 32;
-  constexpr uint8_t max_pixels = 160;
-
-  int16_t tela_x = static_cast<int16_t>(static_cast<int16_t>(this->get_winx()) - 7);
-  uint16_t tela_y = static_cast<uint16_t>(this->get_winy());
-  uint16_t tiledata = this->atual_bgtiledata(); //se o tile é signed ou unsigned
-  uint16_t tilemap = this->atual_wintilemap();
-  uint8_t ly = this->bus->memoria[0xFF44];
-
-  for(size_t x {}; x < max_pixels; ++x){
+  if(this->is_sprite_enabled()){
     
   }
-}
 
-void PPU::draw_background(std::array<tile_pixel, 160>& pixels){
-  constexpr uint8_t max_tiles = 32;
-  constexpr uint8_t max_pixels = 160;
-
-  uint16_t tiledata = this->atual_bgtiledata(); //se o tile é signed ou unsigned
-  uint16_t tilemap = this->atual_bgtilemap();
-  uint16_t tela_x = static_cast<uint16_t>(this->get_scrollx());
-  uint16_t tela_y = static_cast<uint16_t>(this->get_scrolly());
-  uint8_t ly = this->bus->memoria[0xFF44];
-
-  uint16_t tiles_carregados {};
-  this->discard_first_tile();
-  ++tiles_carregados;
-
-  for(size_t x {}; x < max_pixels; ++x){
-    if(this->fetcher.size <= 8){
-      uint8_t tilex = ((tela_x/8) + tiles_carregados) % max_tiles;
-      uint8_t tiley = (tela_y + ly) % (max_tiles*8);
-      uint16_t tile_index = static_cast<uint16_t>(bus->memoria[tilemap + (tiley/8)*32 + tilex]);
-      if(tiledata == 0x8800)
-        tile_index = static_cast<uint16_t>(static_cast<int8_t>(tile_index) + 256);
-
-      for(size_t i {}; i < 8; ++i)
-        this->fetcher.push(tileset[tile_index].pixels[tiley % 8][i]);
-
-      ++tiles_carregados;
-    }
-
-      pixels[x] = this->fetcher.pop();
-  }
-}
-
-void PPU::draw_line(void){
-  
-  std::array<tile_pixel, 160> px_prontos;
-  px_prontos.fill(tile_pixel::INDEX_NULO);
- 
-  uint8_t ly = this->bus->memoria[0xFF44];
-  
-  if(this->is_bg_enabled())
-    this->draw_background(px_prontos);
-    
-  if(this->is_win_enabled() && ly >= this->get_winy())
-    this->draw_window(px_prontos);  
-  
-  this->draw_framebuffer(px_prontos);
-  if(this->is_sprite_enabled())
-    this->merge_sprites();
-}
-
-void PPU::draw_framebuffer(const std::array<tile_pixel, 160>& pixels){
-  uint8_t ly = this->bus->memoria[0xFF44];
-  for(size_t i {}; i < 160; ++i){
-    this->framebuffer[ly][i] = this->decide_bg_color(pixels[i]);
-  }
+  ++this->fetcher.x_pos;
 }
 
 }
