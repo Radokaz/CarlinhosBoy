@@ -42,19 +42,19 @@ uint8_t PPU::atual_spritesize(void){
 }
 
 bool PPU::is_lcd_enabled(void){
-  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_ENABLE) & 0x01);
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_ENABLE) != 0);
 }
 
 bool PPU::is_win_enabled(void){
-  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_WIN_ENABLE) & 0x01);
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_WIN_ENABLE) != 0);
 }
 
 bool PPU::is_bg_enabled(void){
-  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_BG_ENABLE) & 0x01);
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_BG_ENABLE) != 0);
 }
 
 bool PPU::is_sprite_enabled(void){
-  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_OBJ_ENABLE) & 0x01);
+  return static_cast<bool>((this->bus->read_byte(0xFF40) & LCDC_OBJ_ENABLE) != 0);
 }
 
 uint8_t& PPU::get_scrolly(void) { return bus->memoria[0xFF42]; }
@@ -114,6 +114,7 @@ void PPU::step(void){
           this->scan_oam();
           this->fetcher.clear();
           this->fetcher.drop_pixels = this->get_scrollx() % 8;
+          this->fetcher.window_ativa = false;
           this->set_mode(screen_mode::DRAWING);
         }
         break;
@@ -126,6 +127,8 @@ void PPU::step(void){
         else{
           this->ciclos -= this->draw_ciclos;
           this->draw_ciclos = 0;
+          if(this->fetcher.window_ativa)
+            ++this->fetcher.win_line;
           this->set_mode(screen_mode::HBLANK);
         }
         break;
@@ -137,7 +140,6 @@ void PPU::step(void){
           if(this->bus->memoria[0xFF44] == 144){
             this->bus->memoria[0xFF0F] |= BIT_VBLANK;
             this->set_mode(screen_mode::VBLANK);
-            this->win_line = 0;
             UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
           }
           else{
@@ -151,6 +153,8 @@ void PPU::step(void){
           this->ciclos -= 456;
           this->avanca_ly();
           if(this->bus->memoria[0xFF44] == 0x00){
+            this->fetcher.win_line = 0;
+            this->frame_pronto = true;
             this->set_mode(screen_mode::SOAMRAM);
           }
         }
@@ -171,23 +175,35 @@ void PPU_fetcher::step(PPU *ppu){
 
     case READ_ID:{
       uint8_t ly = ppu->bus->memoria[0xFF44];
-      uint8_t scx = ppu->get_scrollx();
-      uint8_t scy = ppu->get_scrolly();
-      uint16_t tilemap = ppu->atual_bgtilemap();
+      if(!this->window_ativa){
+        uint8_t scx = ppu->get_scrollx();
+        uint8_t scy = ppu->get_scrolly();
+        uint16_t tilemap = ppu->atual_bgtilemap();
 
-      uint8_t tilex = ((scx/8) + this->tiles_buscados) & 31;
-      uint8_t tiley = (((scy + ly) % 256)/8) & 31;
+        uint8_t tilex = ((scx/8) + this->tiles_buscados) & 31;
+        uint8_t tiley = (((scy + ly) % 256)/8) & 31;
 
-      this->tile_id = ppu->bus->memoria[tilemap + tiley*32 + tilex];
+        this->tile_id = ppu->bus->memoria[tilemap + tiley*32 + tilex];
+      }
+      else{
+        uint8_t winy = this->win_line;
+        uint16_t tilemap = ppu->atual_wintilemap();
+
+        uint8_t tilex = this->tiles_buscados & 31;
+        uint8_t tiley = (((winy + ly) % 256)/8) & 31;
+
+        this->tile_id = ppu->bus->memoria[tilemap + tiley*32 + tilex];
+      }
       this->atual = fetcher_estado::READ_LOW;
       break;
     }
     case READ_LOW:{
       uint8_t ly = ppu->bus->memoria[0xFF44];
-      uint8_t scy = ppu->get_scrolly();
-      uint16_t tilemap = ppu->atual_bgtilemap();
 
-      uint8_t linha = ((scy + ly) % 256) % 8;
+      uint8_t y = (!this->window_ativa) ? ppu->get_scrolly() : this->win_line;
+      uint16_t tilemap = (!this->window_ativa) ? ppu->atual_bgtilemap() : ppu->atual_wintilemap();
+
+      uint8_t linha = ((y + ly) % 256) % 8;
       uint16_t tile_addr {};
 
       if(ppu->atual_bgtiledata() == 0x8000){
@@ -203,10 +219,11 @@ void PPU_fetcher::step(PPU *ppu){
     }
     case READ_HIGH:{
       uint8_t ly = ppu->bus->memoria[0xFF44];
-      uint8_t scy = ppu->get_scrolly();
-      uint16_t tilemap = ppu->atual_bgtilemap();
 
-      uint8_t linha = ((scy + ly) % 256) % 8;
+      uint8_t y = (!this->window_ativa) ? ppu->get_scrolly() : this->win_line;
+      uint16_t tilemap = (!this->window_ativa) ? ppu->atual_bgtilemap() : ppu->atual_wintilemap();
+
+      uint8_t linha = ((y + ly) % 256) % 8;
       uint16_t tile_addr {};
 
       if(ppu->atual_bgtiledata() == 0x8000){
@@ -215,9 +232,8 @@ void PPU_fetcher::step(PPU *ppu){
       else{
         tile_addr = 0x9000 + static_cast<int8_t>(this->tile_id)*16;
       }
-      
-      this->tile_high = ppu->bus->memoria[tile_addr + linha*2 + 1];
 
+      this->tile_high = ppu->bus->memoria[tile_addr + linha*2 + 1];
       this->atual = fetcher_estado::PUSH;
       break;
     }

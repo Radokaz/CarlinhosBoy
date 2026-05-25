@@ -15,15 +15,16 @@ void CPU::push(reg_target alvo){
 void CPU::pop(reg_target alvo){
   uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->sp));
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp + 1)) << 8);
+  ++this->sp;
+  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp)) << 8);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  ++this->sp;
   uint16_t valor = (lower | upper);
 
   if(alvo == reg_target::AF)
     valor &= 0xFFF0;
 
   this->registradores.set_duplo(alvo, valor);
-  this->sp+=2;
 }
 
 void CPU::push(uint16_t valor){
@@ -38,16 +39,17 @@ void CPU::push(uint16_t valor){
 uint16_t CPU::pop(void){
   uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->sp));
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp + 1)) << 8);
+  ++this->sp;
+  uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->sp)) << 8);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  ++this->sp;
   uint16_t valor = (lower | upper);
-  this->sp+=2;
   return valor;
 }
 
 void CPU::call(uint16_t endereco){
-  uint16_t pc_prox = (!this->haltbug) ? this->pc + 3 : this->pc + 2;
-  this->push(pc_prox);
+  ++this->pc;
+  this->push(this->pc);
   this->pc = endereco;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
 }

@@ -7,254 +7,217 @@ namespace GBInstruct{
     using namespace GB;  
 
     inline void NOP(const Action& atual, CPU *cpu){
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
       return;
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
-      cpu->last_ticks = 4;
       cpu->stepping = false;
-      cpu->jp_flag = true;
-      cpu->pc+=2;
+      cpu->incrementa_pc();
+      cpu->ciclos_esperados = 1;
     }
 
     inline void HALT(const Action& atual, CPU *cpu){
-      if((cpu->get_ie() & cpu->get_if() & 0x1F) && !cpu->ime)
+      if((cpu->get_ie() & cpu->get_if() & 0x1F) && !cpu->ime){
         cpu->haltbug = true;
+      }
       else
         cpu->halted = true;
 
-      cpu->last_ticks = 4;
-      cpu->jp_flag = true;
       ++cpu->pc;
+      cpu->skipa_fetch = true;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void JPALWAYS(const Action& atual, CPU *cpu) {
       if(atual.alvo == reg_target::HL){
         cpu->pc = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->last_ticks = 4;
+        cpu->ciclos_esperados = 1;
       }
       else{
-        if(!cpu->haltbug){
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        }
-        else{
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->haltbug = false;
-        }
-        cpu->last_ticks = 16;
+        cpu->incrementa_pc();
+        uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->incrementa_pc();
+        uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        uint16_t result = (byte1 | (byte2 << 8));
+        cpu->pc = result;
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->ciclos_esperados = 4;
       }
 
-      cpu->jp_flag = true;
+      cpu->skipa_fetch = true;
     }
 
     inline void JPZERO(const Action& atual, CPU *cpu) {
       if(cpu->registradores.f & BIT_ZERO){
-        if(!cpu->haltbug){
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        }
-        else{
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->haltbug = false;
-        }
-        cpu->jp_flag = true;
-        cpu->last_ticks = 16;
+        cpu->incrementa_pc();
+        uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->incrementa_pc();
+        uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        uint16_t result = (byte1 | (byte2 << 8));
+        cpu->pc = result;
+        cpu->skipa_fetch = true;
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->ciclos_esperados = 4;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
+        cpu->incrementa_pc();
+        cpu->incrementa_pc();
+        cpu->ciclos_esperados = 3;
       }
     }
 
     inline void JPCARRY(const Action& atual, CPU *cpu){
       if(cpu->registradores.f & BIT_CARRY){
-        if(!cpu->haltbug){
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        }
-        else{
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->haltbug = false;
-        }
-        cpu->jp_flag = true;
-        cpu->last_ticks = 16;
+        cpu->incrementa_pc();
+        uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->incrementa_pc();
+        uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        uint16_t result = (byte1 | (byte2 << 8));
+        cpu->pc = result;
+        cpu->skipa_fetch = true;
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->ciclos_esperados = 4;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
+        cpu->incrementa_pc();
+        cpu->incrementa_pc();
+        cpu->ciclos_esperados = 3;
       }
     }
     
     inline void JPNZERO(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & BIT_ZERO)){
-        if(!cpu->haltbug){
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        }
-        else{
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->haltbug = false;
-        }
-        cpu->jp_flag = true;
-        cpu->last_ticks = 16;
+        cpu->incrementa_pc();
+        uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->incrementa_pc();
+        uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        uint16_t result = (byte1 | (byte2 << 8));
+        cpu->pc = result;
+        cpu->skipa_fetch = true;
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->ciclos_esperados = 4;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
+        cpu->incrementa_pc();
+        cpu->incrementa_pc();
+        cpu->ciclos_esperados = 3;
       }
     }
 
     inline void JPNCARRY(const Action& atual, CPU *cpu){
       if(!(cpu->registradores.f & BIT_CARRY)){
-        if(!cpu->haltbug){
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        }
-        else{
-          uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1));
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          uint16_t result = (byte1 | (byte2 << 8));
-          cpu->pc = result;
-          roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->haltbug = false;
-        }
-        cpu->jp_flag = true;
-        cpu->last_ticks = 16;
+        cpu->incrementa_pc();
+        uint16_t byte1 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->incrementa_pc();
+        uint16_t byte2 = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc));
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        uint16_t result = (byte1 | (byte2 << 8));
+        cpu->pc = result;
+        cpu->skipa_fetch = true;
+        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+        cpu->ciclos_esperados = 4;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
+        cpu->incrementa_pc();
+        cpu->incrementa_pc();
+        cpu->ciclos_esperados = 3;
       }
     }
 
     inline void JRALWAYS(const Action& atual, CPU *cpu) {
-      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+      cpu->incrementa_pc();
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-      cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
+      cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + 1);
+      cpu->skipa_fetch = true;
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-      cpu->jp_flag = true;
-      cpu->last_ticks = 12;
+      cpu->ciclos_esperados = 3;
     }
 
     inline void JRZERO(const Action& atual, CPU *cpu){
+      cpu->incrementa_pc();
       if(cpu->registradores.f & BIT_ZERO){
-        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + 1);
+        cpu->skipa_fetch = true;
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 12;
+        cpu->ciclos_esperados = 3;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
     }
 
     inline void JRCARRY(const Action& atual, CPU *cpu){
+      cpu->incrementa_pc();
       if(cpu->registradores.f & BIT_CARRY){
-        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + 1);
+        cpu->skipa_fetch = true;
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 12;
+        cpu->ciclos_esperados = 3;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
     }
 
     inline void JRNZERO(const Action& atual, CPU *cpu){
+      cpu->incrementa_pc();
       if(!(cpu->registradores.f & BIT_ZERO)){
-        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + 1);
+        cpu->skipa_fetch = true;
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 12;
+        cpu->ciclos_esperados = 3;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
     }
 
     inline void JRNCARRY(const Action& atual, CPU *cpu){
+      cpu->incrementa_pc();
       if(!(cpu->registradores.f & BIT_CARRY)){
-        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+        int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + atual.tamanho);
+        cpu->pc = static_cast<uint16_t>(cpu->pc + static_cast<int16_t>(add) + 1);
+        cpu->skipa_fetch = true;
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 12;
+        cpu->ciclos_esperados = 3;
       }
       else{
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
     }
 
     inline void LD(const Action& atual, CPU *cpu){
-      if(atual.N == 0xFEA0){
+      if(atual.N == 0xFEA0){ //endereço de 8 bits
         uint8_t valor = cpu->get_target_value(atual.ld_alvo);
         uint8_t& memoria = cpu->get_target_ref(atual.alvo);
         memoria = valor;
@@ -276,41 +239,31 @@ namespace GBInstruct{
 
         cpu->bus.write_byte(atual.N, valor);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-
-        if(cpu->haltbug){
-          cpu->pc = cpu->pc + (atual.tamanho - 1);
-          cpu->jp_flag = true;
-        }
       }
-      
-      cpu->last_ticks = atual.bit_index;
+
+      cpu->ciclos_esperados = atual.bit_index/4;
     }
 
     inline void LDDUP(const Action& atual, CPU *cpu){
       if(atual.alvo == reg_target::SP){
         uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
         cpu->sp = valor;
+        cpu->ciclos_esperados = 3;
         if(atual.ld_alvo == reg_target::HL){
           roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-          cpu->last_ticks = 8;
+          cpu->ciclos_esperados = 2;
         }
-        else
-          cpu->last_ticks = 12;
       }
       else{
         uint16_t valor = cpu->get_target_duplo(atual.ld_alvo);
         cpu->registradores.set_duplo(atual.alvo, valor);
-        cpu->last_ticks = 12;
-      }
-
-      if(cpu->haltbug && atual.ld_alvo != reg_target::HL){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
+        cpu->ciclos_esperados = 3;
       }
     }
 
     inline void LDHL(const Action& atual, CPU *cpu){
-      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+      cpu->incrementa_pc();
+      int8_t add = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       uint16_t result = static_cast<uint16_t>(cpu->sp + static_cast<int16_t>(add));
       cpu->registradores.set_duplo(reg_target::HL, result);
@@ -322,150 +275,128 @@ namespace GBInstruct{
       if((cpu->sp & 0xFF) + (add & 0xFF) > 0xFF)
         cpu->registradores.f |= BIT_CARRY;
 
-      cpu->last_ticks = 12;
-      if(cpu->haltbug){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = 3;
     }
 
     inline void LDSP(const Action& atual, CPU *cpu){
-      uint16_t resultado {};
-      if(!cpu->haltbug){
-        uint16_t lower = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)); 
-        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        uint16_t upper = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 2)) << 8); 
-        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        resultado = lower | upper;
-      }
-      else{
-        uint16_t lower = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc)); 
-        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        uint16_t upper = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc + 1)) << 8); 
-        roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->jp_flag = true;
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        resultado = lower | upper;
-      }
+      cpu->incrementa_pc();
+      uint16_t lower = static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc)); 
+      roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      cpu->incrementa_pc();
+      uint16_t upper = (static_cast<uint16_t>(cpu->bus.read_byte(cpu->pc)) << 8); 
+      roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      uint16_t resultado = lower | upper;
 
       cpu->bus.write_byte(resultado, static_cast<uint8_t>(cpu->sp & 0xFF));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
 
       cpu->bus.write_byte(resultado + 1, static_cast<uint8_t>((cpu->sp >> 8) & 0xFF));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-
-      cpu->last_ticks = 20;
+      cpu->ciclos_esperados = 5;
     }
 
     inline void PUSH(const Action& atual, CPU *cpu){
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       cpu->push(atual.alvo);
-      cpu->last_ticks = 16;
+      cpu->ciclos_esperados = 4;
     }
 
     inline void POP(const Action& atual, CPU *cpu){
       cpu->pop(atual.alvo);
-      cpu->last_ticks = 12;
+      cpu->ciclos_esperados = 3;
     }
 
     inline void CALLALWAYS(const Action& atual, CPU *cpu){
-      cpu->call(atual.N);
-      cpu->jp_flag = true;
-      cpu->last_ticks = 24;
+      uint16_t valor = cpu->get_target_duplo(reg_target::n);
+      cpu->call(valor);
+      cpu->skipa_fetch = true;
+      cpu->ciclos_esperados = 6;
     }
 
     inline void CALLZERO(const Action& atual, CPU *cpu){
+      uint16_t valor = cpu->get_target_duplo(reg_target::n);
+      cpu->ciclos_esperados = 3;
       if(cpu->registradores.f & BIT_ZERO){
-        cpu->call(atual.N);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 24;
-      }
-      else{
-        cpu->last_ticks = 12;
+        cpu->call(valor);
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 6;
       }
     }
 
     inline void CALLNZERO(const Action& atual, CPU *cpu){
+      uint16_t valor = cpu->get_target_duplo(reg_target::n);
+      cpu->ciclos_esperados = 3;
       if(!(cpu->registradores.f & BIT_ZERO)){
-        cpu->call(atual.N);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 24;
-      }
-      else{
-        cpu->last_ticks = 12;
+        cpu->call(valor);
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 6;
       }
     }
 
     inline void CALLCARRY(const Action& atual, CPU *cpu){
+      uint16_t valor = cpu->get_target_duplo(reg_target::n);
+      cpu->ciclos_esperados = 3;
       if(cpu->registradores.f & BIT_CARRY){
-        cpu->call(atual.N);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 24;
-      }
-      else{
-        cpu->last_ticks = 12;
+        cpu->call(valor);
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 6;
       }
     }
 
     inline void CALLNCARRY(const Action& atual, CPU *cpu){
+      uint16_t valor = cpu->get_target_duplo(reg_target::n);
+      cpu->ciclos_esperados = 3;
       if(!(cpu->registradores.f & BIT_CARRY)){
-        cpu->call(atual.N);
-        cpu->jp_flag = true;
-        cpu->last_ticks = 24;
-      }
-      else{
-        cpu->last_ticks = 12;
+        cpu->call(valor);
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 6;
       }
     }
 
     inline void RETALWAYS(const Action& atual, CPU *cpu){
       cpu->ret();
-      cpu->jp_flag = true;
-      cpu->last_ticks = 16;
+      cpu->skipa_fetch = true;
+      cpu->ciclos_esperados = 4;
     }
 
     inline void RETZERO(const Action& atual, CPU *cpu){
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      cpu->ciclos_esperados = 2;
       if(cpu->registradores.f & BIT_ZERO){
         cpu->ret();
-        cpu->jp_flag = true;
-        cpu->last_ticks = 20;
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 5;
       }
-      else
-        cpu->last_ticks = 8;
     }
 
     inline void RETNZERO(const Action& atual, CPU *cpu){
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      cpu->ciclos_esperados = 2;
       if(!(cpu->registradores.f & BIT_ZERO)){
         cpu->ret();
-        cpu->jp_flag = true;
-        cpu->last_ticks = 20;
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 5;
       }
-      else
-        cpu->last_ticks = 8;
     }
 
     inline void RETCARRY(const Action& atual, CPU *cpu){
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      cpu->ciclos_esperados = 2;
       if(cpu->registradores.f & BIT_CARRY){
         cpu->ret();
-        cpu->jp_flag = true;
-        cpu->last_ticks = 20;
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 5;
       }
-      else
-        cpu->last_ticks = 8;
     }
 
     inline void RETNCARRY(const Action& atual, CPU *cpu){
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
+      cpu->ciclos_esperados = 2;
       if(!(cpu->registradores.f & BIT_CARRY)){
         cpu->ret();
-        cpu->jp_flag = true;
-        cpu->last_ticks = 20;
+        cpu->skipa_fetch = true;
+        cpu->ciclos_esperados = 5;
       }
-      else
-        cpu->last_ticks = 8;
     }
 
     inline void ADD(const Action& atual, CPU *cpu){
@@ -481,11 +412,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_HALFCARRY;
       
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void ADDHL(const Action& atual, CPU *cpu){
@@ -500,11 +427,12 @@ namespace GBInstruct{
 
       cpu->registradores.set_duplo(reg_target::HL, static_cast<uint16_t>(result & 0xFFFF));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-      cpu->last_ticks = 8;
+      cpu->ciclos_esperados = 2;
     }
 
     inline void ADDSP(const Action& atual, CPU *cpu){
-      int8_t valor = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc + ((cpu->haltbug) ? 0 : 1)));
+      cpu->incrementa_pc();
+      int8_t valor = static_cast<int8_t>(cpu->bus.read_byte(cpu->pc));
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       uint32_t result = static_cast<uint32_t>(cpu->sp) + static_cast<uint32_t>(static_cast<int16_t>(valor));
 
@@ -517,12 +445,7 @@ namespace GBInstruct{
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       cpu->sp = static_cast<uint16_t>(result & 0xFFFF);
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-
-      cpu->last_ticks = 16;
-      if(cpu->haltbug){
-        cpu->jp_flag = true;
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-      }
+      cpu->ciclos_esperados = 4;
     }
 
     inline void ADC(const Action& atual, CPU *cpu){
@@ -540,11 +463,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_HALFCARRY;
       
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void SUB(const Action& atual, CPU *cpu){
@@ -561,11 +480,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_CARRY;
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void SBC(const Action& atual, CPU *cpu){
@@ -583,11 +498,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_CARRY;
 
       cpu->registradores.a = static_cast<uint8_t>(result & 0xFF);
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void AND(const Action& atual, CPU *cpu){
@@ -599,11 +510,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_ZERO;
       
       cpu->registradores.a = result;
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void OR(const Action& atual, CPU *cpu){
@@ -615,11 +522,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_ZERO;
       
       cpu->registradores.a = result;
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void XOR(const Action& atual, CPU *cpu){
@@ -631,11 +534,7 @@ namespace GBInstruct{
         cpu->registradores.f |= BIT_ZERO;
       
       cpu->registradores.a = result;
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void CP(const Action& atual, CPU *cpu){
@@ -651,11 +550,7 @@ namespace GBInstruct{
       if((cpu->registradores.a & 0xFF) < (valor & 0xFF))
         cpu->registradores.f |= BIT_CARRY;
 
-      cpu->last_ticks = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 8 : 4;
-      if(cpu->haltbug && atual.alvo == reg_target::n){
-        cpu->pc = cpu->pc + (atual.tamanho - 1);
-        cpu->jp_flag = true;
-      }
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL || atual.alvo == reg_target::n) ? 2 : 1;
     }
 
     inline void INC(const Action& atual, CPU *cpu){
@@ -672,12 +567,12 @@ namespace GBInstruct{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, reg + 1);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
       }
       else{
         ++reg;
-        cpu->last_ticks = 4;
       }
+
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL) ? 3 : 1;
     }
 
     inline void INCDUP(const Action& atual, CPU *cpu){
@@ -690,7 +585,7 @@ namespace GBInstruct{
       }
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
 
-      cpu->last_ticks = 8;
+      cpu->ciclos_esperados = 2;
     }
 
     inline void DEC(const Action& atual, CPU *cpu){
@@ -708,12 +603,12 @@ namespace GBInstruct{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, reg - 1);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 12;
       }
       else{
         --reg;
-        cpu->last_ticks = 4;
       }
+
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL) ? 3 : 1;
     }
 
     inline void DECDUP(const Action& atual, CPU *cpu){
@@ -726,19 +621,19 @@ namespace GBInstruct{
       }
 
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-      cpu->last_ticks = 8;
+      cpu->ciclos_esperados = 2;
     }
 
     inline void CCF(const Action& atual, CPU *cpu){
       cpu->registradores.f ^= BIT_CARRY;
       cpu->registradores.f &= ~(BIT_SUBTRACT | BIT_HALFCARRY);
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void SCF(const Action& atual, CPU *cpu){
       cpu->registradores.f |= BIT_CARRY;
       cpu->registradores.f &= ~(BIT_SUBTRACT | BIT_HALFCARRY);
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void RRA(const Action& atual, CPU *cpu){
@@ -752,7 +647,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~BIT_CARRY;
 
       cpu->registradores.a = ((cpu->registradores.a >> 1) | (carry << 7));
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void RLA(const Action& atual, CPU *cpu){
@@ -766,7 +661,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~BIT_CARRY;
 
       cpu->registradores.a = ((cpu->registradores.a << 1) | carry);
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void RRCA(const Action& atual, CPU *cpu){
@@ -778,7 +673,7 @@ namespace GBInstruct{
         cpu->registradores.f &= ~BIT_CARRY;
 
       cpu->registradores.a = ((cpu->registradores.a >> 1) | (bit0 << 7));
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     } 
 
     inline void RLCA(const Action& atual, CPU *cpu){
@@ -790,43 +685,41 @@ namespace GBInstruct{
         cpu->registradores.f &= ~BIT_CARRY;
 
       cpu->registradores.a = ((cpu->registradores.a << 1) | bit7);
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     } 
 
     inline void CPL(const Action& atual, CPU *cpu){
       cpu->registradores.a = ~cpu->registradores.a;
       cpu->registradores.f |= (BIT_SUBTRACT | BIT_HALFCARRY);
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void DI(const Action& atual, CPU *cpu){
       cpu->ime = false;
-      cpu->ime_ie = false;
-      cpu->last_ticks = 4;
+      cpu->ime_count = 0;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void EI(const Action& atual, CPU *cpu){
-      cpu->ime_ie = true;
-      cpu->last_ticks = 4;
+      cpu->ime_count = 1;
+      cpu->ciclos_esperados = 1;
     }
 
     inline void RETI(const Action& atual, CPU *cpu){
       cpu->ret();
       cpu->ime = true;
-      cpu->jp_flag = true;
-      cpu->last_ticks = 16;
+      cpu->skipa_fetch = true;
+      cpu->ciclos_esperados = 4;
     }
 
     inline void RST(const Action& atual, CPU *cpu){
-      if(!cpu->haltbug)
-        cpu->push(cpu->pc + 1);
-      else
-        cpu->push(cpu->pc);
-
+      ++cpu->pc;
+      cpu->push(cpu->pc);
+      
       cpu->pc = atual.N;
+      cpu->skipa_fetch = true;
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-      cpu->jp_flag = true;
-      cpu->last_ticks = 16;
+      cpu->ciclos_esperados = 4;
     }
 
     inline void BIT(const Action& atual, CPU *cpu){
@@ -836,35 +729,37 @@ namespace GBInstruct{
       if(!bit)
         cpu->registradores.f |= BIT_ZERO;
       
-      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 12 : 8;
+      cpu->ciclos_esperados = (atual.alvo == reg_target::HL) ? 3 : 2;
     }
 
     inline void RESET(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target_ref(atual.alvo);
       if(atual.alvo != reg_target::HL){
         reg &= ~(1 << atual.bit_index);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, (reg & ~(1 << atual.bit_index)));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
+
     }
 
     inline void SET(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target_ref(atual.alvo);
       if(atual.alvo != reg_target::HL){
         reg |= (1 << atual.bit_index);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, (reg | (1 << atual.bit_index)));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
+
     }
 
     inline void SRL(const Action& atual, CPU *cpu){
@@ -872,13 +767,13 @@ namespace GBInstruct{
       uint8_t bit0 = (reg & 0x01);
       if(atual.alvo != reg_target::HL){
         reg = (reg >> 1);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, (reg >> 1));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       cpu->registradores.f &= ~(BIT_ZERO | BIT_HALFCARRY | BIT_SUBTRACT);
@@ -891,7 +786,6 @@ namespace GBInstruct{
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
 
-      cpu->last_ticks = (atual.alvo == reg_target::HL) ? 16 : 8;
     }
 
     inline void RR(const Action& atual, CPU *cpu){
@@ -907,17 +801,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = ((reg >> 1) | (carry << 7));
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, ((reg >> 1) | (carry << 7)));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void RL(const Action& atual, CPU *cpu){
@@ -933,17 +828,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = ((reg << 1) | carry);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, ((reg << 1) | carry));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void RRC(const Action& atual, CPU *cpu){
@@ -957,17 +853,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = ((reg >> 1) | (bit0 << 7));
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, ((reg >> 1) | (bit0 << 7)));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void RLC(const Action& atual, CPU *cpu){
@@ -981,17 +878,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = ((reg << 1) | bit7);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, ((reg << 1) | bit7));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void SRA(const Action& atual, CPU *cpu){
@@ -1007,17 +905,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = ((reg >> 1) | (bit7 << 7));
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, ((reg >> 1) | (bit7 << 7)));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void SLA(const Action& atual, CPU *cpu){
@@ -1032,17 +931,18 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = (reg << 1);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, (reg << 1));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void SWAP(const Action& atual, CPU *cpu){
@@ -1052,18 +952,19 @@ namespace GBInstruct{
 
       if(atual.alvo != reg_target::HL){
         reg = (lower | upper);
-        cpu->last_ticks = 8;
+        cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
         cpu->bus.write_byte(address, (lower | upper));
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
-        cpu->last_ticks = 16;
+        cpu->ciclos_esperados = 4;
       }
 
       cpu->registradores.f = 0;
       if(!reg)
         cpu->registradores.f |= BIT_ZERO;
+
     }
 
     inline void DAA(const Action& atual, CPU *cpu){
@@ -1088,7 +989,7 @@ namespace GBInstruct{
       if(!cpu->registradores.a)
         cpu->registradores.f |= BIT_ZERO;
 
-      cpu->last_ticks = 4;
+      cpu->ciclos_esperados = 1;
     }
 
 

@@ -89,14 +89,14 @@ struct CPU{
   Registradores registradores;
   uint16_t pc {0x0100}; 
   uint16_t sp {0xFFFE}; 
-  uint8_t last_ticks {};
   uint16_t last_instruct {};
-  bool jp_flag {false};
+  uint8_t ime_count {};
+  uint8_t ciclos_esperados {};
+  bool skipa_fetch {false};
   bool halted {false};
   bool haltbug {false};
   bool stepping {true};
   bool ime {false};
-  bool ime_ie {false};
   
   CPU(Timer *tm, Joypad *jp, PPU *b): bus(tm, jp, b) {}
 
@@ -117,6 +117,7 @@ struct CPU{
   void jump_lcdstat(void);
   void jump_joypad(void);
 
+  void incrementa_pc(void);
   uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
   uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
   uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
