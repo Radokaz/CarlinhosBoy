@@ -31,16 +31,16 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x31:
       return Action(LDDUP, 3, SP, 12, 0, n);
     case 0x02:
-      return Action(LD, 1, BC, atual->registradores.get_duplo(BC), 8, A);
+      return Action(LD, 1, BC, atual->registradores.get_duplo(BC), 8, A, true);
     case 0x12:
-      return Action(LD, 1, DE, atual->registradores.get_duplo(DE), 8, A);
+      return Action(LD, 1, DE, atual->registradores.get_duplo(DE), 8, A, true);
     case 0x22:{
       uint16_t temp = atual->registradores.get_duplo(HL);
-      return Action(LD, 1, HLI, temp, 8, A);
+      return Action(LD, 1, HLI, temp, 8, A, true);
       }
     case 0x32:{
       uint16_t temp = atual->registradores.get_duplo(HL);
-      return Action(LD, 1, HLD, temp, 8, A);
+      return Action(LD, 1, HLD, temp, 8, A, true);
       }
     case 0x03:
       return Action(INCDUP, 1, BC);
@@ -73,7 +73,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x26:
       return Action(LD, 2, H, 0xFEA0, 8, n);
     case 0x36:
-      return Action(LD, 2, HL, atual->registradores.get_duplo(HL), 12, n);
+      return Action(LD, 2, HL, atual->registradores.get_duplo(HL), 12, n, true);
     case 0x07:
       return Action(RLCA, 1);
     case 0x17:
@@ -244,21 +244,21 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0x6F:
       return Action(LD, 1, L, 0xFEA0, 4, A);
     case 0x70:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, B);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, B, true);
     case 0x71:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, C);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, C, true);
     case 0x72:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, D);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, D, true);
     case 0x73:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, E);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, E, true);
     case 0x74:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, H);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, H, true);
     case 0x75:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, L);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, L, true);
     case 0x76:
       return Action(HALT, 1);
     case 0x77:
-      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, A);
+      return Action(LD, 1, HL, atual->registradores.get_duplo(HL), 8, A, true);
     case 0x78:
       return Action(LD, 1, A, 0xFEA0, 4, B);
     case 0x79:
@@ -412,7 +412,7 @@ Action le_byte(uint8_t byte, CPU *atual){
       atual->incrementa_pc();
       uint16_t byte = static_cast<uint16_t>(atual->bus.read_byte(atual->pc));
       roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
-      return Action(LD, 2, A8, 0xFF00 + byte, 12, A);
+      return Action(LD, 2, A8, 0xFF00 + byte, 12, A, true);
       }
     case 0xF0:
       return Action(LD, 2, A, 0xFEA0, 12, A8);
@@ -429,7 +429,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xD2:
       return Action(JPNCARRY, 3);
     case 0xE2:
-      return Action(LD, 1, CPTR, 0xFF00 + static_cast<uint16_t>(atual->registradores.c), 8, A);
+      return Action(LD, 1, CPTR, 0xFF00 + static_cast<uint16_t>(atual->registradores.c), 8, A, true);
     case 0xF2:
       return Action(LD, 1, A, 0xFEA0, 8, CPTR);
     case 0xC3:
@@ -496,7 +496,7 @@ Action le_byte(uint8_t byte, CPU *atual){
       uint16_t upper = (static_cast<uint16_t>(atual->bus.read_byte(atual->pc)) << 8);
       roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
       uint16_t temp = lower | upper;
-      return Action(LD, 3, A16, temp, 16, A);
+      return Action(LD, 3, A16, temp, 16, A, true);
       }
     case 0xFA:
       return Action(LD, 3, A, 0xFEA0, 16, A16);

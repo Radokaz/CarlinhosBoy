@@ -156,6 +156,7 @@ struct Memorybus{
   std::unique_ptr<DMA> dma;
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
+  uint8_t serial_count {};
 
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     dma = std::make_unique<DMA>();
@@ -210,9 +211,8 @@ struct Memorybus{
     else if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
       char c = memoria[0xFF01];
       std::cout << c << std::flush;
-      memoria[0xFF01] = 0xFF;
-      memoria[0xFF02] &= ~BIT_SERIAL;
-      memoria[0xFF0F] |= BIT_SERIAL;
+      memoria[0xFF02] = valor;
+      serial_count = 128;
       return;
     }
     else if(endereco == 0xFF46){ //dma

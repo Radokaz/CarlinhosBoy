@@ -217,7 +217,7 @@ namespace GBInstruct{
     }
 
     inline void LD(const Action& atual, CPU *cpu){
-      if(atual.N == 0xFEA0){ //endereço de 8 bits
+      if(!atual.bus_address){ //registrador interno
         uint8_t valor = cpu->get_target_value(atual.ld_alvo);
         uint8_t& memoria = cpu->get_target_ref(atual.alvo);
         memoria = valor;
@@ -765,13 +765,14 @@ namespace GBInstruct{
     inline void SRL(const Action& atual, CPU *cpu){
       uint8_t& reg = cpu->get_target_ref(atual.alvo);
       uint8_t bit0 = (reg & 0x01);
+      
+      reg = (reg >> 1);
       if(atual.alvo != reg_target::HL){
-        reg = (reg >> 1);
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, (reg >> 1));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -799,13 +800,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = ((reg >> 1) | (carry << 7));
       if(atual.alvo != reg_target::HL){
-        reg = ((reg >> 1) | (carry << 7));
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, ((reg >> 1) | (carry << 7)));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -826,13 +827,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = ((reg << 1) | carry);
       if(atual.alvo != reg_target::HL){
-        reg = ((reg << 1) | carry);
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, ((reg << 1) | carry));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -851,13 +852,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = ((reg >> 1) | (bit0 << 7));
       if(atual.alvo != reg_target::HL){
-        reg = ((reg >> 1) | (bit0 << 7));
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, ((reg >> 1) | (bit0 << 7)));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -876,13 +877,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = ((reg << 1) | bit7);
       if(atual.alvo != reg_target::HL){
-        reg = ((reg << 1) | bit7);
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, ((reg << 1) | bit7));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -903,13 +904,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = ((reg >> 1) | (bit7 << 7));
       if(atual.alvo != reg_target::HL){
-        reg = ((reg >> 1) | (bit7 << 7));
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, ((reg >> 1) | (bit7 << 7)));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -929,13 +930,13 @@ namespace GBInstruct{
       else
         cpu->registradores.f &= ~BIT_CARRY;
 
+      reg = (reg << 1);
       if(atual.alvo != reg_target::HL){
-        reg = (reg << 1);
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, (reg << 1));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
@@ -950,13 +951,13 @@ namespace GBInstruct{
       uint8_t lower = (reg << 4);
       uint8_t upper = (reg >> 4);
 
+      reg = (lower | upper);
       if(atual.alvo != reg_target::HL){
-        reg = (lower | upper);
         cpu->ciclos_esperados = 2;
       }
       else{
         uint16_t address = cpu->registradores.get_duplo(reg_target::HL);
-        cpu->bus.write_byte(address, (lower | upper));
+        cpu->bus.write_byte(address, reg);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
         cpu->ciclos_esperados = 4;
       }
