@@ -61,19 +61,11 @@ struct Sprite{
   uint8_t flags;
 };
 
-struct Coordenadas{
-  int16_t x {};
-  int16_t y {};
-  uint16_t tilemap {};
-  uint16_t tiledata {};
-};
-
 struct Memorybus;
 struct PPU;
 
 struct PPU_fetcher{
   std::array<tile_pixel, 16> fila;
-  Coordenadas info;
   uint8_t ultimo{};
   uint8_t prim {};
   uint8_t size {};
@@ -86,7 +78,9 @@ struct PPU_fetcher{
   uint8_t x_pos {};
   uint8_t tiles_buscados {};
   uint8_t drop_pixels {};
+  uint8_t win_line {};
   fetcher_estado atual {fetcher_estado::READ_ID};
+  bool window_ativa {false};
 
   PPU_fetcher(){
     fila.fill(tile_pixel::INDEX_NULO);
@@ -105,13 +99,13 @@ struct PPU{
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
   uint8_t sprites_count {};
-  uint8_t win_line {};
   Memorybus *bus {};
+  Texture2D *raylib_texture;
   uint16_t ciclos {};
   uint16_t draw_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
   bool stat_prev {false};
-  Texture2D *raylib_texture;
+  bool frame_pronto {false};
 
   PPU(Texture2D *texture): raylib_texture{texture}{
     framebuffer.fill(0xFFFFFFFF);
@@ -120,6 +114,7 @@ struct PPU{
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(void);
   void scan_oam(void);
+  uint32_t merge_sprites(uint8_t x_atual, tile_pixel bg_cor);
   void draw_step(void);
 
   uint16_t atual_wintilemap(void);

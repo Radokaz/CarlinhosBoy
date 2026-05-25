@@ -37,8 +37,8 @@ void degub_func(GB::CPU *cpu, GB::PPU *ppu){
   std::cout << "Haltbug: " << cpu->haltbug << "\n";
   std::cout << "Ultima instrução: " << static_cast<int>(cpu->last_instruct) << "\n";
   std::cout << "Tac :" << static_cast<int>(cpu->bus.memoria[0xFF07]) << "\n";
+  std::cout << "LY: " << std::dec << static_cast<int>(cpu->bus.memoria[0xFF44]) << "\n";
   /*std::cout << "\n";
-  std::cout << "\n";
   std::cout << "\n";
   std::cout << "\n";
   std::cout << "\n";
@@ -53,6 +53,7 @@ int main(int argc, char **argv){
   }
 
   float escala {8.0f};
+  float velocidade {1.0f};
   InitWindow(160*escala, 144*escala, "Game Boy");
   SetTargetFPS(60);
 
@@ -74,7 +75,7 @@ int main(int argc, char **argv){
   while(!WindowShouldClose()){
     le_input(pad);
     
-    for(size_t i {}; i < MAX_TICKS; i+=cpu.last_ticks){
+    while(!ppu.frame_pronto){
       roda_cpu(&cpu, &timer, &ppu);
       //degub_func(&cpu, &ppu);
     }
@@ -82,6 +83,8 @@ int main(int argc, char **argv){
     BeginDrawing();
     DrawTextureEx(texture, Vector2{0, 0}, 0, escala, WHITE);
     EndDrawing();
+
+    ppu.frame_pronto = false;
   }
 
   CloseWindow();

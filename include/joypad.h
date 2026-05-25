@@ -22,7 +22,7 @@ namespace GB{
 
     uint8_t& get_output(void){
       this->set_select();
-      uint8_t result {0xCF};
+      uint8_t result {0x3F};
 
       if(select_dir){
         result &= ~(1 << 4);
