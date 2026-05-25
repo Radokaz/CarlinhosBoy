@@ -97,6 +97,7 @@ struct CPU{
   bool haltbug {false};
   bool stepping {true};
   bool ime {false};
+  uint8_t hack {};
   
   CPU(Timer *tm, Joypad *jp, PPU *b): bus(tm, jp, b) {}
 
@@ -134,9 +135,10 @@ struct Action{
   uint16_t N;
   uint8_t bit_index;
   reg_target ld_alvo;
+  bool bus_address;
 
-  Action(void (*ptr)(const Action&, CPU*), uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0, reg_target ld = reg_target::NULO): 
-    execute{ptr}, tamanho{tam}, alvo{a}, N{n}, bit_index{b}, ld_alvo {ld} {}
+  Action(void (*ptr)(const Action&, CPU*), uint8_t tam, reg_target a = reg_target::NULO, uint16_t n = 0, uint8_t b = 0, reg_target ld = reg_target::NULO, bool ba = false): 
+    execute{ptr}, tamanho{tam}, alvo{a}, N{n}, bit_index{b}, ld_alvo {ld}, bus_address {ba} {}
 };
 
 Action le_byte(uint8_t byte, CPU *atual);

@@ -13,11 +13,17 @@ void roda_cpu(CPU *atual, Timer *timer, PPU *ppu){
     atual->stepping = true; //não dá pra emular essa porra
   atual->check();
   atual->step();
-  /*std::cout << "Número de ciclos: " << debug_cycles << "\nInstrução: " << std::hex << static_cast<int>(atual->last_instruct) <<
-    std::dec << "\n";*/
 }
 
 void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
+  if(atual->bus.serial_count){
+    --atual->bus.serial_count;
+    if(!atual->bus.serial_count){
+      atual->bus.memoria[0xFF01] = 0xFF;
+      atual->bus.memoria[0xFF02] &= ~0x80;
+      atual->get_if() |= BIT_SERIAL;
+    }
+  }
   timer->step(atual->bus);
   atual->bus.dma->step(atual->bus.memoria.data());
   ppu->step();
@@ -85,7 +91,7 @@ void CPU::step(){
     auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
 
-    /*if(debug_tamanho != current_act.tamanho){
+    if(debug_tamanho != current_act.tamanho){
       std::cerr << std::dec << "Tamanho esperado: " << static_cast<int>(current_act.tamanho) << ", Tamanho obtido: " << debug_tamanho << "\n";
       std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
       std::terminate();
@@ -93,15 +99,17 @@ void CPU::step(){
     if(debug_cycles != this->ciclos_esperados){
       std::cerr << std::dec << "Ciclos esperados: " << static_cast<int>(ciclos_esperados) << ", Ciclos obtidos: " << debug_cycles << "\n";
       std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
-      std::terminate();*/
+      std::terminate();
     }
     if(!skipa_fetch){
       this->incrementa_pc();
     }
+
+    //std::cout << "Ultima instrução: " << std::hex << static_cast<int>(this->last_instruct) << std::dec << "\n";
   }
   catch(std::exception& ex){
     std::cerr << "Erro: " << ex.what();
-    std::cerr << "Instrução: " << static_cast<int>(this->last_instruct) << "\n";
+    std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n";
     std::terminate();
   }
 
@@ -128,6 +136,7 @@ void CPU::jump_serial(void){
   this->ime = false;
   this->get_if() &= ~BIT_SERIAL;
   std::cout << "Interrupção: SERIAL\n"; 
+  std::cout << "SP: " << static_cast<int>(this->sp) << "\n";
 }
 
 void CPU::jump_timer(void){
@@ -184,66 +193,12 @@ uint8_t& CPU::get_target_ref(reg_target alvo){
     case L:
       return this->registradores.l;
     case HL:{
-      uint8_t& result = this->bus.read_byte(this->registradores.get_duplo(HL));
+      this->hack = this->bus.read_byte(this->registradores.get_duplo(HL));
       roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case BC:{
-      uint8_t& result = this->bus.read_byte(this->registradores.get_duplo(BC));
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case DE:{
-      uint8_t& result = this->bus.read_byte(this->registradores.get_duplo(DE));
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case HLI:{
-      uint16_t temp = this->registradores.get_duplo(HL);
-      uint8_t& result = this->bus.read_byte(temp);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      this->registradores.set_duplo(HL, temp + 1);
-      return result;
-    }
-    case HLD:{
-      uint16_t temp = this->registradores.get_duplo(HL);
-      uint8_t& result = this->bus.read_byte(temp);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      this->registradores.set_duplo(HL, temp - 1);
-      return result;
-    }
-    case A8:{
-      this->incrementa_pc();
-      uint16_t byte = static_cast<uint16_t>(this->bus.read_byte(this->pc));
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      uint8_t& result = this->bus.read_byte(0xFF00 + byte);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case A16:{
-      this->incrementa_pc();
-      uint16_t lower = static_cast<uint16_t>(this->bus.read_byte(this->pc));
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      this->incrementa_pc();
-      uint16_t upper = (static_cast<uint16_t>(this->bus.read_byte(this->pc)) << 8);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      uint8_t& result = this->bus.read_byte(lower | upper);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case n:{
-      this->incrementa_pc();
-      uint8_t& result = this->bus.read_byte(this->pc);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
-    }
-    case CPTR:{
-      uint8_t& result = this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->registradores.c));
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
-      return result;
+      return this->hack;
     }
     default:
-      throw std::runtime_error("Registrador invalido.\n");
+      throw std::runtime_error("Registrador invalido. Reg_target_ref\n");
   }
 }
 
