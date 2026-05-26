@@ -26,7 +26,7 @@ struct __attribute__((packed)) Header{
   uint16_t global_checksum;
 };
 
-inline void merge_boot_rom(CPU *cpu, std::string_view src){
+inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
   std::fstream bootrom(BOOT_SOURCE, bootrom.binary | bootrom.in);
   if(!bootrom){
     std::cerr << "BOOTROM INDISPONÍVEL\n";
@@ -55,12 +55,25 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src){
     return;
   }
 
-  bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
   cpu->pc = 0;
-  cpu->bus.restaura_rom = [src, cpu](){
-    std::fstream rom(src.data(), rom.binary | rom.in);
-    rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
-  };
+  switch(mbc){
+    case 1:
+    case 2:
+    case 3:
+      bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+      cpu->bus.restaura_rom = [src, cpu](){
+        std::fstream rom(src.data(), rom.binary | rom.in);
+        rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+      };
+      break;
+    default:
+      bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+      cpu->bus.restaura_rom = [src, cpu](){
+        std::fstream rom(src.data(), rom.binary | rom.in);
+        rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+      };
+      break;
+  }
 }
 
 inline Header *init_rom(CPU *cpu, std::string_view src){
@@ -70,13 +83,11 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
     exit(1);
   }
 
-  arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
-  merge_boot_rom(cpu, src);
-
+  arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0150);
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
 }
 
-inline void checa_validade(Header *header, CPU *cpu){
+inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
 
   const char *ROM_TYPES[] = {
     "ROM ONLY",
@@ -197,11 +208,25 @@ inline void checa_validade(Header *header, CPU *cpu){
     std::cerr << "Erro ao ler a ROM.\n";
     exit(1);
   }
+  
+  switch(header->mbc){
+    case 1:
+    case 2:
+    case 3:{
+      cpu->bus.mbc = std::make_unique<MBC1>(src);
+      break;
+    }
+    default:{
+      std::fstream rom(src.data(), rom.in | rom.binary);
+      rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
+    }
+  }
 }
 
 inline void init_game(CPU *cpu, Timer& timer, char **argv){
   Header *header = init_rom(cpu, argv[1]);
-  checa_validade(header, cpu);
+  checa_validade(header, cpu, argv[1]);
+  merge_boot_rom(cpu, argv[1], header->mbc);
 }
 
 

@@ -9,6 +9,7 @@
 #include "joypad.h"
 #include "lcd.h"
 #include "dma.h"
+#include "mbc.h"
 #include <raylib.h>
 #include <memory>
 #include <functional>
@@ -45,10 +46,12 @@ enum class tile_pixel: uint8_t{
 };
 
 enum class fetcher_estado: uint8_t{
+  INICIO,
   READ_ID,
   READ_LOW,
   READ_HIGH,
-  PUSH
+  PUSH,
+  FLUSH
 };
 
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
@@ -81,6 +84,9 @@ struct PPU_fetcher{
   uint8_t win_line {};
   fetcher_estado atual {fetcher_estado::READ_ID};
   bool window_ativa {false};
+  uint8_t flush_cycles {};
+  uint8_t delay {};
+  bool finalizado {false};
 
   PPU_fetcher(){
     fila.fill(tile_pixel::INDEX_NULO);
@@ -103,6 +109,7 @@ struct PPU{
   Texture2D *raylib_texture;
   uint16_t ciclos {};
   uint16_t draw_ciclos {};
+  uint16_t hblank_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
   bool stat_prev {false};
   bool frame_pronto {false};
@@ -154,15 +161,20 @@ struct Memorybus{
   Joypad *pad {};
   PPU *ppu {};
   std::unique_ptr<DMA> dma;
+  std::unique_ptr<MBC> mbc {};
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
 
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     dma = std::make_unique<DMA>();
+    mbc = nullptr;
   }
 
   uint8_t& read_byte(uint16_t endereco){
+    if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
+      return mbc->read(endereco);
+    }
     switch(endereco){
         case 0xFF07: //tac
           memoria[endereco] |= 0b11111000; 
@@ -190,10 +202,17 @@ struct Memorybus{
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
+    if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
+      mbc->write(endereco, valor);
+      return;
+    }
+    if(endereco < 0x8000){
+      return;
+    }
     if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      //if(ppu->modo_atual != screen_mode::DRAWING)
+      if(ppu->modo_atual != screen_mode::DRAWING)
         ppu->write_vram(endereco, valor);
-      
+
       return;
     }
     else if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){

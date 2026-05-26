@@ -90,14 +90,14 @@ void PPU::scan_oam(void){
           bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
     }
   }
+
+  std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
+      [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
 }
 
 uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
   uint8_t ly = this->bus->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
-
-  std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
-      [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
 
   for(size_t i {}; i < sprites_count; ++i){
     Sprite& sprite = sprites_sel[i];
@@ -188,6 +188,8 @@ void PPU::draw_step(void){
  
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;
   ++this->fetcher.x_pos;
+  if(this->fetcher.x_pos == 160)
+    this->fetcher.atual = fetcher_estado::FLUSH;
 }
 
 }

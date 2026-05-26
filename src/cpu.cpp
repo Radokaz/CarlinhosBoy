@@ -10,7 +10,7 @@ void roda_cpu(CPU *atual, Timer *timer, PPU *ppu){
     atual->stepping = true;
   }
   if(!atual->stepping) 
-    atual->stepping = true; //não dá pra emular essa porra
+    return; 
   atual->check();
   atual->step();
 }
@@ -56,11 +56,11 @@ void CPU::check(void){
 }
 
 bool CPU::check_joypad(void){
-  if((this->bus.memoria[0xFF00] & 0x30) == 0x30) return false;
+  //if((this->bus.memoria[0xFF00] & 0x30) == 0x30) return false;
   uint8_t prev = this->bus.pad->controles_prev;
   uint8_t curr = this->bus.pad->controles;
 
-  if(prev & ~curr){
+  if(prev & !curr){
     this->get_if() |= BIT_JOYPAD;
     return true;
   }
@@ -119,57 +119,56 @@ void CPU::step(){
 void CPU::jump_vblank(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  std::cout << "Interrupção: VBLANK, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0040;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   this->ime = false;
   this->get_if() &= ~BIT_VBLANK;
-  std::cout << "Interrupção: VBLANK\n"; 
 }
 
 void CPU::jump_serial(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  std::cout << "Interrupção: SERIAL, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0058;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   this->ime = false;
   this->get_if() &= ~BIT_SERIAL;
-  std::cout << "Interrupção: SERIAL\n"; 
-  std::cout << "SP: " << static_cast<int>(this->sp) << "\n";
 }
 
 void CPU::jump_timer(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  std::cout << "Interrupção: TIMER, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0050;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   this->ime = false;
   this->get_if() &= ~BIT_TIMER;
-  std::cout << "Interrupção: TIMER\n"; 
 }
 
 void CPU::jump_lcdstat(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  std::cout << "Interrupção: STAT, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0048;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   this->ime = false;
   this->get_if() &= ~BIT_LCDSTAT;
-  std::cout << "Interrupção: STAT\n"; 
 }
 
 void CPU::jump_joypad(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  std::cout << "Interrupção: JOYPAD, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0060;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   this->ime = false;
   this->get_if() &= ~BIT_JOYPAD;
-  std::cout << "Interrupção: JOYPAD\n"; 
 }
 
 uint8_t& CPU::get_target_ref(reg_target alvo){

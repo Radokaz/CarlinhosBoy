@@ -23,6 +23,8 @@ void PPU_fetcher::clear(void){
   size = 0;
   ultimo = 0;
   prim = 0;
+  finalizado = false;
+  flush_cycles = 0;
 }
 
 uint16_t PPU::atual_wintilemap(void){
@@ -102,6 +104,15 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
 }
 
 void PPU::step(void){
+  if(!this->is_lcd_enabled()){
+    this->modo_atual = screen_mode::HBLANK;
+    this->ciclos = 0;
+    this->bus->memoria[0xFF44] = 0;
+    uint8_t& stat = bus->memoria[0xFF41];
+    stat = (stat & 0b11111100);
+    return;
+  }
+
   for(size_t i {}; i < 4; ++i){
     ++this->ciclos;
 
@@ -110,9 +121,10 @@ void PPU::step(void){
 
       case SOAMRAM:{
         if(this->ciclos >= 80){
-          this->ciclos -= 80;
+          this->ciclos = 0;
           this->scan_oam();
           this->fetcher.clear();
+          this->draw_ciclos = 0;
           this->fetcher.drop_pixels = this->get_scrollx() % 8;
           this->fetcher.window_ativa = false;
           this->set_mode(screen_mode::DRAWING);
@@ -120,13 +132,13 @@ void PPU::step(void){
         break;
       }
       case DRAWING:{
-        if(this->fetcher.x_pos < 160){
+        if(!this->fetcher.finalizado){
           this->draw_step();
           ++this->draw_ciclos;
         }
         else{
-          this->ciclos -= this->draw_ciclos;
-          this->draw_ciclos = 0;
+          this->ciclos = 0;
+          this->hblank_ciclos = 456 - this->draw_ciclos - 80;
           if(this->fetcher.window_ativa)
             ++this->fetcher.win_line;
           this->set_mode(screen_mode::HBLANK);
@@ -134,8 +146,9 @@ void PPU::step(void){
         break;
       }
       case HBLANK:{
-        if(this->ciclos >= 204){
-          this->ciclos -= 204;
+        if(this->ciclos >= this->hblank_ciclos){
+          this->ciclos = 0;
+          this->hblank_ciclos = 0;
           this->avanca_ly();
           if(this->bus->memoria[0xFF44] == 144){
             this->bus->memoria[0xFF0F] |= BIT_VBLANK;
@@ -150,7 +163,7 @@ void PPU::step(void){
       }
       case VBLANK:{
         if(this->ciclos >= 456){
-          this->ciclos -= 456;
+          this->ciclos = 0;
           this->avanca_ly();
           if(this->bus->memoria[0xFF44] == 0x00){
             this->fetcher.win_line = 0;
@@ -203,7 +216,7 @@ void PPU_fetcher::step(PPU *ppu){
       uint8_t y = (!this->window_ativa) ? ppu->get_scrolly() : this->win_line;
       uint16_t tilemap = (!this->window_ativa) ? ppu->atual_bgtilemap() : ppu->atual_wintilemap();
 
-      uint8_t linha = ((y + ly) % 256) % 8;
+      uint8_t linha = (!this->window_ativa) ? ((y + ly) % 256) % 8 : y % 8;
       uint16_t tile_addr {};
 
       if(ppu->atual_bgtiledata() == 0x8000){
@@ -223,7 +236,7 @@ void PPU_fetcher::step(PPU *ppu){
       uint8_t y = (!this->window_ativa) ? ppu->get_scrolly() : this->win_line;
       uint16_t tilemap = (!this->window_ativa) ? ppu->atual_bgtilemap() : ppu->atual_wintilemap();
 
-      uint8_t linha = ((y + ly) % 256) % 8;
+      uint8_t linha = (!this->window_ativa) ? ((y + ly) % 256) % 8 : y % 8;
       uint16_t tile_addr {};
 
       if(ppu->atual_bgtiledata() == 0x8000){
@@ -238,7 +251,7 @@ void PPU_fetcher::step(PPU *ppu){
       break;
     }
     case PUSH:{
-      if(this->size <= 8){
+      if(!this->size){
         for(size_t i {}; i < 8; ++i){
           uint8_t mask = 1 << (7 - i);
           uint8_t bit1 = ((this->tile_low & mask) >> (7 - i));
@@ -263,6 +276,13 @@ void PPU_fetcher::step(PPU *ppu){
       }
       
       break;
+    }
+    case FLUSH:{
+      ++this->flush_cycles;
+      if(this->flush_cycles >= 3){
+        this->flush_cycles = 0;
+        this->finalizado = true;
+      }
     }
   }
 }
