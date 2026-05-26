@@ -77,6 +77,8 @@ int main(int argc, char **argv){
     
     while(!ppu.frame_pronto){
       roda_cpu(&cpu, &timer, &ppu);
+      if(!cpu.stepping)
+        break;
       //degub_func(&cpu, &ppu);
     }
 
