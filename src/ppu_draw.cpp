@@ -155,19 +155,22 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
     return this->decide_obj_color(sprite, result);
   }
 
-  return this->decide_bg_color(bg_cor);
+  return (this->is_bg_enabled()) ? this->decide_bg_color(bg_cor) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
 }
 
 void PPU::draw_step(void){
   uint8_t ly = this->bus->memoria[0xFF44];
+  int32_t wx = static_cast<int>(this->get_winx()) - 7;
+
   if(!this->fetcher.window_ativa && this->is_win_enabled()
-      && ly >= this->get_winy() && this->fetcher.x_pos >= (this->get_winx() - 7)){
+      && ly >= this->get_winy() && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
     this->fetcher.window_ativa = true;
     this->fetcher.clear();
     this->fetcher.drop_pixels = 0;
   }
 
   this->fetcher.step(this);
+  if(this->fetcher.atual == fetcher_estado::FLUSH) return;
 
   if(this->fetcher.size <= 0) return;
   if(this->fetcher.drop_pixels > 0){
@@ -183,9 +186,9 @@ void PPU::draw_step(void){
     cor_px = this->merge_sprites(this->fetcher.x_pos, px);
   }
   else{
-    cor_px = this->decide_bg_color(px);
+    cor_px = (this->is_bg_enabled()) ? this->decide_bg_color(px) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
   }
- 
+  
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;
   ++this->fetcher.x_pos;
   if(this->fetcher.x_pos == 160)
