@@ -14,6 +14,7 @@ file(GLOB_RECURSE SOURCES src/*.cpp)
 # Create executable
 add_executable(gb ${SOURCES})
 target_compile_options(gb PRIVATE -g)
+target_link_options(gb PRIVATE -fsanitize=address)
 
 target_include_directories(gb PRIVATE include)
 add_subdirectory(include/raylib)

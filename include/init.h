@@ -275,9 +275,10 @@ inline void checa_save(CPU *cpu, uint8_t mbc){
 
 inline void init_game(CPU *cpu, Timer& timer, char **argv){
   Header *header = init_rom(cpu, argv[1]);
+  uint8_t mbc = header->mbc;
   checa_validade(header, cpu, argv[1]);
-  merge_boot_rom(cpu, argv[1], header->mbc);
-  checa_save(cpu, header->mbc);
+  merge_boot_rom(cpu, argv[1], mbc);
+  checa_save(cpu, mbc);
 }
 
 
