@@ -10,9 +10,9 @@ void le_input(GB::Joypad& pad){
     controles |= A_BUTTON;
   if(apt(KEY_N)) 
     controles |= B_BUTTON;
-  if(apt(KEY_U))
+  if(apt(KEY_O))
     controles |= START;
-  if(apt(KEY_I))
+  if(apt(KEY_P))
     controles |= SELECT;
   if(apt(KEY_W))
     controles |= UP_BUTTON;
@@ -52,7 +52,7 @@ int main(int argc, char **argv){
     return 1;
   }
 
-  float escala {8.0f};
+  float escala {10.0f};
   float velocidade {1.0f};
   InitWindow(160*escala, 144*escala, "Game Boy");
   SetTargetFPS(60);
@@ -91,7 +91,8 @@ int main(int argc, char **argv){
   if(cpu.bus.tem_save){
     cpu.bus.mbc->save();
   }
-
+  
+  UnloadTexture(texture);
   CloseWindow();
   return 0;
 }
