@@ -60,6 +60,11 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     case 1:
     case 2:
     case 3:
+    case 15:
+    case 16:
+    case 17:
+    case 18:
+    case 19:
       bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
       cpu->bus.restaura_rom = [src, cpu](){
         std::fstream rom(src.data(), rom.binary | rom.in);
@@ -214,6 +219,14 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 2:
     case 3:{
       cpu->bus.mbc = std::make_unique<MBC1>(src);
+      break;
+    }
+    case 15:
+    case 16:
+    case 17:
+    case 18:
+    case 19:{
+      cpu->bus.mbc = std::make_unique<MBC3>(src);
       break;
     }
     default:{

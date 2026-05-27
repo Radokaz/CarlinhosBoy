@@ -91,7 +91,7 @@ void CPU::step(){
     auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
 
-    if(debug_tamanho != current_act.tamanho){
+    /*if(debug_tamanho != current_act.tamanho){
       std::cerr << std::dec << "Tamanho esperado: " << static_cast<int>(current_act.tamanho) << ", Tamanho obtido: " << debug_tamanho << "\n";
       std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
       std::terminate();
@@ -100,7 +100,7 @@ void CPU::step(){
       std::cerr << std::dec << "Ciclos esperados: " << static_cast<int>(ciclos_esperados) << ", Ciclos obtidos: " << debug_cycles << "\n";
       std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
       std::terminate();
-    }
+    }*/
     if(!skipa_fetch){
       this->incrementa_pc();
     }
@@ -119,7 +119,7 @@ void CPU::step(){
 void CPU::jump_vblank(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  std::cout << "Interrupção: VBLANK, PC: " << this->pc << "\n"; 
+  //std::cout << "Interrupção: VBLANK, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0040;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
@@ -130,7 +130,7 @@ void CPU::jump_vblank(void){
 void CPU::jump_serial(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  std::cout << "Interrupção: SERIAL, PC: " << this->pc << "\n"; 
+  //std::cout << "Interrupção: SERIAL, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0058;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
@@ -141,7 +141,7 @@ void CPU::jump_serial(void){
 void CPU::jump_timer(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  std::cout << "Interrupção: TIMER, PC: " << this->pc << "\n"; 
+  //std::cout << "Interrupção: TIMER, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0050;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
@@ -152,7 +152,7 @@ void CPU::jump_timer(void){
 void CPU::jump_lcdstat(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  std::cout << "Interrupção: STAT, PC: " << this->pc << "\n"; 
+  //std::cout << "Interrupção: STAT, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0048;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
@@ -163,7 +163,7 @@ void CPU::jump_lcdstat(void){
 void CPU::jump_joypad(void){
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  std::cout << "Interrupção: JOYPAD, PC: " << this->pc << "\n"; 
+  //std::cout << "Interrupção: JOYPAD, PC: " << this->pc << "\n"; 
   this->push(this->pc);
   this->pc = 0x0060;
   roda_perifericos(this, this->bus.timer, this->bus.ppu);

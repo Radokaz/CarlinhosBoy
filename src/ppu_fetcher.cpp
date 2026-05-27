@@ -18,7 +18,6 @@ tile_pixel PPU_fetcher::pop(void){
 void PPU_fetcher::clear(void){
   atual = fetcher_estado::READ_ID;
   ciclos = 0;
-  x_pos = 0;
   tiles_buscados = 0;
   size = 0;
   ultimo = 0;
@@ -124,6 +123,7 @@ void PPU::step(void){
           this->ciclos = 0;
           this->scan_oam();
           this->fetcher.clear();
+          this->fetcher.x_pos = 0;
           this->draw_ciclos = 0;
           this->fetcher.drop_pixels = this->get_scrollx() % 8;
           this->fetcher.window_ativa = false;
@@ -203,7 +203,7 @@ void PPU_fetcher::step(PPU *ppu){
         uint16_t tilemap = ppu->atual_wintilemap();
 
         uint8_t tilex = this->tiles_buscados & 31;
-        uint8_t tiley = (((winy + ly) % 256)/8) & 31;
+        uint8_t tiley = (winy/8) & 31;
 
         this->tile_id = ppu->bus->memoria[tilemap + tiley*32 + tilex];
       }
