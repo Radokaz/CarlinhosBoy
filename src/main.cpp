@@ -6,13 +6,13 @@
 void le_input(GB::Joypad& pad){
   uint8_t controles {};
 
-  if(apt(KEY_Z)) 
+  if(apt(KEY_M)) 
     controles |= A_BUTTON;
-  if(apt(KEY_X)) 
+  if(apt(KEY_N)) 
     controles |= B_BUTTON;
-  if(apt(KEY_ENTER))
+  if(apt(KEY_U))
     controles |= START;
-  if(apt(KEY_BACKSPACE))
+  if(apt(KEY_I))
     controles |= SELECT;
   if(apt(KEY_W))
     controles |= UP_BUTTON;
@@ -87,6 +87,9 @@ int main(int argc, char **argv){
     EndDrawing();
 
     ppu.frame_pronto = false;
+  }
+  if(cpu.bus.tem_save){
+    cpu.bus.mbc->save();
   }
 
   CloseWindow();

@@ -65,6 +65,12 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     case 17:
     case 18:
     case 19:
+    case 25:
+    case 26:
+    case 27:
+    case 28:
+    case 29:
+    case 30:
       bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
       cpu->bus.restaura_rom = [src, cpu](){
         std::fstream rom(src.data(), rom.binary | rom.in);
@@ -229,6 +235,15 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
       cpu->bus.mbc = std::make_unique<MBC3>(src);
       break;
     }
+    case 25:
+    case 26:
+    case 27:
+    case 28:
+    case 29:
+    case 30:{
+      cpu->bus.mbc = std::make_unique<MBC5>(src);
+      break;
+    }
     default:{
       std::fstream rom(src.data(), rom.in | rom.binary);
       rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
@@ -236,10 +251,33 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
   }
 }
 
+inline void checa_save(CPU *cpu, uint8_t mbc){
+  switch(mbc){
+    case 3:
+    case 6:
+    case 9:
+    case 15:
+    case 16:
+    case 18:
+    case 19:
+    case 27:
+    case 30:
+      cpu->bus.tem_save = true;
+      break;
+    default:
+      cpu->bus.tem_save = false;
+  }
+
+  if(cpu->bus.tem_save){
+    cpu->bus.mbc->load();
+  }
+}
+
 inline void init_game(CPU *cpu, Timer& timer, char **argv){
   Header *header = init_rom(cpu, argv[1]);
   checa_validade(header, cpu, argv[1]);
   merge_boot_rom(cpu, argv[1], header->mbc);
+  checa_save(cpu, header->mbc);
 }
 
 

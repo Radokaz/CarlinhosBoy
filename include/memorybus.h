@@ -160,14 +160,14 @@ struct Memorybus{
   Timer *timer;
   Joypad *pad {};
   PPU *ppu {};
-  std::unique_ptr<DMA> dma;
+  DMA dma;
   std::unique_ptr<MBC> mbc {};
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
+  bool tem_save {false};
 
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
-    dma = std::make_unique<DMA>();
     mbc = nullptr;
   }
 
@@ -189,7 +189,7 @@ struct Memorybus{
           break;
         default: break;
     }
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       dma_hack = 0xFF;
       return dma_hack;
     }
@@ -215,7 +215,7 @@ struct Memorybus{
 
       return;
     }
-    else if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma->ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    else if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
     else if(endereco == 0xFF04){ //div
@@ -235,7 +235,7 @@ struct Memorybus{
       return;
     }
     else if(endereco == 0xFF46){ //dma
-      dma->start(valor);
+      dma.start(valor);
       return;
     }
     else if(endereco == 0xFF50 && valor != 0){
