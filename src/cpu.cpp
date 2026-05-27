@@ -2,8 +2,8 @@
 
 namespace GB{
 
-static uint16_t debug_cycles;
-static uint16_t debug_tamanho;
+//static uint16_t debug_cycles;
+//static uint16_t debug_tamanho;
 
 void roda_cpu(CPU *atual, Timer *timer, PPU *ppu){
   if(atual->check_joypad() || (atual->get_if() & 0x1F)){
@@ -25,9 +25,9 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
     }
   }
   timer->step(atual->bus);
-  atual->bus.dma->step(atual->bus.memoria.data());
+  atual->bus.dma.step(atual->bus.memoria.data());
   ppu->step();
-  ++debug_cycles;
+  //++debug_cycles;
 }
 
 void CPU::check(void){
@@ -56,11 +56,11 @@ void CPU::check(void){
 }
 
 bool CPU::check_joypad(void){
-  //if((this->bus.memoria[0xFF00] & 0x30) == 0x30) return false;
   uint8_t prev = this->bus.pad->controles_prev;
   uint8_t curr = this->bus.pad->controles;
 
-  if(prev & !curr){
+  if(~prev & curr){
+    this->bus.pad->controles_prev = curr;
     this->get_if() |= BIT_JOYPAD;
     return true;
   }
@@ -70,7 +70,7 @@ bool CPU::check_joypad(void){
 
 
 void CPU::step(){
-  debug_cycles = 0;
+  //debug_cycles = 0;
   if(this->halted){
     roda_perifericos(this, this->bus.timer, this->bus.ppu);
     return;
@@ -81,7 +81,7 @@ void CPU::step(){
     this->ime = true;
   }
 
-  debug_tamanho = 1;
+  //debug_tamanho = 1;
   uint8_t inst_byte = this->bus.read_byte(this->pc);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   if(inst_byte != 0xCB)
@@ -338,7 +338,7 @@ void CPU::incrementa_pc(void){
   else
     this->haltbug = false;
 
-  ++debug_tamanho;
+  //++debug_tamanho;
 }
 
 }
