@@ -18,6 +18,8 @@ Execute o programa no terminal e passe o caminho para a rom como argumento. Exem
 - A: `M`
 - START: `O`
 - SELECT: `P`
+<<<<<<< HEAD
 
 - ESC: Fecha o jogo e salva, caso o cartucho tenha suporte a bateria.
 - T: Alterna entre uma paleta verde que emula as cores da tela LCD do dmg original e a paleta preto e branco
+
