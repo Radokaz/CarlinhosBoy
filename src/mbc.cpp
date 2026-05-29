@@ -3,6 +3,30 @@
 
 namespace GB{
 
+void MBC::load(void){
+    std::filesystem::create_directories("Saves");
+    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
+    save_path.replace_extension(".sav");
+
+    std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
+    if(!arquivo) return;
+
+    arquivo.read(reinterpret_cast<char*>(ram.data()), ram.size());
+    std::cout << "Save carregado.\n";
+}
+
+void MBC::save(void){
+    std::filesystem::create_directories("Saves");
+    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
+    save_path.replace_extension(".sav");
+
+    std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);
+    if(!arquivo) return;
+
+    arquivo.write(reinterpret_cast<char*>(ram.data()), ram.size());
+    std::cout << "Jogo salvo.\n";
+}
+
 uint8_t& MBC1::read(uint16_t endereco){
     if(endereco < 0x4000){
       return rom[endereco];
@@ -53,36 +77,54 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
       return;
     }
     
-    //Save aqui
     if(ram_ativa){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
     }
   }
 
-void MBC1::load(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
-
-    std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
-    if(!arquivo) return;
-
-    arquivo.read(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Save carregado.\n";
+uint8_t& MBC2::read(uint16_t endereco){
+  if(endereco < 0x4000){
+    return rom[endereco];
+  }
+  if(endereco < 0x8000){
+    uint32_t address = (rom_bank*0x4000) + (endereco - 0x4000);
+    return rom[address];
+  }
+  
+  if(endereco < 0xA000 || endereco >= 0xA200){
+    ram_hack = 0xFF;
+    return ram_hack;
   }
 
-void MBC1::save(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
+  uint32_t address = endereco - 0xA000;
+  ram_hack = (ram_ativa) ? (ram[address] | 0xF0) : 0xFF;
+  return ram_hack;
+}
 
-    std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);
-    if(!arquivo) return;
+void MBC2::write(uint16_t endereco, uint8_t valor){
+  if(endereco < 0x2000){
+    if((endereco & (1 << 4)) != 0) return;
 
-    arquivo.write(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Jogo salvo.\n";
+    ram_ativa = ((valor & 0x0F) == 0x0A);
+    return;
   }
+  if(endereco < 0x4000){
+    if((endereco & (1 << 4)) == 0) return;
+
+    rom_bank = (valor & 0x0F);
+    if(!rom_bank)
+      rom_bank = 1;
+
+    rom_bank %= total_banks;
+    return;
+  }
+  
+  if(endereco >= 0xA000 && endereco < 0xA200 && ram_ativa){
+    uint32_t address = endereco - 0xA000;
+    ram[address] = valor & 0x0F;
+  }
+}
 
 uint8_t& MBC3::read(uint16_t endereco){
     if(endereco < 0x4000){
@@ -183,30 +225,6 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     }
   }
 
-void MBC3::load(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
-
-    std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
-    if(!arquivo) return;
-
-    arquivo.read(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Save carregado.\n";
-  }
-
-void MBC3::save(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
-
-    std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);
-    if(!arquivo) return;
-
-    arquivo.write(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Jogo salvo.\n";
-  }
-
 uint8_t& MBC5::read(uint16_t endereco){
    if(endereco < 0x4000){
       return rom[endereco];
@@ -248,30 +266,6 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
     }
   }
 }
-
-void MBC5::load(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
-
-    std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
-    if(!arquivo) return;
-
-    arquivo.read(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Save carregado.\n";
-  }
-
-void MBC5::save(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
-    save_path.replace_extension(".sav");
-
-    std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);
-    if(!arquivo) return;
-
-    arquivo.write(reinterpret_cast<char*>(ram.data()), ram.size());
-    std::cout << "Jogo salvo.\n";
-  }
 
 
 }

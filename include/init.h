@@ -60,6 +60,8 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     case 1:
     case 2:
     case 3:
+    case 5:
+    case 6:
     case 15:
     case 16:
     case 17:
@@ -96,6 +98,16 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
 
   arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0150);
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
+}
+
+inline size_t checa_tamanho(Header *header){
+  switch(header->ram_tam){
+    case 1: return 1024*2;
+    case 2: return 1024*8;
+    case 3: return 1024*32;
+    case 4: return 1024*128;
+    default: return 1024*64;
+  }
 }
 
 inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
@@ -204,8 +216,8 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
 
   std::cout << "\t Titulo   : " << header->titulo << "\n";
   std::cout << "\t Tipo     : " << std::hex << static_cast<int>(header->mbc) << " (" << ((header->mbc <= 0x22) ? ROM_TYPES[header->mbc] : "DESCONHECIDO") << ")\n";
-  std::cout << "\t ROM Size : " << std::dec << static_cast<int>(header->rom_tam) << "KB\n";
-  std::cout << "\t RAM Size : " << std::hex << static_cast<int>(header->ram_tam) << "\n";
+  std::cout << "\t ROM Size : " << std::dec << static_cast<int>(header->rom_tam) << " banks\n";
+  std::cout << "\t RAM Size : " << std::hex << static_cast<int>(header->ram_tam) << " banks\n";
   std::cout << "\t LIC Code : " << static_cast<int>(header->lic_code) << " (" << ((header->new_lic_code <= 0xA4) ? LIC_CODE[header->lic_code] : "DESCONHECIDO") << ")\n";
   std::cout << "\t ROM Vers : " << static_cast<int>(header->versao) << "\n";
 
@@ -220,11 +232,18 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     exit(1);
   }
   
+  size_t ram = checa_tamanho(header);
+
   switch(header->mbc){
     case 1:
     case 2:
     case 3:{
-      cpu->bus.mbc = std::make_unique<MBC1>(src);
+      cpu->bus.mbc = std::make_unique<MBC1>(src, ram);
+      break;
+    }
+    case 5:
+    case 6:{
+      cpu->bus.mbc = std::make_unique<MBC2>(src);
       break;
     }
     case 15:
@@ -232,7 +251,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 17:
     case 18:
     case 19:{
-      cpu->bus.mbc = std::make_unique<MBC3>(src);
+      cpu->bus.mbc = std::make_unique<MBC3>(src, ram);
       break;
     }
     case 25:
@@ -241,7 +260,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 28:
     case 29:
     case 30:{
-      cpu->bus.mbc = std::make_unique<MBC5>(src);
+      cpu->bus.mbc = std::make_unique<MBC5>(src, ram);
       break;
     }
     default:{
@@ -250,6 +269,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     }
   }
 }
+
 
 inline void checa_save(CPU *cpu, uint8_t mbc){
   switch(mbc){
