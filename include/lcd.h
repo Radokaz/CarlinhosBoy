@@ -24,9 +24,9 @@ namespace GB{
 
 enum class screen_mode: uint8_t{
   HBLANK = 0,
-  VBLANK,
-  SOAMRAM,
-  DRAWING
+  VBLANK = 1,
+  SOAMRAM = 2,
+  DRAWING = 3,
 };
 
 }

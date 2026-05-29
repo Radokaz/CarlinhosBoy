@@ -11,10 +11,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Source folder to find the .c/.cpp files
 file(GLOB_RECURSE SOURCES src/*.cpp)
 
+file(COPY ${CMAKE_SOURCE_DIR}/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 # Create executable
 add_executable(gb ${SOURCES})
 target_compile_options(gb PRIVATE -g)
-target_link_options(gb PRIVATE -fsanitize=address)
+#target_link_options(gb PRIVATE -fsanitize=address)
 
 target_include_directories(gb PRIVATE include)
 add_subdirectory(include/raylib)

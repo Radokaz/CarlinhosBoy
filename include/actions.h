@@ -223,14 +223,17 @@ namespace GBInstruct{
         memoria = valor;
       }
       else{
+        bool oam_bugado = false;
         switch(atual.alvo){
           using enum reg_target;
           case HLI:{
             cpu->registradores.set_duplo(reg_target::HL, atual.N + 1);
+            oam_bugado = true;
             break;
           }
           case HLD: {
             cpu->registradores.set_duplo(reg_target::HL, atual.N - 1);
+            oam_bugado = true;
             break;
           }
         }
@@ -238,6 +241,8 @@ namespace GBInstruct{
         uint8_t valor = cpu->get_target_value(atual.ld_alvo);
 
         cpu->bus.write_byte(atual.N, valor);
+        if(oam_bugado)
+          cpu->bus.ppu->check_oam(atual.N, oam_corruption::WRITE);
         roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       }
 
@@ -296,7 +301,6 @@ namespace GBInstruct{
     }
 
     inline void PUSH(const Action& atual, CPU *cpu){
-      roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
       cpu->push(atual.alvo);
       cpu->ciclos_esperados = 4;
     }
@@ -578,10 +582,13 @@ namespace GBInstruct{
     inline void INCDUP(const Action& atual, CPU *cpu){
       uint16_t reg = cpu->get_target_duplo(atual.alvo);
             
-      if(atual.alvo != reg_target::SP)
+      if(atual.alvo != reg_target::SP){
         cpu->registradores.set_duplo(atual.alvo, reg + 1);
+        cpu->bus.ppu->check_oam(reg, oam_corruption::WRITE);
+      }
       else{
         cpu->sp++;
+        cpu->bus.ppu->check_oam(cpu->sp - 1, oam_corruption::WRITE);
       }
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);
 
@@ -614,10 +621,13 @@ namespace GBInstruct{
     inline void DECDUP(const Action& atual, CPU *cpu){
       uint16_t reg = cpu->get_target_duplo(atual.alvo);
             
-      if(atual.alvo != reg_target::SP)
+      if(atual.alvo != reg_target::SP){
         cpu->registradores.set_duplo(atual.alvo, reg - 1);
+        cpu->bus.ppu->check_oam(reg, oam_corruption::WRITE);
+      }
       else{
         cpu->sp--;
+        cpu->bus.ppu->check_oam(cpu->sp + 1, oam_corruption::WRITE);
       }
 
       roda_perifericos(cpu, cpu->bus.timer, cpu->bus.ppu);

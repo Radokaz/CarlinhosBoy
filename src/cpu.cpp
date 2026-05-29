@@ -239,15 +239,17 @@ uint8_t CPU::get_target_value(reg_target alvo){
     case HLI:{
       uint16_t temp = this->registradores.get_duplo(HL);
       uint8_t result = this->bus.read_byte(temp);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
       this->registradores.set_duplo(HL, temp + 1);
+      this->bus.ppu->check_oam(temp, oam_corruption::READ_WRITE);
+      roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return result;
     }
     case HLD:{
       uint16_t temp = this->registradores.get_duplo(HL);
       uint8_t result = this->bus.read_byte(temp);
-      roda_perifericos(this, this->bus.timer, this->bus.ppu);
       this->registradores.set_duplo(HL, temp - 1);
+      this->bus.ppu->check_oam(temp, oam_corruption::READ_WRITE);
+      roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return result;
     }
     case A8:{
