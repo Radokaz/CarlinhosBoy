@@ -77,22 +77,55 @@ uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
     }
 }
 
+//lê um sprite apenas
 void PPU::scan_oam(void){
-  this->sprites_count = 0;
-  uint8_t ly = this->bus->memoria[0xFF44];
-  uint8_t sprite_sz = this->atual_spritesize();
-
-  for(size_t i {}; i < 40 && sprites_count < 10; ++i){
-    int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + i*4]) - 16;
-
-    if(ly >= y && ly < y + sprite_sz){
-      this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + i*4], bus->memoria[OAM_INICIO + i*4 + 1],
-          bus->memoria[OAM_INICIO + i*4 + 2], bus->memoria[OAM_INICIO + i*4 + 3]};
-    }
+  if(sprites_count >= 10){
+    ++sprites_lidos;
+    return;
   }
 
-  std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
-      [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
+  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t sprite_sz = this->atual_spritesize();
+  int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + sprites_lidos*4]) - 16;
+
+  if(!(ly >= y && ly < y + sprite_sz)){
+    ++sprites_lidos;
+    return;
+  }
+  
+  this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + sprites_lidos*4],
+    bus->memoria[OAM_INICIO + sprites_lidos*4 + 1], bus->memoria[OAM_INICIO + sprites_lidos*4 + 2], 
+    bus->memoria[OAM_INICIO + sprites_lidos*4 + 3]};
+
+  ++sprites_lidos;
+}
+
+void PPU::verifica_penalidade(const Sprite& sprite){
+  if(!sprite.x){
+    this->fetcher.sprite_penality += 11;
+    return;
+  }
+
+  int32_t esquerdo = sprite.x - 8;
+  int32_t fundo {};
+  if(this->fetcher.window_ativa){
+    fundo = esquerdo - (static_cast<int>(this->get_winx()) - 7);
+  }
+  else{
+    fundo = esquerdo + this->get_scrollx();
+  }
+
+  uint8_t coluna_tile = ((fundo/8) & 0x1F);
+  if(this->tiles_lidos[coluna_tile]){
+    this->fetcher.sprite_penality += 6;
+    return;
+  }
+
+  this->tiles_lidos[coluna_tile] = 1;
+  uint8_t pixels_direita = 7 - (fundo % 8);
+  int8_t penalidade = pixels_direita - 2;
+  
+  this->fetcher.sprite_penality += (6 + ((penalidade <= 0) ? 0 : penalidade)); 
 }
 
 uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
@@ -100,13 +133,13 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
   uint8_t sprite_sz = this->atual_spritesize();
 
   for(size_t i {}; i < sprites_count; ++i){
-    Sprite& sprite = sprites_sel[i];
+    const Sprite& sprite = sprites_sel[i];
     int32_t tela_x = sprite.x - 8;
     int32_t tela_y = sprite.y - 16;
 
     if(x_atual < tela_x || x_atual >= sprite.x) continue;
     if(ly < tela_y || ly >= tela_y + sprite_sz) continue;
-
+    
     uint16_t pixel_x = x_atual - tela_x;
     uint16_t pixel_y = ly - tela_y;
     uint8_t pixel_tile = sprite.tile_index;
@@ -164,18 +197,19 @@ void PPU::draw_step(void){
 
   if(!this->fetcher.window_ativa && this->is_win_enabled()
       && ly >= this->get_winy() && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
-    this->fetcher.window_ativa = true;
+    fetcher.window_ativa = true;
     this->fetcher.clear();
-    this->fetcher.drop_pixels = 0;
+    this->tiles_lidos.fill(0);
+    fetcher.drop_pixels = 0;
   }
 
   this->fetcher.step(this);
-  if(this->fetcher.atual == fetcher_estado::FLUSH) return;
+  if(fetcher.atual == fetcher_estado::FLUSH || fetcher.sprite_penality) return;
 
   if(this->fetcher.size <= 0) return;
   if(this->fetcher.drop_pixels > 0){
     this->fetcher.pop();
-    --this->fetcher.drop_pixels;
+    --fetcher.drop_pixels;
     return;
   }
 
@@ -183,16 +217,28 @@ void PPU::draw_step(void){
 
   uint32_t cor_px {};
   if(this->is_sprite_enabled()){
+
+    for(size_t i {}; i < sprites_count; ++i){
+      if(sprites_buscados[i]) continue;
+      int32_t tela_x = sprites_sel[i].x - 8;
+      if(tela_x <= static_cast<int32_t>(this->fetcher.x_pos)){
+        sprites_buscados[i] = 1;
+        this->verifica_penalidade(sprites_sel[i]);
+      }
+    }
+
     cor_px = this->merge_sprites(this->fetcher.x_pos, px);
   }
-  else{
+  else
     cor_px = (this->is_bg_enabled()) ? this->decide_bg_color(px) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
-  }
+  
   
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;
-  ++this->fetcher.x_pos;
-  if(this->fetcher.x_pos == 160)
-    this->fetcher.atual = fetcher_estado::FLUSH;
+  ++fetcher.x_pos;
+  if(this->fetcher.x_pos >= 160){
+    fetcher.atual = fetcher_estado::FLUSH;
+    fetcher.delay = 3;
+  }
 }
 
 }

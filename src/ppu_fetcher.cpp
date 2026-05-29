@@ -23,7 +23,7 @@ void PPU_fetcher::clear(void){
   ultimo = 0;
   prim = 0;
   finalizado = false;
-  flush_cycles = 0;
+  delay = 0;
 }
 
 uint16_t PPU::atual_wintilemap(void){
@@ -93,7 +93,7 @@ void PPU::check_stat_interruption(void){
 }
 
 void PPU::avanca_ly(void){
-    uint8_t& ly = bus->memoria[0xFF44];
+    uint8_t& ly = this->bus->memoria[0xFF44];
     ly = (ly + 1) % 154;
     this->check_stat_interruption();
 }
@@ -102,72 +102,114 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
     bus->memoria[endereco] = valor;
 }
 
+void PPU::reset_sprites(void){
+  for(size_t i {}; i < sprites_buscados.size(); ++i){
+    sprites_buscados[i] = 0;
+  }
+  for(size_t i; i < tiles_lidos.size(); ++i){
+    tiles_lidos[i] = 0;
+  }
+
+  this->sprites_lidos = 0;
+}
+
 void PPU::step(void){
   if(!this->is_lcd_enabled()){
-    this->modo_atual = screen_mode::HBLANK;
-    this->ciclos = 0;
-    this->bus->memoria[0xFF44] = 0;
+    lcd_prev = false;
+    modo_atual = screen_mode::HBLANK;
+    ciclos = 0;
+    bus->memoria[0xFF44] = 0;
     uint8_t& stat = bus->memoria[0xFF41];
     stat = (stat & 0b11111100);
     return;
   }
-
+  if(!this->lcd_prev){
+    lcd_prev = true;
+    ciclos = 0;
+    bus->memoria[0xFF44] = 0;
+    sprites_lidos = 0;
+    sprites_count = 0;
+    draw_ciclos = 0;
+    hblank_ciclos = 0;
+    lcd_start = true;
+    this->set_mode(screen_mode::SOAMRAM);
+  }
+  
   for(size_t i {}; i < 4; ++i){
     ++this->ciclos;
-
+    
     switch(this->modo_atual){
       using enum screen_mode;
 
       case SOAMRAM:{
-        if(this->ciclos >= 80){
-          this->ciclos = 0;
+        if(!(this->ciclos % 2)){
           this->scan_oam();
-          this->fetcher.clear();
-          this->fetcher.x_pos = 0;
-          this->draw_ciclos = 0;
-          this->fetcher.drop_pixels = this->get_scrollx() % 8;
-          this->fetcher.window_ativa = false;
-          this->set_mode(screen_mode::DRAWING);
+          if(sprites_lidos >= 40){
+            std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
+            [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
+
+            //std::cout << std::dec << "SOAMRAM ciclos: " << static_cast<int>(ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
+            ciclos = 0;
+            this->reset_sprites();
+            this->fetcher.clear();
+            fetcher.x_pos = 0;
+            draw_ciclos = 0;
+            fetcher.drop_pixels = this->get_scrollx() % 8;
+            fetcher.window_ativa = false;
+            this->set_mode(screen_mode::DRAWING);
+          }
         }
         break;
       }
       case DRAWING:{
-        if(!this->fetcher.finalizado){
           this->draw_step();
-          ++this->draw_ciclos;
-        }
-        else{
-          this->ciclos = 0;
-          this->hblank_ciclos = 456 - this->draw_ciclos - 80;
-          if(this->fetcher.window_ativa)
-            ++this->fetcher.win_line;
-          this->set_mode(screen_mode::HBLANK);
-        }
+          ++draw_ciclos;
+          if(this->fetcher.finalizado){
+            ciclos = 0;
+            //std::cout << "DRAWING ciclos: " << static_cast<int>(draw_ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
+            hblank_ciclos = 456 - this->draw_ciclos - 80;
+            if(lcd_start){
+              hblank_ciclos -= 4;
+              lcd_start = false;
+            }
+            //std::cout << "HBLANK ciclos: " << static_cast<int>(hblank_ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
+            if(fetcher.window_ativa)
+              ++fetcher.win_line;
+            this->set_mode(screen_mode::HBLANK);
+          }
         break;
       }
       case HBLANK:{
         if(this->ciclos >= this->hblank_ciclos){
-          this->ciclos = 0;
-          this->hblank_ciclos = 0;
+          ciclos = 0;
+          hblank_ciclos = 0;
           this->avanca_ly();
-          if(this->bus->memoria[0xFF44] == 144){
+          if(bus->memoria[0xFF44] == 144){
             this->bus->memoria[0xFF0F] |= BIT_VBLANK;
             this->set_mode(screen_mode::VBLANK);
             UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
           }
           else{
+            sprites_count = 0;
+            sprites_lidos = 0;
             this->set_mode(screen_mode::SOAMRAM);
           }
         }
         break;
       }
       case VBLANK:{
-        if(this->ciclos >= 456){
-          this->ciclos = 0;
+        if(bus->memoria[0xFF44] == 153 && this->ciclos == 4){
           this->avanca_ly();
-          if(this->bus->memoria[0xFF44] == 0x00){
-            this->fetcher.win_line = 0;
+        }
+        if(this->ciclos >= 456){
+          ciclos = 0;
+          if(bus->memoria[0xFF44] != 0)
+            this->avanca_ly();
+          else{
+            fetcher.win_line = 0;
             this->frame_pronto = true;
+            sprites_count = 0;
+            sprites_lidos = 0;
             this->set_mode(screen_mode::SOAMRAM);
           }
         }
@@ -178,6 +220,11 @@ void PPU::step(void){
 }
 
 void PPU_fetcher::step(PPU *ppu){
+  if(this->sprite_penality){
+    --this->sprite_penality;
+    return;
+  }
+
   ++this->ciclos;
 
   if(this->ciclos < 2) return;
@@ -278,10 +325,12 @@ void PPU_fetcher::step(PPU *ppu){
       break;
     }
     case FLUSH:{
-      ++this->flush_cycles;
-      if(this->flush_cycles >= 3){
-        this->flush_cycles = 0;
-        this->finalizado = true;
+      //t-cicles de penalidade para o encerramento do modo 3
+      --this->delay;
+      if(!this->delay){
+        this->finalizado = (this->x_pos >= 160);
+        if(!this->finalizado)
+          this->atual = fetcher_estado::READ_ID;
       }
     }
   }

@@ -54,6 +54,12 @@ enum class fetcher_estado: uint8_t{
   FLUSH
 };
 
+enum class oam_corruption{
+  READ,
+  WRITE,
+  READ_WRITE
+};
+
 //cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
 //dando 64*2 = 128 bits = 16 bytes em cada tile
 
@@ -84,8 +90,8 @@ struct PPU_fetcher{
   uint8_t win_line {};
   fetcher_estado atual {fetcher_estado::READ_ID};
   bool window_ativa {false};
-  uint8_t flush_cycles {};
   uint8_t delay {};
+  uint8_t sprite_penality {};
   bool finalizado {false};
 
   PPU_fetcher(){
@@ -104,13 +110,18 @@ struct PPU{
   std::array<uint32_t, 160*144> framebuffer;
   PPU_fetcher fetcher{};
   std::array<Sprite, 10> sprites_sel{};
+  std::array<uint8_t, 32> tiles_lidos{};
+  std::array<uint8_t, 10> sprites_buscados{};
   uint8_t sprites_count {};
+  uint8_t sprites_lidos {};
   Memorybus *bus {};
   Texture2D *raylib_texture;
   uint16_t ciclos {};
   uint16_t draw_ciclos {};
   uint16_t hblank_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
+  bool lcd_start {false};
+  bool lcd_prev {false};
   bool stat_prev {false};
   bool frame_pronto {false};
 
@@ -121,6 +132,7 @@ struct PPU{
   void write_vram(uint16_t endereco, uint8_t valor);
   void step(void);
   void scan_oam(void);
+  void verifica_penalidade(const Sprite& sprite);
   uint32_t merge_sprites(uint8_t x_atual, tile_pixel bg_cor);
   void draw_step(void);
 
@@ -141,6 +153,11 @@ struct PPU{
   void check_stat_interruption(void);
   //ly é o registrador que marca a linha sendo scaneada no momento
   void avanca_ly(void);
+  void reset_sprites(void);
+  void oam_write_corruption(uint8_t scan_row);
+  void oam_read_corruption(uint8_t scan_row);
+  void oam_readwrite_corruption(uint8_t scan_row);
+  void check_oam(uint16_t registrador, oam_corruption corruption);
   uint32_t decide_bg_color(tile_pixel px);
   uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
 };
@@ -154,6 +171,8 @@ struct Timer{
     void step(Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
 };
+
+static bool log_ativo = false;
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
@@ -215,30 +234,28 @@ struct Memorybus{
 
       return;
     }
-    else if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
-    else if(endereco == 0xFF04){ //div
+    if(endereco == 0xFF04){ //div
       memoria[endereco] = 0;
       timer->div_count = 0;
       return;
     }
-    else if(endereco == 0xFF00){ //joypad
+    if(endereco == 0xFF00){ //joypad
       memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
       return;
     }
-    else if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
-      char c = memoria[0xFF01];
-      std::cout << c << std::flush;
+    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
       memoria[0xFF02] = valor;
       serial_count = 128;
       return;
     }
-    else if(endereco == 0xFF46){ //dma
+    if(endereco == 0xFF46){ //dma
       dma.start(valor);
       return;
     }
-    else if(endereco == 0xFF50 && valor != 0){
+    if(endereco == 0xFF50 && valor != 0){
       restaura_rom();
       return;
     }
