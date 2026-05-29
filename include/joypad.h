@@ -10,6 +10,8 @@
 #define LEFT_BUTTON (1 << 1)
 #define RIGHT_BUTTON (1 << 0)
 
+#define apt(x) IsKeyDown(x)
+
 namespace GB{
 
   struct Joypad{
@@ -67,6 +69,8 @@ namespace GB{
     }
 
   };
+
+  void le_input(GB::Joypad& pad, bool& paleta_lcd);
 
 }
 

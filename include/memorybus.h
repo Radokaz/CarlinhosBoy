@@ -123,6 +123,7 @@ struct PPU{
   bool lcd_start {false};
   bool lcd_prev {false};
   bool stat_prev {false};
+  bool paleta_lcd {false};
   bool frame_pronto {false};
 
   PPU(Texture2D *texture): raylib_texture{texture}{
@@ -133,6 +134,7 @@ struct PPU{
   void step(void);
   void scan_oam(void);
   void verifica_penalidade(const Sprite& sprite);
+  void checa_sprites(uint8_t x_atual);
   uint32_t merge_sprites(uint8_t x_atual, tile_pixel bg_cor);
   void draw_step(void);
 
@@ -160,6 +162,7 @@ struct PPU{
   void check_oam(uint16_t registrador, oam_corruption corruption);
   uint32_t decide_bg_color(tile_pixel px);
   uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
+  uint32_t esverdear(uint32_t px);
 };
 
 struct Timer{
@@ -171,8 +174,6 @@ struct Timer{
     void step(Memorybus& bus);
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
 };
-
-static bool log_ativo = false;
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};

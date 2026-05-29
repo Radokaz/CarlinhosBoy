@@ -77,6 +77,18 @@ uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
     }
 }
 
+uint32_t PPU::esverdear(uint32_t px){
+  uint8_t b = (px >> 16) & 0xFF;
+  uint8_t g = (px >> 8)  & 0xFF;
+  uint8_t r = (px) & 0xFF;
+    
+  r = (r*0x9B) / 0xFF;
+  g = (g*0xBC) / 0xFF;
+  b = (b*0x0F) / 0xFF;
+    
+  return (0xFF << 24) | (b << 16) | (g << 8) | r;
+}
+
 //lê um sprite apenas
 void PPU::scan_oam(void){
   if(sprites_count >= 10){
@@ -191,6 +203,17 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
   return (this->is_bg_enabled()) ? this->decide_bg_color(bg_cor) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
 }
 
+void PPU::checa_sprites(uint8_t x_atual){
+  for(size_t i {}; i < sprites_count; ++i){
+    if(sprites_buscados[i]) continue;
+    int32_t tela_x = sprites_sel[i].x - 8;
+    if(tela_x <= static_cast<int32_t>(x_atual)){
+      sprites_buscados[i] = 1;
+      this->verifica_penalidade(sprites_sel[i]);
+    }
+  }
+}
+
 void PPU::draw_step(void){
   uint8_t ly = this->bus->memoria[0xFF44];
   int32_t wx = static_cast<int>(this->get_winx()) - 7;
@@ -217,22 +240,15 @@ void PPU::draw_step(void){
 
   uint32_t cor_px {};
   if(this->is_sprite_enabled()){
-
-    for(size_t i {}; i < sprites_count; ++i){
-      if(sprites_buscados[i]) continue;
-      int32_t tela_x = sprites_sel[i].x - 8;
-      if(tela_x <= static_cast<int32_t>(this->fetcher.x_pos)){
-        sprites_buscados[i] = 1;
-        this->verifica_penalidade(sprites_sel[i]);
-      }
-    }
-
+    this->checa_sprites(this->fetcher.x_pos);
     cor_px = this->merge_sprites(this->fetcher.x_pos, px);
   }
   else
     cor_px = (this->is_bg_enabled()) ? this->decide_bg_color(px) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
   
-  
+  if(this->paleta_lcd)
+    cor_px = this->esverdear(cor_px);
+
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;
   ++fetcher.x_pos;
   if(this->fetcher.x_pos >= 160){
