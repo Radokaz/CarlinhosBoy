@@ -10,6 +10,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xCB:{
       atual->incrementa_pc();
       uint8_t prox = atual->bus.read_byte(atual->pc);
+      atual->bus.ppu->check_oam(atual->pc, oam_corruption::READ);
       roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
       atual->last_instruct = 0xCB00 + prox;
       return le_byte_cb(prox, atual);

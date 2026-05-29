@@ -83,10 +83,12 @@ void CPU::step(){
 
   //debug_tamanho = 1;
   uint8_t inst_byte = this->bus.read_byte(this->pc);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  if(inst_byte != 0xCB)
+  if(inst_byte != 0xCB){
     this->last_instruct = inst_byte;
-
+  }
+  this->bus.ppu->check_oam(this->pc, oam_corruption::READ);
+  roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  
   try{
     auto current_act = le_byte(inst_byte, this);
     current_act.execute(current_act, this);
@@ -336,6 +338,7 @@ uint8_t CPU::get_bit(reg_target alvo, uint8_t bit){
 void CPU::incrementa_pc(void){
   if(!this->haltbug){
     ++this->pc;
+    this->bus.ppu->check_oam(this->pc - 1, oam_corruption::WRITE);
   }
   else
     this->haltbug = false;
