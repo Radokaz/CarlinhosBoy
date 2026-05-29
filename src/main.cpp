@@ -1,34 +1,14 @@
 #include "init.h"
 
-#define MAX_TICKS 70224
-#define apt(x) IsKeyDown(x)
-
-void le_input(GB::Joypad& pad){
-  uint8_t controles {};
-
-  if(apt(KEY_M)) 
-    controles |= A_BUTTON;
-  if(apt(KEY_N)) 
-    controles |= B_BUTTON;
-  if(apt(KEY_O))
-    controles |= START;
-  if(apt(KEY_P))
-    controles |= SELECT;
-  if(apt(KEY_W))
-    controles |= UP_BUTTON;
-  if(apt(KEY_A))
-    controles |= LEFT_BUTTON;
-  if(apt(KEY_S))
-    controles |= DOWN_BUTTON;
-  if(apt(KEY_D))
-    controles |= RIGHT_BUTTON;
-
-  pad.input(controles);
-  //std::cout << std::hex << static_cast<int32_t>(pad.controles) << "\n";
-}
-
 void degub_func(GB::CPU *cpu, GB::PPU *ppu){
   std::cout << "PC: " << std::hex << cpu->pc << "\n";
+  std::cout << "A: " << static_cast<int>(cpu->registradores.a) << "\n";
+  std::cout << "B: " << static_cast<int>(cpu->registradores.b) << "\n";
+  std::cout << "C: " << static_cast<int>(cpu->registradores.c) << "\n";
+  std::cout << "D: " << static_cast<int>(cpu->registradores.d) << "\n";
+  std::cout << "E: " << static_cast<int>(cpu->registradores.e) << "\n";
+  std::cout << "H: " << static_cast<int>(cpu->registradores.h) << "\n";
+  std::cout << "L: " << static_cast<int>(cpu->registradores.l) << "\n";
   std::cout << "F: " << static_cast<int>(cpu->registradores.f) << "\n";
   std::cout << "IF: " << static_cast<int>(cpu->get_if()) << "\n";
   std::cout << "Stepping: " << std::boolalpha << cpu->stepping << "\n";
@@ -38,11 +18,6 @@ void degub_func(GB::CPU *cpu, GB::PPU *ppu){
   std::cout << "Ultima instrução: " << static_cast<int>(cpu->last_instruct) << "\n";
   std::cout << "Tac :" << static_cast<int>(cpu->bus.memoria[0xFF07]) << "\n";
   std::cout << "LY: " << std::dec << static_cast<int>(cpu->bus.memoria[0xFF44]) << "\n";
-  /*std::cout << "\n";
-  std::cout << "\n";
-  std::cout << "\n";
-  std::cout << "\n";
-  std::cout << "\n";*/
 }
 
 int main(int argc, char **argv){
@@ -53,8 +28,7 @@ int main(int argc, char **argv){
   }
 
   float escala {10.0f};
-  float velocidade {1.0f};
-  InitWindow(160*escala, 144*escala, "Game Boy");
+  InitWindow(160*escala, 144*escala, "Carlinhos Boy");
   SetTargetFPS(60);
 
   Image framebuffer = GenImageColor(160, 144, RAYWHITE);
@@ -72,9 +46,18 @@ int main(int argc, char **argv){
 
   GB::init_game(&cpu, timer, argv);
 
+  Vector2 mouse_prev = GetMousePosition();
+  Vector2 mouse_atual{};
+
   while(!WindowShouldClose()){
-    le_input(pad);
+    mouse_atual = GetMousePosition();
+    le_input(pad, ppu.paleta_lcd);
     
+    if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
+      ShowCursor();
+    }
+    mouse_prev = mouse_atual;
+
     while(!ppu.frame_pronto){
       roda_cpu(&cpu, &timer, &ppu);
       if(!cpu.stepping)
@@ -92,6 +75,7 @@ int main(int argc, char **argv){
     cpu.bus.mbc->save();
   }
   
+  ShowCursor();
   UnloadTexture(texture);
   CloseWindow();
   return 0;

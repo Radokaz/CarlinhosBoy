@@ -102,6 +102,7 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
 
 inline size_t checa_tamanho(Header *header){
   switch(header->ram_tam){
+    case 0: return 1024*128; //aloca o máximo só pra garantir em caso de bug na leitura
     case 1: return 1024*2;
     case 2: return 1024*8;
     case 3: return 1024*32;
@@ -218,7 +219,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
   std::cout << "\t Tipo     : " << std::hex << static_cast<int>(header->mbc) << " (" << ((header->mbc <= 0x22) ? ROM_TYPES[header->mbc] : "DESCONHECIDO") << ")\n";
   std::cout << "\t ROM Size : " << std::dec << static_cast<int>(header->rom_tam) << " banks\n";
   std::cout << "\t RAM Size : " << std::hex << static_cast<int>(header->ram_tam) << " banks\n";
-  std::cout << "\t LIC Code : " << static_cast<int>(header->lic_code) << " (" << ((header->new_lic_code <= 0xA4) ? LIC_CODE[header->lic_code] : "DESCONHECIDO") << ")\n";
+  std::cout << "\t LIC Code : " << static_cast<int>(header->lic_code) << " (" << ((LIC_CODE.count(header->lic_code)) ? LIC_CODE[header->lic_code] : "DESCONHECIDO") << ")\n";
   std::cout << "\t ROM Vers : " << static_cast<int>(header->versao) << "\n";
 
   size_t aux {};
