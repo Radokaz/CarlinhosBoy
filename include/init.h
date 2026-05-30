@@ -100,14 +100,28 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
 }
 
-inline size_t checa_tamanho(Header *header){
+inline size_t checa_tamanho_ram(Header *header){
   switch(header->ram_tam){
-    case 0: return 1024*128; //aloca o máximo só pra garantir em caso de bug na leitura
+    case 0: return 0; //não usa ram externa
     case 1: return 1024*2;
     case 2: return 1024*8;
     case 3: return 1024*32;
     case 4: return 1024*128;
     default: return 1024*64;
+  }
+}
+
+inline size_t checa_tamanho_rom(Header *header){
+  switch(header->rom_tam){
+    case 0: return 1024*32;
+    case 1: return 1024*64;
+    case 2: return 1024*128;
+    case 3: return 1024*256;
+    case 4: return 1024*512;
+    case 5: return 1024*1024;
+    case 6: return 1024*2048;
+    case 7: return 1024*4096;
+    default: return 1024*8192;
   }
 }
 
@@ -233,18 +247,19 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     exit(1);
   }
   
-  size_t ram = checa_tamanho(header);
+  size_t ram_sz = checa_tamanho_ram(header);
+  size_t rom_sz = checa_tamanho_rom(header);
 
   switch(header->mbc){
     case 1:
     case 2:
     case 3:{
-      cpu->bus.mbc = std::make_unique<MBC1>(src, ram);
+      cpu->bus.mbc = std::make_unique<MBC1>(src, rom_sz, ram_sz);
       break;
     }
     case 5:
     case 6:{
-      cpu->bus.mbc = std::make_unique<MBC2>(src);
+      cpu->bus.mbc = std::make_unique<MBC2>(src, rom_sz);
       break;
     }
     case 15:
@@ -252,7 +267,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 17:
     case 18:
     case 19:{
-      cpu->bus.mbc = std::make_unique<MBC3>(src, ram);
+      cpu->bus.mbc = std::make_unique<MBC3>(src, rom_sz, ram_sz);
       break;
     }
     case 25:
@@ -261,7 +276,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 28:
     case 29:
     case 30:{
-      cpu->bus.mbc = std::make_unique<MBC5>(src, ram);
+      cpu->bus.mbc = std::make_unique<MBC5>(src, rom_sz, ram_sz);
       break;
     }
     default:{
