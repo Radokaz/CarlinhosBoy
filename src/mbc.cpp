@@ -38,7 +38,7 @@ uint8_t& MBC1::read(uint16_t endereco){
 
     uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
     ram_hack = 0xFF;
-    return (ram_ativa) ? ram[address] : ram_hack;
+    return (ram_ativa && ram.size()) ? ram[address] : ram_hack;
 }
 
 void MBC1::write(uint16_t endereco, uint8_t valor){
@@ -49,11 +49,10 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
 
     if(endereco < 0x4000){
       rom_bank = ((rom_bank & 0x60) | (valor & 0x1F));
+      rom_bank %= total_banks;
       if(!(rom_bank & 0x1F))
         ++rom_bank;
       
-      rom_bank %= total_banks;
-
       return;
     }
     
@@ -62,11 +61,11 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
         ram_bank = valor & 0x03;
       else{
         rom_bank = ((rom_bank & 0x1F) | ((valor & 0x03) << 5));
+        rom_bank %= total_banks;
 
         if(!(rom_bank & 0x1F))
           ++rom_bank;
   
-        rom_bank %= total_banks;
       }
 
       return;
@@ -77,7 +76,7 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
       return;
     }
     
-    if(ram_ativa){
+    if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
     }
@@ -103,20 +102,17 @@ uint8_t& MBC2::read(uint16_t endereco){
 }
 
 void MBC2::write(uint16_t endereco, uint8_t valor){
-  if(endereco < 0x2000){
-    if((endereco & (1 << 4)) != 0) return;
-
-    ram_ativa = ((valor & 0x0F) == 0x0A);
-    return;
-  }
   if(endereco < 0x4000){
-    if((endereco & (1 << 4)) == 0) return;
-
-    rom_bank = (valor & 0x0F);
-    if(!rom_bank)
-      rom_bank = 1;
-
-    rom_bank %= total_banks;
+    if(endereco & (1 << 8)){;
+      rom_bank = (valor & 0x0F);
+      rom_bank %= total_banks;
+      if(!rom_bank)
+        rom_bank = 1;
+    }
+    else{
+      ram_ativa = ((valor & 0x0F) == 0x0A);
+    }
+    
     return;
   }
   
@@ -134,7 +130,7 @@ uint8_t& MBC3::read(uint16_t endereco){
       uint32_t address = (rom_bank*0x4000) + (endereco - 0x4000);
       return rom[address];
     }
-    if(!ram_ativa){
+    if(!ram_ativa || !ram.size()){
       ram_hack = 0xFF;
       return ram_hack;
     }
@@ -162,11 +158,10 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     }
 
     if(endereco < 0x4000){
-      rom_bank = valor & 0x7F;
+      rom_bank = (rom.size() > 1024*2048) ? (valor & 0xFF) : (valor & 0x7F);
+      rom_bank %= total_banks;
       if(!rom_bank)
         rom_bank = 1;
-      
-      rom_bank %= total_banks;
       
       return;
     }
@@ -175,6 +170,7 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
       if(valor <= 3){
         ram_bank = valor ;
         rtc_selected = false;
+        return;
       }
       else if(valor >= 8 && valor <= 12){
         rtc_selected = true;
@@ -199,7 +195,7 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
       return;
     }
 
-    if(ram_ativa){
+    if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
       return;
@@ -236,7 +232,7 @@ uint8_t& MBC5::read(uint16_t endereco){
 
     uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
     ram_hack = 0xFF;
-    return (ram_ativa) ? ram[address] : ram_hack;
+    return (ram_ativa && ram.size()) ? ram[address] : ram_hack;
 }
 
 void MBC5::write(uint16_t endereco, uint8_t valor){
@@ -259,7 +255,7 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
     return;
   }
   if(endereco >= 0xA000 && endereco < 0xC000){
-     if(ram_ativa){
+     if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
       return;

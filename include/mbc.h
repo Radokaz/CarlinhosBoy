@@ -35,7 +35,7 @@ struct MBC1 : public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC1(std::string_view rom_src, size_t ram_tam){
+  MBC1(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -43,15 +43,13 @@ struct MBC1 : public MBC{
     }
 
     fonte = rom_src;
-    arquivo.seekg(0, std::ios::end);
-    size_t tamanho = arquivo.tellg();
-    arquivo.seekg(0);
-    rom.resize(tamanho);
+    rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam);
-    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     total_banks = rom.size()/(16*1024);
-    std::cout << "MBC1 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
+    std::cout << "MBC3 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
   }
 
   uint8_t& read(uint16_t endereco) override;
@@ -64,7 +62,7 @@ struct MBC2: public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC2(std::string_view rom_src){
+  MBC2(std::string_view rom_src, size_t rom_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -72,14 +70,12 @@ struct MBC2: public MBC{
     }
 
     fonte = rom_src;
-    arquivo.seekg(0, std::ios::end);
-    size_t tamanho = arquivo.tellg();
-    arquivo.seekg(0);
-    rom.resize(tamanho);
+    rom.resize(rom_tam);
     ram.resize(512);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     total_banks = rom.size()/(16*1024);
     std::cout << "MBC2 inicializado. RAM alocada: 512 bytes\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
   }
 
   uint8_t& read(uint16_t endereco) override;
@@ -107,7 +103,7 @@ struct MBC3 : public MBC{
   RTC rtc;
   RTC rtc_latch;
 
-  MBC3(std::string_view rom_src, size_t ram_tam){
+  MBC3(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -118,12 +114,13 @@ struct MBC3 : public MBC{
     arquivo.seekg(0, std::ios::end);
     size_t tamanho = arquivo.tellg();
     arquivo.seekg(0);
-    rom.resize(tamanho);
+    rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam);
-    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     total_banks = rom.size()/(16*1024);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     std::cout << "MBC3 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
   }
 
   uint8_t& read(uint16_t endereco) override;
@@ -137,7 +134,7 @@ struct MBC5 : public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC5(std::string_view rom_src, size_t ram_tam){
+  MBC5(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -145,15 +142,13 @@ struct MBC5 : public MBC{
     }
 
     fonte = rom_src;
-    arquivo.seekg(0, std::ios::end);
-    size_t tamanho = arquivo.tellg();
-    arquivo.seekg(0);
-    rom.resize(tamanho);
+    rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam);
-    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     total_banks = rom.size()/(16*1024);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     std::cout << "MBC5 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
   }
 
   uint8_t& read(uint16_t endereco) override;
