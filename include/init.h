@@ -56,6 +56,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
   }
 
   cpu->pc = 0;
+  cpu->bus.timer->div_count = 0;
   switch(mbc){
     case 1:
     case 2:
@@ -309,7 +310,7 @@ inline void checa_save(CPU *cpu, uint8_t mbc){
   }
 }
 
-inline void init_game(CPU *cpu, Timer& timer, char **argv){
+inline void init_game(CPU *cpu, char **argv){
   Header *header = init_rom(cpu, argv[1]);
   uint8_t mbc = header->mbc;
   checa_validade(header, cpu, argv[1]);

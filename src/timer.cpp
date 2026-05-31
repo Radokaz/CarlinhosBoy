@@ -27,12 +27,11 @@ void Timer::step(Memorybus& bus){
       }
 
       uint8_t bit_atual = (div_count >> bit) & 0x01;
-      if(!bit_atual && prev_bit){
-        uint8_t& tima = bus.read_byte(0xFF05);
+      if(!bit_atual && prev_bit){ //checa o falling edge
+        uint8_t& tima = bus.memoria[0xFF05];
         if(tima == 0xFF){
           tima = 0;
-          timaoverflow = true;
-          timaoverflow_count += 4;
+          timaoverflow_count = 4;
         }
         else
           ++tima;
@@ -41,14 +40,13 @@ void Timer::step(Memorybus& bus){
       prev_bit = bit_atual;
     }
 
-    if(timaoverflow_count)
+    if(timaoverflow_count){
         --timaoverflow_count;
 
-    if(timaoverflow && timaoverflow_count <= 0){
-      bus.read_byte(0xFF05) = bus.read_byte(0xFF06);
-      bus.read_byte(0xFF0F) |= BIT_TIMER;
-      timaoverflow = false;
-      timaoverflow_count = 0;
+      if(!timaoverflow_count){
+        bus.memoria[0xFF05] = bus.memoria[0xFF06]; //atribui TMA em TIMA
+        bus.memoria[0xFF0F] |= BIT_TIMER; //ativa a flag em IF
+      }
     }
 
   }

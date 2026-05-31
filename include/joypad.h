@@ -10,7 +10,8 @@
 #define LEFT_BUTTON (1 << 1)
 #define RIGHT_BUTTON (1 << 0)
 
-#define apt(x) IsKeyDown(x)
+#define segurado(x) IsKeyDown(x)
+#define apertado(x) IsKeyPressed(x)
 
 namespace GB{
 
@@ -70,7 +71,7 @@ namespace GB{
 
   };
 
-  void le_input(GB::Joypad& pad, bool& paleta_lcd);
+  void le_input(Joypad& pad, bool& paleta_lcd);
 
 }
 
