@@ -44,7 +44,7 @@ int main(int argc, char **argv){
   ppu.bus = &cpu.bus;
   pad.p1 = &cpu.bus.memoria[0xFF00];
 
-  GB::init_game(&cpu, timer, argv);
+  GB::init_game(&cpu, argv);
 
   Vector2 mouse_prev = GetMousePosition();
   Vector2 mouse_atual{};
@@ -59,7 +59,7 @@ int main(int argc, char **argv){
     mouse_prev = mouse_atual;
 
     while(!ppu.frame_pronto){
-      roda_cpu(&cpu, &timer, &ppu);
+      roda_cpu(&cpu);
       if(!cpu.stepping)
         break;
       //degub_func(&cpu, &ppu);

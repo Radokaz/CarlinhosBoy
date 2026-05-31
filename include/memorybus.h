@@ -166,9 +166,8 @@ struct PPU{
 };
 
 struct Timer{
-    uint16_t div_count {0xAB00};
+    uint16_t div_count {0xABCC};
     bool prev_bit {};
-    bool timaoverflow {};
     uint8_t timaoverflow_count {};
 
     void step(Memorybus& bus);

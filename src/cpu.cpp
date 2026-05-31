@@ -5,7 +5,7 @@ namespace GB{
 //static uint16_t debug_cycles;
 //static uint16_t debug_tamanho;
 
-void roda_cpu(CPU *atual, Timer *timer, PPU *ppu){
+void roda_cpu(CPU *atual){
   if(atual->check_joypad() || (atual->get_if() & 0x1F)){
     atual->stepping = true;
   }

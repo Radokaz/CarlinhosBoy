@@ -143,7 +143,7 @@ struct Action{
 
 Action le_byte(uint8_t byte, CPU *atual);
 Action le_byte_cb(uint8_t byte, CPU *atual);
-void roda_cpu(CPU *atual, Timer *timer, PPU *ppu);
+void roda_cpu(CPU *atual);
 void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu);
 
 }

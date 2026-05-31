@@ -48,7 +48,7 @@ struct MBC1 : public MBC{
       ram.resize(ram_tam);
     total_banks = rom.size()/(16*1024);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
-    std::cout << "MBC3 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "MBC1 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
     std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
   }
 
