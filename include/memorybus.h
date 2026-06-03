@@ -4,168 +4,22 @@
 #include <iostream>
 #include <cstddef>
 #include <cstdint>
-#include <array>
 #include <stdexcept>
+#include <memory>
+#include <ranges>
+#include <functional>
 #include "joypad.h"
-#include "lcd.h"
+#include "ppu.h"
+#include "apu.h"
 #include "dma.h"
 #include "mbc.h"
-#include <raylib.h>
-#include <memory>
-#include <functional>
-
-//flags de interrupção
-#define BIT_VBLANK (1 << 0)
-#define BIT_LCDSTAT (1 << 1)
-#define BIT_TIMER (1 << 2)
-#define BIT_SERIAL (1 << 3)
-#define BIT_JOYPAD (1 << 4)
-
-#define VRAM_INICIO 0x8000
-#define VRAM_FINAL  0xA000
-
-#define WRAM_INICIO 0xC000
-#define WRAM_FINAL 0xD000
-
-#define FIRST_TILE1 0x8000
-#define SECOND_TILE1 0x8800
-#define SECOND_TILE2 0x9000
-#define TILE_END 0x9800
-
-#define OAM_INICIO 0xFE00
-#define OAM_FIM 0xFEA0
 
 namespace GB{
 
-enum class tile_pixel: uint8_t{
-  INDEX_ZERO = 0,
-  INDEX_ONE,
-  INDEX_TWO,
-  INDEX_THREE,
-  INDEX_NULO
-};
-
-enum class fetcher_estado: uint8_t{
-  INICIO,
-  READ_ID,
-  READ_LOW,
-  READ_HIGH,
-  PUSH,
-  FLUSH
-};
-
-enum class oam_corruption{
-  READ,
-  WRITE,
-  READ_WRITE
-};
-
-//cada tile possui 64 pixels em que cada pixel usa 2 bits para representar sua cor,
-//dando 64*2 = 128 bits = 16 bytes em cada tile
-
-struct Sprite{
-  uint8_t y;
-  uint8_t x;
-  uint8_t tile_index;
-  uint8_t flags;
-};
-
 struct Memorybus;
-struct PPU;
-
-struct PPU_fetcher{
-  std::array<tile_pixel, 16> fila;
-  uint8_t ultimo{};
-  uint8_t prim {};
-  uint8_t size {};
-
-  uint8_t tile_id {};
-  uint8_t tile_low {};
-  uint8_t tile_high {};
-
-  uint8_t ciclos {};
-  uint8_t x_pos {};
-  uint8_t tiles_buscados {};
-  uint8_t drop_pixels {};
-  uint8_t win_line {};
-  fetcher_estado atual {fetcher_estado::READ_ID};
-  bool window_ativa {false};
-  uint8_t delay {};
-  uint8_t sprite_penality {};
-  bool finalizado {false};
-
-  PPU_fetcher(){
-    fila.fill(tile_pixel::INDEX_NULO);
-  }
-
-  void push(tile_pixel alvo);
-  tile_pixel pop(void);
-  void clear(void);
-
-  void step(PPU *ppu);
-};
-
-
-struct PPU{
-  std::array<uint32_t, 160*144> framebuffer;
-  PPU_fetcher fetcher{};
-  std::array<Sprite, 10> sprites_sel{};
-  std::array<uint8_t, 32> tiles_lidos{};
-  std::array<uint8_t, 10> sprites_buscados{};
-  uint8_t sprites_count {};
-  uint8_t sprites_lidos {};
-  Memorybus *bus {};
-  Texture2D *raylib_texture;
-  uint16_t ciclos {};
-  uint16_t draw_ciclos {};
-  uint16_t hblank_ciclos {};
-  screen_mode modo_atual {screen_mode::SOAMRAM};
-  bool lcd_start {false};
-  bool lcd_prev {false};
-  bool stat_prev {false};
-  bool paleta_lcd {false};
-  bool frame_pronto {false};
-
-  PPU(Texture2D *texture): raylib_texture{texture}{
-    framebuffer.fill(0xFFFFFFFF);
-  }
-
-  void write_vram(uint16_t endereco, uint8_t valor);
-  void step(void);
-  void scan_oam(void);
-  void verifica_penalidade(const Sprite& sprite);
-  void checa_sprites(uint8_t x_atual);
-  uint32_t merge_sprites(uint8_t x_atual, tile_pixel bg_cor);
-  void draw_step(void);
-
-  uint16_t atual_wintilemap(void);
-  uint16_t atual_bgtiledata(void);
-  uint16_t atual_bgtilemap(void);
-  uint8_t atual_spritesize(void);
-  bool is_lcd_enabled(void);
-  bool is_win_enabled(void);
-  bool is_bg_enabled(void);
-  bool is_sprite_enabled(void);
-  uint8_t& get_scrolly(void);
-  uint8_t& get_scrollx(void);
-  uint8_t& get_winx(void);
-  uint8_t& get_winy(void);
-  void set_mode(screen_mode modo);
-  bool check_stat(void);
-  void check_stat_interruption(void);
-  //ly é o registrador que marca a linha sendo scaneada no momento
-  void avanca_ly(void);
-  void reset_sprites(void);
-  void oam_write_corruption(uint8_t scan_row);
-  void oam_read_corruption(uint8_t scan_row);
-  void oam_readwrite_corruption(uint8_t scan_row);
-  void check_oam(uint16_t registrador, oam_corruption corruption);
-  uint32_t decide_bg_color(tile_pixel px);
-  uint32_t decide_obj_color(const Sprite& sprite, tile_pixel pos);
-  uint32_t esverdear(uint32_t px);
-};
 
 struct Timer{
+    APU *apu {};
     uint16_t div_count {0xABCC};
     bool prev_bit {};
     uint8_t timaoverflow_count {};
@@ -174,12 +28,17 @@ struct Timer{
     uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
 };
 
+//todos os que tem escrita bloqueada quando o APU está desligado
+static constexpr std::array<uint16_t, 20> audio_registers{
+  0xFF25, 0xFF24, 0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D,
+  0xFF1E, 0xFF20, 0xFF21, 0xFF22, 0xFF23};
+
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
-  Timer *timer;
+  DMA dma;
+  Timer *timer {};
   Joypad *pad {};
   PPU *ppu {};
-  DMA dma;
   std::unique_ptr<MBC> mbc {};
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
@@ -197,15 +56,66 @@ struct Memorybus{
     switch(endereco){
         case 0xFF07: //tac
           memoria[endereco] |= 0b11111000; 
-          break;
+          return memoria[endereco];
         case 0xFF0F: //if
           memoria[endereco] |= 0b11100000; 
-          break;
+          return memoria[endereco];
         case 0xFF00: //joypad
           return pad->get_output(); 
         case 0xFF41: //stat
           memoria[endereco] |= 0b10000000; 
-          break;
+          return memoria[endereco];
+
+        //registradores de som
+        case 0xFF10:
+          dma_hack = memoria[0xFF10] | 0x80;
+          return dma_hack;
+        case 0xFF11:
+          dma_hack = memoria[0xFF11] | 0x3F;
+          return dma_hack;
+        case 0xFF14:
+          dma_hack = memoria[0xFF14] | 0xBF;
+          return dma_hack;
+        case 0xFF16:
+          dma_hack = memoria[0xFF16] | 0x3F;
+          return dma_hack;
+        case 0xFF19:
+          dma_hack = memoria[0xFF19] | 0xBF;
+          return dma_hack;
+        case 0xFF1A:
+          dma_hack = memoria[0xFF1A] | 0x7F;
+          return dma_hack;
+        case 0xFF1C:
+          dma_hack = memoria[0xFF1C] | 0x9F;
+          return dma_hack;
+        case 0xFF1E:
+          dma_hack = memoria[0xFF1E] | 0xBF;
+          return dma_hack;
+        case 0xFF23:
+          dma_hack = memoria[0xFF23] | 0xBF;
+          return dma_hack;
+        case 0xFF26:
+          dma_hack = memoria[0xFF26] | 0x70;
+          return dma_hack;
+        case 0xFF13:
+        case 0xFF15:
+        case 0xFF18:
+        case 0xFF1B:
+        case 0xFF1D:
+        case 0xFF1F:
+        case 0xFF20:
+        case 0xFF27:
+        case 0xFF28:
+        case 0xFF29:
+        case 0xFF2A:
+        case 0xFF2B:
+        case 0xFF2C:
+        case 0xFF2D:
+        case 0xFF2E:
+        case 0xFF2F:
+          dma_hack = 0xFF;
+          return dma_hack;
+
         default: break;
     }
     if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
@@ -216,11 +126,18 @@ struct Memorybus{
       dma_hack = 0xFF;
       return dma_hack;
     }
+    if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
+      dma_hack = memoria[WAVE_RAM_INICIO + timer->apu->ch3.wram_index/2];
+      return dma_hack;
+    }
 
     return memoria[endereco];
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
+    if(!is_audio_on(memoria.data()) && std::ranges::contains(audio_registers, endereco)){
+      return;
+    }
     if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
       mbc->write(endereco, valor);
       return;
@@ -229,36 +146,146 @@ struct Memorybus{
       return;
     }
     if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      if(ppu->modo_atual != screen_mode::DRAWING)
-        ppu->write_vram(endereco, valor);
-
+      ppu->write_vram(endereco, valor);
       return;
     }
     if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
-    if(endereco == 0xFF04){ //div
-      memoria[endereco] = 0;
-      timer->div_count = 0;
+    if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
       return;
     }
-    if(endereco == 0xFF00){ //joypad
-      memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
-      return;
+
+    switch(endereco){
+      case 0xFF04:{ //div
+        memoria[endereco] = 0;
+        timer->div_count = 0;
+        return;
+      }
+      case 0xFF00:{ //joypad
+        memoria[0xFF00] = (memoria[0xFF00] & 0x0F) | (valor & 0x30);
+        return;
+      }
+      case 0xFF02:{
+        if((valor & 0x81) == 0x81){ //serial
+          memoria[0xFF02] = valor;
+          serial_count = 128;
+        }
+        return;
+      }
+      case 0xFF46:{ //dma
+        dma.start(valor);
+        return;
+      }
+      case 0xFF50:{
+        if(valor)
+          restaura_rom();
+        return;
+      }
+      case 0xFF26:{
+        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
+        if(!(valor & 0x80))
+          this->timer->apu->limpa_registradores();
+        return;
+      }
+      case 0xFF11:{
+        memoria[0xFF11] = valor;
+        this->timer->apu->ch1.seta_length();
+        return;
+      }
+      case 0xFF12:{
+        timer->apu->ch1.dac = ((valor & 0xF8) != 0);
+        if(!timer->apu->ch1.dac){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+        }
+
+        memoria[0xFF12] = valor;
+        return;
+      }
+      case 0xFF14:{
+        memoria[0xFF14] = valor;
+        if(valor & 0x80){
+          this->timer->apu->ch1.init_ch1();
+
+          if(timer->apu->ch1.dac)
+            memoria[0xFF26] |= APU_CH1_ON;
+
+        }
+        return;
+      }
+      case 0xFF16:{
+        memoria[0xFF16] = valor;
+        this->timer->apu->ch2.seta_length();
+        return;
+      }
+      case 0xFF17:{
+        timer->apu->ch2.dac = ((valor & 0xF8) != 0);
+        if(!timer->apu->ch2.dac){
+          memoria[0xFF26] &= ~APU_CH2_ON;
+        }
+
+        memoria[0xFF17] = valor;
+        return;
+      }
+      case 0xFF19:{
+        memoria[0xFF19] = valor;
+        if(valor & 0x80){
+          this->timer->apu->ch2.init_ch2();
+
+          if(timer->apu->ch2.dac)
+            memoria[0xFF26] |= APU_CH2_ON;
+        }
+        return;
+      }
+      case 0xFF1A:{
+        timer->apu->ch3.dac = ((valor & 0x80) != 0);
+        if(!timer->apu->ch3.dac){
+          memoria[0xFF26] &= ~APU_CH3_ON;
+        }
+
+        memoria[0xFF1A] = valor;
+        return;
+      }
+      case 0xFF1B:{
+        memoria[0xFF1B] = valor;
+        this->timer->apu->ch3.seta_length();
+        return;
+      }
+      case 0xFF1E:{
+        memoria[0xFF1E] = valor;
+        if(valor & 0x80){
+          this->timer->apu->ch3.init_ch3();
+
+          if(timer->apu->ch3.dac)
+            memoria[0xFF26] |= APU_CH3_ON;
+        }
+        return;
+      }
+      case 0xFF20:{
+        memoria[0xFF20] = valor;
+        this->timer->apu->ch4.seta_length();
+        return;
+      }
+      case 0xFF21:{
+        timer->apu->ch4.dac = ((valor & 0xF8) != 0);
+        if(!timer->apu->ch4.dac)
+            memoria[0xFF26] &= ~APU_CH4_ON;
+
+        memoria[0xFF21] = valor;
+        return;
+      }
+      case 0xFF23:{
+        memoria[0xFF23] = valor;
+        if(valor & 0x80){
+          this->timer->apu->ch4.init_ch4();
+
+          if(timer->apu->ch4.dac)
+            memoria[0xFF26] |= APU_CH4_ON;
+        }
+        return;
+      }
     }
-    if(endereco == 0xFF02 && (valor & 0x81) == 0x81){ //serial
-      memoria[0xFF02] = valor;
-      serial_count = 128;
-      return;
-    }
-    if(endereco == 0xFF46){ //dma
-      dma.start(valor);
-      return;
-    }
-    if(endereco == 0xFF50 && valor != 0){
-      restaura_rom();
-      return;
-    }
+
     memoria[endereco] = valor;
   }
 };

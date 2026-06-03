@@ -99,7 +99,7 @@ struct CPU{
   bool ime {false};
   uint8_t hack {};
   
-  CPU(Timer *tm, Joypad *jp, PPU *b): bus(tm, jp, b) {}
+  CPU(Timer *tm, Joypad *jp, PPU *p): bus(tm, jp, p) {}
 
   void step(void);
   void check(void);

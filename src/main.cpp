@@ -37,12 +37,25 @@ int main(int argc, char **argv){
   UnloadImage(framebuffer);
   SetTextureFilter(texture, TEXTURE_FILTER_POINT);
 
-  GB::Timer timer;
+  InitAudioDevice();
+
+  AudioStream stream = LoadAudioStream(
+    44100, // sample rate
+    16,    // bits por sample
+    2      // canais (stereo)
+  );
+
+  SetAudioStreamCallback(stream, GB::audio_callback);
+  PlayAudioStream(stream);
+
   GB::Joypad pad;
   GB::PPU ppu(&texture);
+  GB::Timer timer;
   GB::CPU cpu(&timer, &pad, &ppu);
-  ppu.bus = &cpu.bus;
+  GB::APU apu(cpu.bus.memoria.data());
+  ppu.memoria = cpu.bus.memoria.data();
   pad.p1 = &cpu.bus.memoria[0xFF00];
+  timer.apu = &apu;
 
   GB::init_game(&cpu, argv);
 
@@ -76,6 +89,8 @@ int main(int argc, char **argv){
   }
   
   ShowCursor();
+  UnloadAudioStream(stream);
+  CloseAudioDevice();
   UnloadTexture(texture);
   CloseWindow();
   return 0;

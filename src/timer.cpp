@@ -6,6 +6,12 @@ void Timer::step(Memorybus& bus){
   for(size_t i {}; i < 4; ++i){
     ++div_count;
     bus.memoria[0xFF04] = this->get_div();
+    
+    uint8_t apu_temp = (bus.memoria[0xFF04] >> 4) & 0x01;
+    if(!apu_temp && apu->div_prev){
+      apu->frame_sequencer();
+    }
+    apu->div_prev = apu_temp;
 
     uint8_t tac = bus.memoria[0xFF07];
     if(tac & 0x04){

@@ -1,12 +1,11 @@
-#include "memorybus.h"
-#include <algorithm>
+#include "ppu.h"
 
 namespace GB{
 
 uint32_t PPU::decide_bg_color(tile_pixel px){
 
     uint8_t cor_final{};
-    uint8_t bgp {this->bus->memoria[0xFF47]};
+    uint8_t bgp {this->memoria[0xFF47]};
     switch(px){
       using namespace GB;
       using enum tile_pixel;
@@ -43,7 +42,7 @@ uint32_t PPU::decide_bg_color(tile_pixel px){
 
 uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
     using enum tile_pixel;
-    uint8_t obj_palette = (sprite.flags & (1 << 4)) ? this->bus->memoria[0xFF49] : this->bus->memoria[0xFF48];
+    uint8_t obj_palette = (sprite.flags & (1 << 4)) ? this->memoria[0xFF49] : this->memoria[0xFF48];
     uint8_t cor_final {};
 
     switch(pos){
@@ -96,18 +95,18 @@ void PPU::scan_oam(void){
     return;
   }
 
-  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t ly = this->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
-  int16_t y = static_cast<int16_t>(this->bus->memoria[OAM_INICIO + sprites_lidos*4]) - 16;
+  int16_t y = static_cast<int16_t>(this->memoria[OAM_INICIO + sprites_lidos*4]) - 16;
 
   if(!(ly >= y && ly < y + sprite_sz)){
     ++sprites_lidos;
     return;
   }
   
-  this->sprites_sel[sprites_count++] = Sprite{bus->memoria[OAM_INICIO + sprites_lidos*4],
-    bus->memoria[OAM_INICIO + sprites_lidos*4 + 1], bus->memoria[OAM_INICIO + sprites_lidos*4 + 2], 
-    bus->memoria[OAM_INICIO + sprites_lidos*4 + 3]};
+  this->sprites_sel[sprites_count++] = Sprite{memoria[OAM_INICIO + sprites_lidos*4],
+    memoria[OAM_INICIO + sprites_lidos*4 + 1], memoria[OAM_INICIO + sprites_lidos*4 + 2], 
+    memoria[OAM_INICIO + sprites_lidos*4 + 3]};
 
   ++sprites_lidos;
 }
@@ -141,7 +140,7 @@ void PPU::verifica_penalidade(const Sprite& sprite){
 }
 
 uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
-  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t ly = this->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
 
   for(size_t i {}; i < sprites_count; ++i){
@@ -172,8 +171,8 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
       }
     }
 
-    uint8_t byte1 = this->bus->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2];
-    uint8_t byte2 = this->bus->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2 + 1];
+    uint8_t byte1 = this->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2];
+    uint8_t byte2 = this->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2 + 1];
     uint8_t bit = 7 - pixel_x;
     
     tile_pixel result = tile_pixel::INDEX_NULO;
@@ -215,7 +214,7 @@ void PPU::checa_sprites(uint8_t x_atual){
 }
 
 void PPU::draw_step(void){
-  uint8_t ly = this->bus->memoria[0xFF44];
+  uint8_t ly = this->memoria[0xFF44];
   int32_t wx = static_cast<int>(this->get_winx()) - 7;
 
   if(!this->fetcher.window_ativa && this->is_win_enabled()

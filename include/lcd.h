@@ -20,6 +20,13 @@
 #define HBLANK_ENABLE (1 << 3) 
 #define LYC_Comparison_Signal (1 << 2)
 
+//flags de interrupção
+#define BIT_VBLANK (1 << 0)
+#define BIT_LCDSTAT (1 << 1)
+#define BIT_TIMER (1 << 2)
+#define BIT_SERIAL (1 << 3)
+#define BIT_JOYPAD (1 << 4)
+
 namespace GB{
 
 enum class screen_mode: uint8_t{
