@@ -51,7 +51,7 @@ void CH4::sweep_length(void){
 }
 
 void CH4::incrementa_clock(void){
-  if(!is_channel4_on(memoria) || !dac) return;
+  if(!is_channel4_on(memoria) || !dac || clock_shifter >= 14) return;
       uint8_t bit = ((lfsr & 0x01) ^ ((lfsr >> 1) & 0x01));
       lfsr = lfsr >> 1;
       lfsr |= (bit << 14);

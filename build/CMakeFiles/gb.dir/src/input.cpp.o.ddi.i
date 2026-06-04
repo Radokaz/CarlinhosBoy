@@ -125042,15 +125042,17 @@ struct CH1{
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
+    uint16_t length_timer {};
 
     bool dac {false};
 
+    bool sweep_enabled {false};
+    bool negate_mode {false};
     uint8_t periodo_pace {};
     uint8_t ind_step {};
     uint8_t direcao_periodo {};
 
     uint8_t duty_step {};
-    uint16_t length_timer {};
 
     uint8_t envelope {};
     uint8_t initial_volume {};
@@ -125082,9 +125084,9 @@ struct CH2{
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
+    uint16_t length_timer {};
 
     uint8_t duty_step {};
-    uint16_t length_timer {};
 
     uint8_t envelope {};
     uint8_t initial_volume {};
@@ -133452,8 +133454,8 @@ struct Timer{
 
 
 static constexpr std::array<uint16_t, 20> audio_registers{
-  0xFF25, 0xFF24, 0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D,
-  0xFF1E, 0xFF20, 0xFF21, 0xFF22, 0xFF23};
+  0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D,
+  0xFF1E, 0xFF20, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25};
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
@@ -133487,6 +133489,8 @@ struct Memorybus{
         case 0xFF41:
           memoria[endereco] |= 0b10000000;
           return memoria[endereco];
+
+
         case 0xFF10:
           dma_hack = memoria[0xFF10] | 0x80;
           return dma_hack;
@@ -133602,15 +133606,26 @@ struct Memorybus{
           restaura_rom();
         return;
       }
+
+
       case 0xFF26:{
         memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
         if(!(valor & 0x80))
           this->timer->apu->limpa_registradores();
+
+        return;
+      }
+      case 0xFF10:{
+        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
+        memoria[0xFF10] = valor;
+        if(direcao_prev && timer->apu->ch1.negate_mode && !(valor & 0x08)){
+          memoria[0xFF26] &= ~(1 << 0);
+        }
         return;
       }
       case 0xFF11:{
         memoria[0xFF11] = valor;
-        this->timer->apu->ch1.seta_length();
+        timer->apu->ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
         return;
       }
       case 0xFF12:{
@@ -133623,19 +133638,32 @@ struct Memorybus{
         return;
       }
       case 0xFF14:{
+        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
         memoria[0xFF14] = valor;
-        if(valor & 0x80){
-          this->timer->apu->ch1.init_ch1();
 
+
+
+        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+          timer->apu->ch1.sweep_length();
+        }
+
+        if(valor & 0x80){
           if(timer->apu->ch1.dac)
             memoria[0xFF26] |= (1 << 0);
 
+          this->timer->apu->ch1.init_ch1();
+
+          if(timer->apu->ch1.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+            --timer->apu->ch1.length_timer;
+          }
+
         }
+
         return;
       }
       case 0xFF16:{
         memoria[0xFF16] = valor;
-        this->timer->apu->ch2.seta_length();
+        timer->apu->ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
         return;
       }
       case 0xFF17:{
@@ -133648,9 +133676,17 @@ struct Memorybus{
         return;
       }
       case 0xFF19:{
+        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
         memoria[0xFF19] = valor;
+        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+          timer->apu->ch2.sweep_length();
+        }
         if(valor & 0x80){
           this->timer->apu->ch2.init_ch2();
+
+          if(timer->apu->ch2.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+            --timer->apu->ch2.length_timer;
+          }
 
           if(timer->apu->ch2.dac)
             memoria[0xFF26] |= (1 << 1);
@@ -133668,13 +133704,21 @@ struct Memorybus{
       }
       case 0xFF1B:{
         memoria[0xFF1B] = valor;
-        this->timer->apu->ch3.seta_length();
+        timer->apu->ch3.length_timer = 256 - memoria[0xFF1B];
         return;
       }
       case 0xFF1E:{
+        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
         memoria[0xFF1E] = valor;
+        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+          timer->apu->ch3.sweep_length();
+        }
         if(valor & 0x80){
           this->timer->apu->ch3.init_ch3();
+
+          if(timer->apu->ch3.length_timer == 256 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+            --timer->apu->ch3.length_timer;
+          }
 
           if(timer->apu->ch3.dac)
             memoria[0xFF26] |= (1 << 2);
@@ -133683,7 +133727,7 @@ struct Memorybus{
       }
       case 0xFF20:{
         memoria[0xFF20] = valor;
-        this->timer->apu->ch4.seta_length();
+        timer->apu->ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
         return;
       }
       case 0xFF21:{
@@ -133695,9 +133739,17 @@ struct Memorybus{
         return;
       }
       case 0xFF23:{
+        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
         memoria[0xFF23] = valor;
+        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+          timer->apu->ch4.sweep_length();
+        }
         if(valor & 0x80){
           this->timer->apu->ch4.init_ch4();
+
+          if(timer->apu->ch4.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
+            --timer->apu->ch4.length_timer;
+          }
 
           if(timer->apu->ch4.dac)
             memoria[0xFF26] |= (1 << 3);

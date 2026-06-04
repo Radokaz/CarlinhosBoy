@@ -31920,15 +31920,17 @@ struct CH1{
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
+    uint16_t length_timer {};
 
     bool dac {false};
 
+    bool sweep_enabled {false};
+    bool negate_mode {false};
     uint8_t periodo_pace {};
     uint8_t ind_step {};
     uint8_t direcao_periodo {};
 
     uint8_t duty_step {};
-    uint16_t length_timer {};
 
     uint8_t envelope {};
     uint8_t initial_volume {};
@@ -31960,9 +31962,9 @@ struct CH2{
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
+    uint16_t length_timer {};
 
     uint8_t duty_step {};
-    uint16_t length_timer {};
 
     uint8_t envelope {};
     uint8_t initial_volume {};
