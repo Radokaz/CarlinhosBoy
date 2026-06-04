@@ -4,14 +4,14 @@
 namespace GB{
 
 struct RingBuffer {
-    std::array<int16_t, 2048> samples{};
+    std::array<int16_t, 4096> samples{};
     std::atomic<uint32_t> write_pos{0};
     std::atomic<uint32_t> read_pos{0};
 
     void push(int16_t l, int16_t r){
         uint32_t wp = write_pos.load(std::memory_order_relaxed);
         samples[wp % samples.size()] = l;
-        samples[(wp+1) % samples.size()] = r;
+        samples[(wp + 1) % samples.size()] = r;
         write_pos.fetch_add(2, std::memory_order_release);
     }
 
@@ -32,7 +32,6 @@ void audio_callback(void* buffer, unsigned int frames){
     uint32_t samples_needed = frames*2;
 
     for(uint32_t i = 0; i < samples_needed; ++i){
-        // se não há dados suficientes, repete o último sample (evita estalo)
         out[i] = (ring.available() > 0) ? ring.pop() : 0;
     }
 }
@@ -56,8 +55,8 @@ void APU::atualiza_volume(void){
 }
 
 void APU::frame_sequencer(void){
-  if(!is_audio_on(memoria)) return;
   div_apu = (div_apu + 1) % 8;
+  if(!is_audio_on(memoria)) return;
 
   if(div_apu % 2 == 0){
     ch1.sweep_length();
@@ -143,8 +142,6 @@ void APU::step(void){
       sample_count = 0;
       this->amplifier();
       ring.push(sample_esq, sample_dir);
-      ch1.periodo_shadow = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
-      ch2.periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
     }
   }
 }
