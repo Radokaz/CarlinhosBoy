@@ -1,40 +1,8 @@
 #include "apu.h"
+#include <iostream>
 #include <atomic>
 
 namespace GB{
-
-struct RingBuffer {
-    std::array<int16_t, 4096> samples{};
-    std::atomic<uint32_t> write_pos{0};
-    std::atomic<uint32_t> read_pos{0};
-
-    void push(int16_t l, int16_t r){
-        uint32_t wp = write_pos.load(std::memory_order_relaxed);
-        samples[wp % samples.size()] = l;
-        samples[(wp + 1) % samples.size()] = r;
-        write_pos.fetch_add(2, std::memory_order_release);
-    }
-
-    uint32_t available(void){
-        return write_pos.load(std::memory_order_acquire) - read_pos.load(std::memory_order_relaxed);
-    }
-
-    int16_t pop(){
-        uint32_t rp = read_pos.fetch_add(1, std::memory_order_relaxed);
-        return samples[rp % samples.size()];
-    }
-};
-
-static RingBuffer ring;
-
-void audio_callback(void* buffer, unsigned int frames){
-    int16_t* out = reinterpret_cast<int16_t*>(buffer);
-    uint32_t samples_needed = frames*2;
-
-    for(uint32_t i = 0; i < samples_needed; ++i){
-        out[i] = (ring.available() > 0) ? ring.pop() : 0;
-    }
-}
 
 uint8_t& APU::read(uint16_t endereco){
 
@@ -252,9 +220,50 @@ void APU::write(uint16_t endereco, uint8_t valor){
   memoria[endereco] = valor;
 }
 
+struct RingBuffer{
+  std::array<int16_t, 8192> samples{};
+  std::atomic<size_t> read_pos {};
+  std::atomic<size_t> write_pos {};
+
+  void push(int16_t esq, int16_t dir){
+    if(disponivel() + 2 > samples.size()) return; // descarta se cheio
+    size_t pos = write_pos.load(std::memory_order_relaxed);
+    samples[pos % samples.size()] = esq;
+    samples[(pos + 1) % samples.size()] = dir;
+    write_pos.fetch_add(2, std::memory_order_release);
+}
+  size_t disponivel(void){
+    return write_pos.load(std::memory_order_acquire) - read_pos.load(std::memory_order_relaxed);
+  }
+
+  int16_t pop(void){
+    size_t pos = read_pos.fetch_add(1, std::memory_order_relaxed);
+    return samples[pos % samples.size()];
+  }
+
+};
+
+static RingBuffer ring;
+
+void audio_callback(void* buffer, unsigned int frames){
+    int16_t* out = reinterpret_cast<int16_t*>(buffer);
+    uint32_t samples_needed = frames*2;
+    
+    size_t avail = ring.disponivel() & ~size_t(1);
+    size_t to_read = std::min(static_cast<size_t>(samples_needed), avail);
+    
+    for(size_t i {}; i < to_read; ++i){
+        out[i] = ring.pop();
+    }
+    
+    for(size_t i {to_read}; i < samples_needed; ++i){
+        out[i] = 0;
+    }
+}
 
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
-  sample_count = 0;
+  sample_ciclos = 0;
+  sample_accumulator = 0;
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
   memoria[0xFF26] = 0;
@@ -338,18 +347,21 @@ void APU::amplifier(void){
   sample_esq*=volume_esq;
   sample_dir*=volume_dir;
 
-  sample_esq = (sample_esq*0xFFFF)/480 - 0x8000;
-  sample_dir = (sample_dir*0xFFFF)/480 - 0x8000;
+  float left = sample_esq/480.0f;
+  float right = sample_dir/480.0f;
+
+  sample_esq = static_cast<int32_t>(left*32767.0f);
+  sample_dir = static_cast<int32_t>(right*32767.0f);
 }
 
 void APU::step(void){
   if(!is_audio_on(memoria)) return;
   
   for(size_t i {}; i < 4; ++i){
-    ++sample_count;
+    ++sample_ciclos;
     ++ch4.ciclos;
     
-    if(sample_count % 2 == 0){
+    if(sample_ciclos % 2 == 0){
       ch3.incrementa_divider();
     }
     if(ch4.ciclos % ch4.period == 0){
@@ -357,13 +369,14 @@ void APU::step(void){
       ch4.incrementa_clock();
     }
 
-    if(sample_count % 4 == 0){
+    if(sample_ciclos % 4 == 0){
       ch1.incrementa_divider();
       ch2.incrementa_divider();
     }
-
-    if(sample_count >= CICLOS_POR_SAMPLE){
-      sample_count = 0;
+    
+    sample_accumulator += 44100;
+    if(sample_accumulator >= FREQUENCIA_OSCILADOR){
+      sample_accumulator -= FREQUENCIA_OSCILADOR;
       this->amplifier();
       ring.push(sample_esq, sample_dir);
     }
