@@ -69,7 +69,7 @@ int main(int argc, char **argv){
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd);
+    le_input(pad, ppu.paleta_lcd, apu.canais_ativos);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();

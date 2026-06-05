@@ -1,5 +1,4 @@
 #include "apu.h"
-#include <iostream>
 #include <atomic>
 
 namespace GB{
@@ -221,26 +220,26 @@ void APU::write(uint16_t endereco, uint8_t valor){
 }
 
 struct RingBuffer{
-  std::array<int16_t, 8192> samples{};
-  std::atomic<size_t> read_pos {};
-  std::atomic<size_t> write_pos {};
-
-  void push(int16_t esq, int16_t dir){
-    if(disponivel() + 2 > samples.size()) return; // descarta se cheio
-    size_t pos = write_pos.load(std::memory_order_relaxed);
-    samples[pos % samples.size()] = esq;
-    samples[(pos + 1) % samples.size()] = dir;
-    write_pos.fetch_add(2, std::memory_order_release);
-}
-  size_t disponivel(void){
-    return write_pos.load(std::memory_order_acquire) - read_pos.load(std::memory_order_relaxed);
-  }
-
-  int16_t pop(void){
-    size_t pos = read_pos.fetch_add(1, std::memory_order_relaxed);
-    return samples[pos % samples.size()];
-  }
-
+    std::array<int16_t, 4096> samples{};
+    std::atomic<uint32_t> read_pos {};
+    std::atomic<uint32_t> write_pos {};
+    
+    void push(int16_t esq, int16_t dir){
+        if(disponivel() + 2 > samples.size()) return;
+        uint32_t pos = write_pos.load(std::memory_order_relaxed);
+        samples[pos % samples.size()] = esq;
+        samples[(pos + 1) % samples.size()] = dir;
+        write_pos.fetch_add(2, std::memory_order_release);
+    }
+    
+    uint32_t disponivel(void){
+        return write_pos.load(std::memory_order_acquire) - read_pos.load(std::memory_order_relaxed);
+    }
+    
+    int16_t pop(void){
+        uint32_t pos = read_pos.fetch_add(1, std::memory_order_relaxed);
+        return samples[pos % samples.size()];
+    }
 };
 
 static RingBuffer ring;
@@ -250,20 +249,25 @@ void audio_callback(void* buffer, unsigned int frames){
     uint32_t samples_needed = frames*2;
     
     size_t avail = ring.disponivel() & ~size_t(1);
-    size_t to_read = std::min(static_cast<size_t>(samples_needed), avail);
+    uint32_t to_read = static_cast<uint32_t>(std::min(static_cast<size_t>(samples_needed), avail));
     
     for(size_t i {}; i < to_read; ++i){
         out[i] = ring.pop();
     }
     
+    int16_t ultimo = (to_read > 0) ? out[to_read - 1] : 0;
     for(size_t i {to_read}; i < samples_needed; ++i){
-        out[i] = 0;
+        out[i] = ultimo;
     }
 }
 
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_ciclos = 0;
   sample_accumulator = 0;
+  capacitor_esq = 0.0;
+  capacitor_dir = 0.0;
+  lp_esq = 0.0;
+  lp_dir = 0.0;
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
   memoria[0xFF26] = 0;
@@ -314,29 +318,28 @@ void APU::mixer(void){
   sample_dir = 0;
 
   sample = ch1.get_sample();
-  if(is_ch1_left(memoria))
+  if(is_ch1_left(memoria) && (canais_ativos & APU_CANAL1))
     sample_esq+=sample;
-  if(is_ch1_right(memoria))
+  if(is_ch1_right(memoria) && (canais_ativos & APU_CANAL1))
     sample_dir+=sample;
 
   sample = ch2.get_sample();
-  if(is_ch2_left(memoria))
+  if(is_ch2_left(memoria) && (canais_ativos & APU_CANAL2))
     sample_esq+=sample;
-  if(is_ch2_right(memoria))
+  if(is_ch2_right(memoria) && (canais_ativos & APU_CANAL2))
     sample_dir+=sample;
 
   sample = ch3.get_sample();
-  if(is_ch3_left(memoria))
+  if(is_ch3_left(memoria) && (canais_ativos & APU_CANAL3))
     sample_esq+=sample;
-  if(is_ch3_right(memoria))
+  if(is_ch3_right(memoria) && (canais_ativos & APU_CANAL3))
     sample_dir+=sample;
 
   sample = ch4.get_sample();
-  if(is_ch4_left(memoria))
+  if(is_ch4_left(memoria) && (canais_ativos & APU_CANAL4))
     sample_esq+=sample;
-  if(is_ch4_right(memoria))
+  if(is_ch4_right(memoria) && (canais_ativos & APU_CANAL4))
     sample_dir+=sample;
-
 
 }
 
@@ -347,11 +350,25 @@ void APU::amplifier(void){
   sample_esq*=volume_esq;
   sample_dir*=volume_dir;
 
-  float left = sample_esq/480.0f;
-  float right = sample_dir/480.0f;
+  double esq = sample_esq/480.0;
+  double dir = sample_dir/480.0;
 
-  sample_esq = static_cast<int32_t>(left*32767.0f);
-  sample_dir = static_cast<int32_t>(right*32767.0f);
+  constexpr double charge {0.999858};
+
+  double out_esq = esq - capacitor_esq;
+  double out_dir = dir - capacitor_dir;
+
+  capacitor_esq = esq - out_esq*charge;
+  capacitor_dir = dir - out_dir*charge;
+
+  constexpr double alpha = 0.74;
+  lp_esq = lp_esq + alpha*(out_esq - lp_esq);
+  lp_dir = lp_dir + alpha*(out_dir - lp_dir);
+
+  sample_esq = static_cast<int32_t>(lp_esq*32767.0);
+  sample_dir = static_cast<int32_t>(lp_dir*32767.0);
+  /*sample_esq = static_cast<int32_t>(esq*65535 - 32768);
+  sample_dir = static_cast<int32_t>(dir*65535 - 32768);*/
 }
 
 void APU::step(void){
@@ -378,6 +395,7 @@ void APU::step(void){
     if(sample_accumulator >= FREQUENCIA_OSCILADOR){
       sample_accumulator -= FREQUENCIA_OSCILADOR;
       this->amplifier();
+
       ring.push(sample_esq, sample_dir);
     }
   }

@@ -23,6 +23,11 @@
 #define APU_CH3_RIGHT (1 << 2)
 #define APU_CH4_RIGHT (1 << 3)
 
+#define APU_CANAL1 (1 << 0)
+#define APU_CANAL2 (1 << 1)
+#define APU_CANAL3 (1 << 2)
+#define APU_CANAL4 (1 << 3)
+
 #define FREQUENCIA_OSCILADOR 4194304
 
 #include <cstdint>
@@ -48,11 +53,11 @@ inline bool is_ch4_left(uint8_t *memoria) { return static_cast<bool>((memoria[0x
 inline bool is_ch4_right(uint8_t *memoria) { return static_cast<bool>((memoria[0xFF25] & APU_CH4_RIGHT) != 0); }
 
 static constexpr std::array<std::array<uint8_t, 8>, 4> tabela_onda{{
-    {0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 1}, 
-    {1, 0, 0, 0, 1, 1, 1, 1},
-    {0, 1, 1, 1, 1, 1, 1, 0}
-  }}; // 1 - baixo, 0 - alto
+    {1, 1, 1, 1, 1, 1, 1, 0},
+    {0, 1, 1, 1, 1, 1, 1, 0}, 
+    {1, 1, 1, 1, 0, 0, 0, 0},
+    {1, 0, 0, 0, 0, 0, 0, 1}
+  }}; // 0 - baixo, 1 - alto
 
 struct CH1{
 
@@ -84,7 +89,7 @@ struct CH1{
 
     bool is_length_enabled();
     void init_ch1(void);
-    void seta_length(bool trigger = false);
+    void seta_length(void);
     void seta_envelope(void);
     void sweep_periodo(void);
     void sweep_envelope(void);
@@ -117,7 +122,7 @@ struct CH2{
 
     bool is_length_enabled(void);
     void init_ch2(void);
-    void seta_length(bool trigger = false);
+    void seta_length(void);
     void seta_envelope(void);
     void sweep_envelope(void);
     void incrementa_divider(void);
@@ -147,7 +152,7 @@ struct CH3{
   bool is_length_enabled(void);
   void init_ch3(void);
   void seta_output(void);
-  void seta_length(bool trigger = false);
+  void seta_length(void);
   void sweep_length(void);
   void incrementa_divider(void);
   void read_waveram(void);
@@ -180,7 +185,7 @@ struct CH4{
 
   bool is_length_enabled(void);
   void init_ch4(void);
-  void seta_length(bool trigger = false);
+  void seta_length(void);
   void seta_clock(void);
   void seta_envelope(void);
   void sweep_length(void);
@@ -193,17 +198,23 @@ struct CH4{
 struct APU{
   
   uint8_t *memoria {};
+  double capacitor_esq {};
+  double capacitor_dir {};
+  double lp_esq {};
+  double lp_dir {};
   uint32_t sample_ciclos {};
   uint32_t sample_accumulator {};
   int32_t sample_esq {};
   int32_t sample_dir {};
-  uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
-  uint8_t div_prev {};
-  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
 
+  uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
+  uint8_t div_prev {};
+  uint8_t apu_hack {};
+  uint8_t canais_ativos {0x0F};
+  
   CH1 ch1;
   CH2 ch2;
   CH3 ch3;
@@ -220,6 +231,7 @@ struct APU{
 
   void mixer(void);
   void amplifier(void);
+  int32_t filtro_analogico(int32_t sample);
 
   void frame_sequencer(void);
   void step(void);

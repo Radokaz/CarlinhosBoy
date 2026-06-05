@@ -7,18 +7,15 @@ bool CH4::is_length_enabled(void){
 }
 
 void CH4::init_ch4(void){
-  if(!length_timer)
-    this->seta_length(true);
+  this->seta_length();
 
   this->seta_envelope();
   this->seta_clock();
 }
 
-void CH4::seta_length(bool trigger){
-  if(this->is_length_enabled())
-    length_timer = (trigger) ? 64 : 64 - (memoria[0xFF20] & 0x3F);
-  else
-    length_timer = (trigger) ? 64 : 0;
+void CH4::seta_length(void){
+  if(!length_timer)
+    length_timer = 64;
 }
 
 void CH4::seta_clock(void){
@@ -51,7 +48,7 @@ void CH4::sweep_length(void){
 }
 
 void CH4::incrementa_clock(void){
-  if(!is_channel4_on(memoria) || !dac || clock_shifter >= 14) return;
+  if(!is_channel4_on(memoria) || !dac) return;
       uint8_t bit = ((lfsr & 0x01) ^ ((lfsr >> 1) & 0x01));
       lfsr = lfsr >> 1;
       lfsr |= (bit << 14);

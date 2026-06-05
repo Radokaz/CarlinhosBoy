@@ -7,9 +7,7 @@ bool CH3::is_length_enabled(void){
 }
 
 void CH3::init_ch3(void){
-  if(!length_timer)
-    this->seta_length(true);
-
+  this->seta_length();
   this->seta_output();
 
   if(is_channel3_on(memoria) && (periodo_divider <= periodo_shadow)){
@@ -43,11 +41,9 @@ void CH3::seta_output(void){
   output_level = (memoria[0xFF1C] & 0x60) >> 5;
 }
 
-void CH3::seta_length(bool trigger){
-  if(is_length_enabled())
-    length_timer = (trigger) ? 256 : 256 - memoria[0xFF1B];
-  else
-    length_timer = (trigger) ? 256 : 0;
+void CH3::seta_length(void){
+  if(!length_timer)
+    length_timer = 256;
 }
 
 void CH3::sweep_length(void){
