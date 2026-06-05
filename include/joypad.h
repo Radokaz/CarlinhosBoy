@@ -71,7 +71,7 @@ namespace GB{
 
   };
 
-  void le_input(Joypad& pad, bool& paleta_lcd);
+  void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos);
 
 }
 

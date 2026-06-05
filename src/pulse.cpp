@@ -10,8 +10,6 @@ void CH1::init_ch1(void){
     periodo_shadow = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
     periodo_divider = periodo_shadow;
 
-    duty_step = 0;
-
     periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
     periodo_count = (!periodo_pace) ? 8 : periodo_pace;
     ind_step = memoria[0xFF10] & 0x07;
@@ -29,17 +27,13 @@ void CH1::init_ch1(void){
       }
     }
 
-    if(!length_timer)
-      this->seta_length(true);
-
+    this->seta_length();
     this->seta_envelope();
 }
 
-void CH1::seta_length(bool trigger){
-    if(this->is_length_enabled())
-      length_timer = (trigger) ? 64 : 64 - (memoria[0xFF11] & 0x3F);
-    else
-      length_timer = (trigger) ? 64 : 0;
+void CH1::seta_length(void){
+    if(!length_timer)
+      length_timer = 64;
 }
 
 void CH1::seta_envelope(void){
@@ -56,8 +50,8 @@ void CH1::sweep_periodo(void){
       --periodo_count;
       if(!periodo_count){
 
-        periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
         ind_step = memoria[0xFF10] & 0x07;
+        periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
         direcao_periodo = ((memoria[0xFF10] & 0x08) >> 3);
 
         uint16_t offset = (periodo_shadow >> ind_step);
@@ -75,7 +69,7 @@ void CH1::sweep_periodo(void){
           if(!negate_mode && periodo_pace)
             negate_mode = true;
         }
-      
+
         if(ind_step && periodo_pace){
           periodo_shadow = novo_periodo;
           memoria[0xFF13] = (periodo_shadow & 0xFF);
@@ -164,19 +158,13 @@ void CH2::init_ch2(void){
     periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
     periodo_divider = periodo_shadow;
 
-    duty_step = 0;
-
-    if(!length_timer)
-      this->seta_length(true);
-
+    this->seta_length();
     this->seta_envelope();
 }
 
-void CH2::seta_length(bool trigger){
-    if(this->is_length_enabled())
-      length_timer = (trigger) ? 64 : 64 - (memoria[0xFF16] & 0x3F);
-    else
-      length_timer = (trigger) ? 64 : 0;
+void CH2::seta_length(void){
+    if(!length_timer)
+      length_timer = 64;
 }
 
 void CH2::seta_envelope(void){
