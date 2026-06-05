@@ -44,7 +44,7 @@ int main(int argc, char **argv){
     16,    // bits por sample
     2      // canais (stereo)
   );
-
+  
   SetAudioStreamCallback(stream, GB::audio_callback);
   PlayAudioStream(stream);
 
@@ -59,10 +59,15 @@ int main(int argc, char **argv){
 
   GB::init_game(&cpu, argv);
 
+  constexpr double tempo_frame = 1.0/59.7;
+
   Vector2 mouse_prev = GetMousePosition();
   Vector2 mouse_atual{};
+  double frame_init {}, frame_fim {};
 
   while(!WindowShouldClose()){
+    frame_init = GetTime();
+
     mouse_atual = GetMousePosition();
     le_input(pad, ppu.paleta_lcd);
     
@@ -71,19 +76,24 @@ int main(int argc, char **argv){
     }
     mouse_prev = mouse_atual;
 
+    ppu.frame_pronto = false;
     while(!ppu.frame_pronto){
       roda_cpu(&cpu);
       if(!cpu.stepping)
         break;
-      //degub_func(&cpu, &ppu);
+        //degub_func(&cpu, &ppu);
     }
 
     BeginDrawing();
     DrawTextureEx(texture, Vector2{0, 0}, 0, escala, WHITE);
     EndDrawing();
 
-    ppu.frame_pronto = false;
+    frame_fim = GetTime() - frame_init;
+    if(frame_fim < tempo_frame){
+      WaitTime(tempo_frame - frame_fim);
+    }
   }
+
   if(cpu.bus.tem_save){
     cpu.bus.mbc->save();
   }
@@ -93,5 +103,6 @@ int main(int argc, char **argv){
   CloseAudioDevice();
   UnloadTexture(texture);
   CloseWindow();
+
   return 0;
 }

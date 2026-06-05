@@ -23,7 +23,7 @@
 #define APU_CH3_RIGHT (1 << 2)
 #define APU_CH4_RIGHT (1 << 3)
 
-#define CICLOS_POR_SAMPLE (4194304.0 / 44100.0) //44.1Hz
+#define FREQUENCIA_OSCILADOR 4194304
 
 #include <cstdint>
 #include <cmath>
@@ -193,7 +193,8 @@ struct CH4{
 struct APU{
   
   uint8_t *memoria {};
-  uint32_t sample_count {};
+  uint32_t sample_ciclos {};
+  uint32_t sample_accumulator {};
   int32_t sample_esq {};
   int32_t sample_dir {};
   uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
