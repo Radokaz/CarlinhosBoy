@@ -6,7 +6,7 @@
 # 0 "<command-line>" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/noise.cpp"
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 1
-# 25 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
+# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
 # 1 "/usr/include/c++/16.1.1/cstdint" 1 3
 # 40 "/usr/include/c++/16.1.1/cstdint" 3
 # 1 "/usr/include/c++/16.1.1/x86_64-pc-linux-gnu/bits/c++config.h" 1 3
@@ -384,7 +384,7 @@ namespace std
   using ::uintptr_t;
 # 144 "/usr/include/c++/16.1.1/cstdint" 3
 }
-# 26 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/cmath" 1 3
 # 46 "/usr/include/c++/16.1.1/cmath" 3
 # 1 "/usr/include/c++/16.1.1/bits/requires_hosted.h" 1 3
@@ -29534,7 +29534,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 27 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 30 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/array" 1 3
 # 41 "/usr/include/c++/16.1.1/array" 3
 # 1 "/usr/include/c++/16.1.1/initializer_list" 1 3
@@ -30359,7 +30359,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 31 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h" 1
 # 87 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h"
 # 1 "/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h" 1 3
@@ -31888,7 +31888,7 @@ typedef void (*AudioCallback)(void *bufferData, unsigned int frames);
 
 
 }
-# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 32 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 
 namespace GB{
 
@@ -31997,8 +31997,10 @@ struct CH3{
 
   uint16_t length_timer {};
   uint8_t output_level {};
-  uint8_t wram_index {1};
+  uint8_t wram_index {};
   uint8_t last_sample {};
+  uint8_t last_byte {};
+  uint8_t trigger_delay {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -32056,6 +32058,7 @@ struct APU{
   int32_t sample_dir {};
   uint8_t div_apu {};
   uint8_t div_prev {};
+  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -32069,6 +32072,10 @@ struct APU{
 
   void atualiza_volume(void);
   void limpa_registradores(void);
+  void power_on(void);
+
+  uint8_t& read(uint16_t endereco);
+  void write(uint16_t endereco, uint8_t valor);
 
   void mixer(void);
   void amplifier(void);

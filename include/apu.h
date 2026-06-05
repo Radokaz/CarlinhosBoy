@@ -4,6 +4,9 @@
 #define WAVE_RAM_INICIO 0xFF30
 #define WAVE_RAM_FIM   0xFF40
 
+#define AUDIO_INICIO 0xFF10
+#define AUDIO_FIM 0xFF30
+
 //bits do registrador NR52 (0xFF26)
 #define APU_AUDIO_ON (1 << 7)
 #define APU_CH4_ON (1 << 3)
@@ -134,8 +137,10 @@ struct CH3{
 
   uint16_t length_timer {};
   uint8_t output_level {}; //0-3
-  uint8_t wram_index {1}; //0-31
+  uint8_t wram_index {}; //0-31
   uint8_t last_sample {};
+  uint8_t last_byte {};
+  uint8_t trigger_delay {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -193,6 +198,7 @@ struct APU{
   int32_t sample_dir {};
   uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
   uint8_t div_prev {};
+  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -206,6 +212,10 @@ struct APU{
 
   void atualiza_volume(void);
   void limpa_registradores(void);
+  void power_on(void);
+
+  uint8_t& read(uint16_t endereco);
+  void write(uint16_t endereco, uint8_t valor);
 
   void mixer(void);
   void amplifier(void);

@@ -6,7 +6,7 @@
 # 0 "<command-line>" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/apu.cpp"
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 1
-# 25 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
+# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
 # 1 "/usr/include/c++/16.1.1/cstdint" 1 3
 # 40 "/usr/include/c++/16.1.1/cstdint" 3
 # 1 "/usr/include/c++/16.1.1/x86_64-pc-linux-gnu/bits/c++config.h" 1 3
@@ -384,7 +384,7 @@ namespace std
   using ::uintptr_t;
 # 144 "/usr/include/c++/16.1.1/cstdint" 3
 }
-# 26 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/cmath" 1 3
 # 46 "/usr/include/c++/16.1.1/cmath" 3
 # 1 "/usr/include/c++/16.1.1/bits/requires_hosted.h" 1 3
@@ -29534,7 +29534,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 27 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 30 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/array" 1 3
 # 41 "/usr/include/c++/16.1.1/array" 3
 # 1 "/usr/include/c++/16.1.1/initializer_list" 1 3
@@ -30359,7 +30359,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 31 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h" 1
 # 87 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h"
 # 1 "/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h" 1 3
@@ -31888,7 +31888,7 @@ typedef void (*AudioCallback)(void *bufferData, unsigned int frames);
 
 
 }
-# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 32 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 
 namespace GB{
 
@@ -31997,8 +31997,10 @@ struct CH3{
 
   uint16_t length_timer {};
   uint8_t output_level {};
-  uint8_t wram_index {1};
+  uint8_t wram_index {};
   uint8_t last_sample {};
+  uint8_t last_byte {};
+  uint8_t trigger_delay {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -32056,6 +32058,7 @@ struct APU{
   int32_t sample_dir {};
   uint8_t div_apu {};
   uint8_t div_prev {};
+  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -32069,6 +32072,10 @@ struct APU{
 
   void atualiza_volume(void);
   void limpa_registradores(void);
+  void power_on(void);
+
+  uint8_t& read(uint16_t endereco);
+  void write(uint16_t endereco, uint8_t valor);
 
   void mixer(void);
   void amplifier(void);
@@ -37697,16 +37704,240 @@ void audio_callback(void* buffer, unsigned int frames){
     }
 }
 
+uint8_t& APU::read(uint16_t endereco){
+
+    switch(endereco){
+        case 0xFF10:
+          apu_hack = memoria[0xFF10] | 0x80;
+          return apu_hack;
+        case 0xFF11:
+          apu_hack = memoria[0xFF11] | 0x3F;
+          return apu_hack;
+        case 0xFF14:
+          apu_hack = memoria[0xFF14] | 0xBF;
+          return apu_hack;
+        case 0xFF16:
+          apu_hack = memoria[0xFF16] | 0x3F;
+          return apu_hack;
+        case 0xFF19:
+          apu_hack = memoria[0xFF19] | 0xBF;
+          return apu_hack;
+        case 0xFF1A:
+          apu_hack = memoria[0xFF1A] | 0x7F;
+          return apu_hack;
+        case 0xFF1C:
+          apu_hack = memoria[0xFF1C] | 0x9F;
+          return apu_hack;
+        case 0xFF1E:
+          apu_hack = memoria[0xFF1E] | 0xBF;
+          return apu_hack;
+        case 0xFF23:
+          apu_hack = memoria[0xFF23] | 0xBF;
+          return apu_hack;
+        case 0xFF26:
+          apu_hack = memoria[0xFF26] | 0x70;
+          return apu_hack;
+        case 0xFF13:
+        case 0xFF15:
+        case 0xFF18:
+        case 0xFF1B:
+        case 0xFF1D:
+        case 0xFF1F:
+        case 0xFF20:
+        case 0xFF27:
+        case 0xFF28:
+        case 0xFF29:
+        case 0xFF2A:
+        case 0xFF2B:
+        case 0xFF2C:
+        case 0xFF2D:
+        case 0xFF2E:
+        case 0xFF2F:
+          apu_hack = 0xFF;
+          return apu_hack;
+    }
+
+    return memoria[endereco];
+}
+
+void APU::write(uint16_t endereco, uint8_t valor){
+  switch(endereco){
+    case 0xFF26:{
+        uint8_t bit_prev = (memoria[0xFF26] & 0x80);
+        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
+        if(!(valor & 0x80))
+          this->limpa_registradores();
+        else if(!bit_prev && (valor & 0x80)){
+          this->power_on();
+        }
+
+        return;
+      }
+      case 0xFF10:{
+        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
+        memoria[0xFF10] = valor;
+        if(direcao_prev && this->ch1.negate_mode && !(valor & 0x08)){
+          memoria[0xFF26] &= ~(1 << 0);
+        }
+        return;
+      }
+      case 0xFF11:{
+        memoria[0xFF11] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF11] & 0xC0) | (valor & 0x3F));
+        ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
+        return;
+      }
+      case 0xFF12:{
+        ch1.dac = ((valor & 0xF8) != 0);
+        if(!ch1.dac){
+          memoria[0xFF26] &= ~(1 << 0);
+        }
+
+        memoria[0xFF12] = valor;
+        return;
+      }
+      case 0xFF14:{
+        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
+        memoria[0xFF14] = valor;
+
+
+
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch1.sweep_length();
+        }
+
+        if(valor & 0x80){
+          if(ch1.dac)
+            memoria[0xFF26] |= (1 << 0);
+
+          ch1.init_ch1();
+
+          if(ch1.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch1.length_timer;
+          }
+
+        }
+
+        return;
+      }
+      case 0xFF16:{
+        memoria[0xFF16] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF16] & 0xC0) | (valor & 0x3F));
+        ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
+        return;
+      }
+      case 0xFF17:{
+        ch2.dac = ((valor & 0xF8) != 0);
+        if(!ch2.dac){
+          memoria[0xFF26] &= ~(1 << 1);
+        }
+
+        memoria[0xFF17] = valor;
+        return;
+      }
+      case 0xFF19:{
+        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
+        memoria[0xFF19] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch2.sweep_length();
+        }
+        if(valor & 0x80){
+          this->ch2.init_ch2();
+
+          if(ch2.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch2.length_timer;
+          }
+
+          if(ch2.dac)
+            memoria[0xFF26] |= (1 << 1);
+        }
+        return;
+      }
+      case 0xFF1A:{
+        ch3.dac = ((valor & 0x80) != 0);
+        if(!ch3.dac){
+          memoria[0xFF26] &= ~(1 << 2);
+        }
+
+        memoria[0xFF1A] = valor;
+        return;
+      }
+      case 0xFF1B:{
+        memoria[0xFF1B] = valor;
+        ch3.length_timer = 256 - memoria[0xFF1B];
+        return;
+      }
+      case 0xFF1E:{
+        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
+        memoria[0xFF1E] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch3.sweep_length();
+        }
+        if(valor & 0x80){
+          ch3.init_ch3();
+
+          if(ch3.length_timer == 256 && (valor & 0x40) && !(div_apu % 2)){
+            --ch3.length_timer;
+          }
+
+          if(ch3.dac){
+            memoria[0xFF26] |= (1 << 2);
+          }
+        }
+        return;
+      }
+      case 0xFF20:{
+        memoria[0xFF20] = valor;
+        ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
+        return;
+      }
+      case 0xFF21:{
+        ch4.dac = ((valor & 0xF8) != 0);
+        if(!ch4.dac)
+            memoria[0xFF26] &= ~(1 << 3);
+
+        memoria[0xFF21] = valor;
+        return;
+      }
+      case 0xFF23:{
+        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
+        memoria[0xFF23] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch4.sweep_length();
+        }
+        if(valor & 0x80){
+          ch4.init_ch4();
+
+          if(ch4.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch4.length_timer;
+          }
+
+          if(ch4.dac)
+            memoria[0xFF26] |= (1 << 3);
+        }
+        return;
+      }
+  }
+
+  memoria[endereco] = valor;
+}
+
+
 void APU::limpa_registradores(void){
   sample_count = 0;
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
-  memoria[0xFF26] &= 0xF0;
+  memoria[0xFF26] = 0;
 
   ch1.clear();
   ch2.clear();
   ch3.clear();
   ch4.clear();
+}
+
+void APU::power_on(void){
+  div_apu = 7;
+  ch1.duty_step = 0;
+  ch2.duty_step = 0;
+  ch3.last_sample = 0;
 }
 
 void APU::atualiza_volume(void){
@@ -37716,8 +37947,8 @@ void APU::atualiza_volume(void){
 }
 
 void APU::frame_sequencer(void){
+  if(!is_audio_on(memoria)) return;
   div_apu = (div_apu + 1) % 8;
-
 
   if(div_apu % 2 == 0){
     ch1.sweep_length();

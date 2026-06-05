@@ -36,16 +36,240 @@ void audio_callback(void* buffer, unsigned int frames){
     }
 }
 
+uint8_t& APU::read(uint16_t endereco){
+
+    switch(endereco){
+        case 0xFF10:
+          apu_hack = memoria[0xFF10] | 0x80;
+          return apu_hack;
+        case 0xFF11:
+          apu_hack = memoria[0xFF11] | 0x3F;
+          return apu_hack;
+        case 0xFF14:
+          apu_hack = memoria[0xFF14] | 0xBF;
+          return apu_hack;
+        case 0xFF16:
+          apu_hack = memoria[0xFF16] | 0x3F;
+          return apu_hack;
+        case 0xFF19:
+          apu_hack = memoria[0xFF19] | 0xBF;
+          return apu_hack;
+        case 0xFF1A:
+          apu_hack = memoria[0xFF1A] | 0x7F;
+          return apu_hack;
+        case 0xFF1C:
+          apu_hack = memoria[0xFF1C] | 0x9F;
+          return apu_hack;
+        case 0xFF1E:
+          apu_hack = memoria[0xFF1E] | 0xBF;
+          return apu_hack;
+        case 0xFF23:
+          apu_hack = memoria[0xFF23] | 0xBF;
+          return apu_hack;
+        case 0xFF26:
+          apu_hack = memoria[0xFF26] | 0x70;
+          return apu_hack;
+        case 0xFF13:
+        case 0xFF15:
+        case 0xFF18:
+        case 0xFF1B:
+        case 0xFF1D:
+        case 0xFF1F:
+        case 0xFF20:
+        case 0xFF27:
+        case 0xFF28:
+        case 0xFF29:
+        case 0xFF2A:
+        case 0xFF2B:
+        case 0xFF2C:
+        case 0xFF2D:
+        case 0xFF2E:
+        case 0xFF2F:
+          apu_hack = 0xFF;
+          return apu_hack;
+    }
+
+    return memoria[endereco];
+}
+
+void APU::write(uint16_t endereco, uint8_t valor){
+  switch(endereco){
+    case 0xFF26:{
+        uint8_t bit_prev = (memoria[0xFF26] & 0x80);
+        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
+        if(!(valor & 0x80))
+          this->limpa_registradores();
+        else if(!bit_prev && (valor & 0x80)){
+          this->power_on();
+        }
+
+        return;
+      }
+      case 0xFF10:{
+        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
+        memoria[0xFF10] = valor;
+        if(direcao_prev && this->ch1.negate_mode && !(valor & 0x08)){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+        }
+        return;
+      }
+      case 0xFF11:{
+        memoria[0xFF11] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF11] & 0xC0) | (valor & 0x3F));
+        ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
+        return;
+      }
+      case 0xFF12:{
+        ch1.dac = ((valor & 0xF8) != 0);
+        if(!ch1.dac){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+        }
+
+        memoria[0xFF12] = valor;
+        return;
+      }
+      case 0xFF14:{
+        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
+        memoria[0xFF14] = valor;
+
+        //comportamento obscuro do contador de length
+        //segunda metade do período: quando div_apu é par
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch1.sweep_length();
+        }
+
+        if(valor & 0x80){
+          if(ch1.dac)
+            memoria[0xFF26] |= APU_CH1_ON;
+
+          ch1.init_ch1();
+
+          if(ch1.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch1.length_timer;
+          }
+
+        }
+        
+        return;
+      }
+      case 0xFF16:{
+        memoria[0xFF16] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF16] & 0xC0) | (valor & 0x3F));
+        ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
+        return;
+      }
+      case 0xFF17:{
+        ch2.dac = ((valor & 0xF8) != 0);
+        if(!ch2.dac){
+          memoria[0xFF26] &= ~APU_CH2_ON;
+        }
+
+        memoria[0xFF17] = valor;
+        return;
+      }
+      case 0xFF19:{
+        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
+        memoria[0xFF19] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch2.sweep_length();
+        }
+        if(valor & 0x80){
+          this->ch2.init_ch2();
+
+          if(ch2.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch2.length_timer;
+          }
+
+          if(ch2.dac)
+            memoria[0xFF26] |= APU_CH2_ON;
+        }
+        return;
+      }
+      case 0xFF1A:{
+        ch3.dac = ((valor & 0x80) != 0);
+        if(!ch3.dac){
+          memoria[0xFF26] &= ~APU_CH3_ON;
+        }
+
+        memoria[0xFF1A] = valor;
+        return;
+      }
+      case 0xFF1B:{
+        memoria[0xFF1B] = valor;
+        ch3.length_timer = 256 - memoria[0xFF1B];
+        return;
+      }
+      case 0xFF1E:{
+        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
+        memoria[0xFF1E] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch3.sweep_length();
+        }
+        if(valor & 0x80){
+          ch3.init_ch3();
+
+          if(ch3.length_timer == 256 && (valor & 0x40) && !(div_apu % 2)){
+            --ch3.length_timer;
+          }
+
+          if(ch3.dac){
+            memoria[0xFF26] |= APU_CH3_ON;
+          }
+        }
+        return;
+      }
+      case 0xFF20:{
+        memoria[0xFF20] = valor;
+        ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
+        return;
+      }
+      case 0xFF21:{
+        ch4.dac = ((valor & 0xF8) != 0);
+        if(!ch4.dac)
+            memoria[0xFF26] &= ~APU_CH4_ON;
+
+        memoria[0xFF21] = valor;
+        return;
+      }
+      case 0xFF23:{
+        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
+        memoria[0xFF23] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch4.sweep_length();
+        }
+        if(valor & 0x80){
+          ch4.init_ch4();
+
+          if(ch4.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch4.length_timer;
+          }
+
+          if(ch4.dac)
+            memoria[0xFF26] |= APU_CH4_ON;
+        }
+        return;
+      }
+  }
+
+  memoria[endereco] = valor;
+}
+
+
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_count = 0;
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
-  memoria[0xFF26] &= 0xF0;
+  memoria[0xFF26] = 0;
 
   ch1.clear();
   ch2.clear();
   ch3.clear();
   ch4.clear();
+}
+
+void APU::power_on(void){
+  div_apu = 7;
+  ch1.duty_step = 0;
+  ch2.duty_step = 0;
+  ch3.last_sample = 0;
 }
 
 void APU::atualiza_volume(void){
@@ -55,8 +279,8 @@ void APU::atualiza_volume(void){
 }
 
 void APU::frame_sequencer(void){
-  div_apu = (div_apu + 1) % 8;
   if(!is_audio_on(memoria)) return;
+  div_apu = (div_apu + 1) % 8;
 
   if(div_apu % 2 == 0){
     ch1.sweep_length();
@@ -124,7 +348,7 @@ void APU::step(void){
   for(size_t i {}; i < 4; ++i){
     ++sample_count;
     ++ch4.ciclos;
-
+    
     if(sample_count % 2 == 0){
       ch3.incrementa_divider();
     }

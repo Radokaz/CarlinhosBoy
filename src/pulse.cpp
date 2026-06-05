@@ -150,7 +150,7 @@ void CH1::clear(void){
   periodo_count = 0;
 
   memoria[0xFF10] = 0;
-  memoria[0xFF11] = 0;
+  memoria[0xFF11] &= 0x3F;
   memoria[0xFF12] = 0;
   memoria[0xFF13] = 0;
   memoria[0xFF14] = 0;
@@ -239,7 +239,7 @@ void CH2::clear(void){
   direcao_envelope = 0; //0 - reduz volume, 1 - aumenta volume
     
   envelope_count = 0;
-  memoria[0xFF16] = 0;
+  memoria[0xFF16] &= 0x3F;
   memoria[0xFF17] = 0;
   memoria[0xFF18] = 0;
   memoria[0xFF19] = 0;
