@@ -6,7 +6,7 @@
 # 0 "<command-line>" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/src/wave.cpp"
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 1
-# 25 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
+# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
 # 1 "/usr/include/c++/16.1.1/cstdint" 1 3
 # 40 "/usr/include/c++/16.1.1/cstdint" 3
 # 1 "/usr/include/c++/16.1.1/x86_64-pc-linux-gnu/bits/c++config.h" 1 3
@@ -384,7 +384,7 @@ namespace std
   using ::uintptr_t;
 # 144 "/usr/include/c++/16.1.1/cstdint" 3
 }
-# 26 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/cmath" 1 3
 # 46 "/usr/include/c++/16.1.1/cmath" 3
 # 1 "/usr/include/c++/16.1.1/bits/requires_hosted.h" 1 3
@@ -29534,7 +29534,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 27 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 30 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/usr/include/c++/16.1.1/array" 1 3
 # 41 "/usr/include/c++/16.1.1/array" 3
 # 1 "/usr/include/c++/16.1.1/initializer_list" 1 3
@@ -30359,7 +30359,7 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 28 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 31 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h" 1
 # 87 "/home/radokaz/Trabalho de metodologia/Emulador/include/raylib/src/raylib.h"
 # 1 "/usr/lib/gcc/x86_64-pc-linux-gnu/16.1.1/include/stdarg.h" 1 3
@@ -31888,7 +31888,7 @@ typedef void (*AudioCallback)(void *bufferData, unsigned int frames);
 
 
 }
-# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 32 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 
 namespace GB{
 
@@ -31997,8 +31997,10 @@ struct CH3{
 
   uint16_t length_timer {};
   uint8_t output_level {};
-  uint8_t wram_index {1};
+  uint8_t wram_index {};
   uint8_t last_sample {};
+  uint8_t last_byte {};
+  uint8_t trigger_delay {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -32056,6 +32058,7 @@ struct APU{
   int32_t sample_dir {};
   uint8_t div_apu {};
   uint8_t div_prev {};
+  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -32069,6 +32072,10 @@ struct APU{
 
   void atualiza_volume(void);
   void limpa_registradores(void);
+  void power_on(void);
+
+  uint8_t& read(uint16_t endereco);
+  void write(uint16_t endereco, uint8_t valor);
 
   void mixer(void);
   void amplifier(void);
@@ -32089,14 +32096,36 @@ bool CH3::is_length_enabled(void){
 }
 
 void CH3::init_ch3(void){
-  periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
-  periodo_divider = periodo_shadow;
-
   if(!length_timer)
     this->seta_length(true);
 
   this->seta_output();
-  wram_index = 1;
+
+  if(is_channel3_on(memoria) && (periodo_divider <= periodo_shadow)){
+
+    if(last_byte < 4){
+      uint8_t byte = memoria[0xFF30 + last_byte];
+      memoria[0xFF30] = byte;
+    }
+    else{
+      uint8_t index = last_byte;
+      if(index >= 4 && index < 8)
+        index = 4;
+      else if(index >= 8 && index < 12)
+        index = 8;
+      else
+        index = 12;
+
+      for(size_t i {}; i < 4; ++i){
+        memoria[0xFF30 + i] = memoria[0xFF30 + index + i];
+      }
+    }
+  }
+
+  periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
+  periodo_divider = periodo_shadow;
+  trigger_delay = 2;
+  wram_index = 0;
 }
 
 void CH3::seta_output(void){
@@ -32126,13 +32155,16 @@ void CH3::incrementa_divider(void){
   if(periodo_divider > 2047){
 
     if(wram_index % 2)
-      last_sample = memoria[0xFF30 + wram_index/2] & 0x0F;
+      last_sample = memoria[0xFF30 + (wram_index >> 1)] & 0x0F;
     else
-      last_sample = ((memoria[0xFF30 + wram_index/2] & 0xF0) >> 4);
+      last_sample = ((memoria[0xFF30 + (wram_index >> 1)] & 0xF0) >> 4);
 
+    last_byte = (wram_index >> 1);
     wram_index = (wram_index + 1) % 32;
     periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
     periodo_divider = periodo_shadow;
+    if(trigger_delay)
+      --trigger_delay;
   }
 }
 
@@ -32148,6 +32180,7 @@ void CH3::clear(void){
   dac = false;
   last_sample = 0;
   wram_index = 0;
+  trigger_delay = 0;
   periodo_divider = 0;
   periodo_shadow = 0;
   output_level = 0;

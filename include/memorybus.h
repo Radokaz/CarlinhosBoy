@@ -29,9 +29,9 @@ struct Timer{
 };
 
 //todos os que tem escrita bloqueada quando o APU está desligado
-static constexpr std::array<uint16_t, 20> audio_registers{
-  0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D,
-  0xFF1E, 0xFF20, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25};
+static constexpr std::array<uint16_t, 16> audio_registers{
+  0xFF10, 0xFF12, 0xFF13, 0xFF14, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1C, 0xFF1D,
+  0xFF1E, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25};
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
@@ -65,59 +65,9 @@ struct Memorybus{
         case 0xFF41: //stat
           memoria[endereco] |= 0b10000000; 
           return memoria[endereco];
-
-        //registradores de som
-        case 0xFF10:
-          dma_hack = memoria[0xFF10] | 0x80;
-          return dma_hack;
-        case 0xFF11:
-          dma_hack = memoria[0xFF11] | 0x3F;
-          return dma_hack;
-        case 0xFF14:
-          dma_hack = memoria[0xFF14] | 0xBF;
-          return dma_hack;
-        case 0xFF16:
-          dma_hack = memoria[0xFF16] | 0x3F;
-          return dma_hack;
-        case 0xFF19:
-          dma_hack = memoria[0xFF19] | 0xBF;
-          return dma_hack;
-        case 0xFF1A:
-          dma_hack = memoria[0xFF1A] | 0x7F;
-          return dma_hack;
-        case 0xFF1C:
-          dma_hack = memoria[0xFF1C] | 0x9F;
-          return dma_hack;
-        case 0xFF1E:
-          dma_hack = memoria[0xFF1E] | 0xBF;
-          return dma_hack;
-        case 0xFF23:
-          dma_hack = memoria[0xFF23] | 0xBF;
-          return dma_hack;
-        case 0xFF26:
-          dma_hack = memoria[0xFF26] | 0x70;
-          return dma_hack;
-        case 0xFF13:
-        case 0xFF15:
-        case 0xFF18:
-        case 0xFF1B:
-        case 0xFF1D:
-        case 0xFF1F:
-        case 0xFF20:
-        case 0xFF27:
-        case 0xFF28:
-        case 0xFF29:
-        case 0xFF2A:
-        case 0xFF2B:
-        case 0xFF2C:
-        case 0xFF2D:
-        case 0xFF2E:
-        case 0xFF2F:
-          dma_hack = 0xFF;
-          return dma_hack;
-
         default: break;
     }
+
     if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       dma_hack = 0xFF;
       return dma_hack;
@@ -127,15 +77,22 @@ struct Memorybus{
       return dma_hack;
     }
     if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
-      dma_hack = memoria[WAVE_RAM_INICIO + timer->apu->ch3.wram_index/2];
+      dma_hack = (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay) ? memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte] : 0xFF;
       return dma_hack;
     }
-
+    if(endereco >= AUDIO_INICIO && endereco < AUDIO_FIM){
+      return timer->apu->read(endereco);
+    }
+    
     return memoria[endereco];
   }
 
   void write_byte(uint16_t endereco, uint8_t valor){
     if(!is_audio_on(memoria.data()) && std::ranges::contains(audio_registers, endereco)){
+      return;
+    }
+    if(endereco >= AUDIO_INICIO && endereco < AUDIO_FIM){
+      timer->apu->write(endereco, valor);
       return;
     }
     if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
@@ -153,6 +110,9 @@ struct Memorybus{
       return;
     }
     if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
+      if(timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay){
+        memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte] = valor;
+      }
       return;
     }
 
@@ -180,156 +140,6 @@ struct Memorybus{
       case 0xFF50:{
         if(valor)
           restaura_rom();
-        return;
-      }
-
-      //registradores de áudio
-      case 0xFF26:{
-        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
-        if(!(valor & 0x80))
-          this->timer->apu->limpa_registradores();
-                
-        return;
-      }
-      case 0xFF10:{
-        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
-        memoria[0xFF10] = valor;
-        if(direcao_prev && timer->apu->ch1.negate_mode && !(valor & 0x08)){
-          memoria[0xFF26] &= ~APU_CH1_ON;
-        }
-        return;
-      }
-      case 0xFF11:{
-        memoria[0xFF11] = valor;
-        timer->apu->ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
-        return;
-      }
-      case 0xFF12:{
-        timer->apu->ch1.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch1.dac){
-          memoria[0xFF26] &= ~APU_CH1_ON;
-        }
-
-        memoria[0xFF12] = valor;
-        return;
-      }
-      case 0xFF14:{
-        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
-        memoria[0xFF14] = valor;
-
-        //comportamento obscuro do contador de length
-        //segunda metade do período: quando div_apu é par
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch1.sweep_length();
-        }
-
-        if(valor & 0x80){
-          if(timer->apu->ch1.dac)
-            memoria[0xFF26] |= APU_CH1_ON;
-
-          this->timer->apu->ch1.init_ch1();
-
-          if(timer->apu->ch1.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch1.length_timer;
-          }
-
-        }
-        
-        return;
-      }
-      case 0xFF16:{
-        memoria[0xFF16] = valor;
-        timer->apu->ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
-        return;
-      }
-      case 0xFF17:{
-        timer->apu->ch2.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch2.dac){
-          memoria[0xFF26] &= ~APU_CH2_ON;
-        }
-
-        memoria[0xFF17] = valor;
-        return;
-      }
-      case 0xFF19:{
-        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
-        memoria[0xFF19] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch2.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch2.init_ch2();
-
-          if(timer->apu->ch2.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch2.length_timer;
-          }
-
-          if(timer->apu->ch2.dac)
-            memoria[0xFF26] |= APU_CH2_ON;
-        }
-        return;
-      }
-      case 0xFF1A:{
-        timer->apu->ch3.dac = ((valor & 0x80) != 0);
-        if(!timer->apu->ch3.dac){
-          memoria[0xFF26] &= ~APU_CH3_ON;
-        }
-
-        memoria[0xFF1A] = valor;
-        return;
-      }
-      case 0xFF1B:{
-        memoria[0xFF1B] = valor;
-        timer->apu->ch3.length_timer = 256 - memoria[0xFF1B];
-        return;
-      }
-      case 0xFF1E:{
-        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
-        memoria[0xFF1E] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch3.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch3.init_ch3();
-
-          if(timer->apu->ch3.length_timer == 256 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch3.length_timer;
-          }
-
-          if(timer->apu->ch3.dac)
-            memoria[0xFF26] |= APU_CH3_ON;
-        }
-        return;
-      }
-      case 0xFF20:{
-        memoria[0xFF20] = valor;
-        timer->apu->ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
-        return;
-      }
-      case 0xFF21:{
-        timer->apu->ch4.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch4.dac)
-            memoria[0xFF26] &= ~APU_CH4_ON;
-
-        memoria[0xFF21] = valor;
-        return;
-      }
-      case 0xFF23:{
-        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
-        memoria[0xFF23] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch4.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch4.init_ch4();
-
-          if(timer->apu->ch4.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch4.length_timer;
-          }
-
-          if(timer->apu->ch4.dac)
-            memoria[0xFF26] |= APU_CH4_ON;
-        }
         return;
       }
     }

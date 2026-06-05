@@ -7,14 +7,36 @@ bool CH3::is_length_enabled(void){
 }
 
 void CH3::init_ch3(void){
-  periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
-  periodo_divider = periodo_shadow;
-
   if(!length_timer)
     this->seta_length(true);
 
   this->seta_output();
-  wram_index = 1;
+
+  if(is_channel3_on(memoria) && (periodo_divider <= periodo_shadow)){
+    
+    if(last_byte < 4){
+      uint8_t byte = memoria[WAVE_RAM_INICIO + last_byte];
+      memoria[WAVE_RAM_INICIO] = byte;
+    }
+    else{
+      uint8_t index = last_byte;
+      if(index >= 4 && index < 8)
+        index = 4;
+      else if(index >= 8 && index < 12)
+        index = 8;
+      else
+        index = 12;
+
+      for(size_t i {}; i < 4; ++i){
+        memoria[WAVE_RAM_INICIO + i] = memoria[WAVE_RAM_INICIO + index + i];
+      }
+    }
+  }
+
+  periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
+  periodo_divider = periodo_shadow;
+  trigger_delay = 2;
+  wram_index = 0;
 }
 
 void CH3::seta_output(void){
@@ -44,13 +66,16 @@ void CH3::incrementa_divider(void){
   if(periodo_divider > 2047){
 
     if(wram_index % 2) //ímpar: lower_nibble
-      last_sample = memoria[WAVE_RAM_INICIO + wram_index/2] & 0x0F;
+      last_sample = memoria[WAVE_RAM_INICIO + (wram_index >> 1)] & 0x0F;
     else
-      last_sample = ((memoria[WAVE_RAM_INICIO + wram_index/2] & 0xF0) >> 4);
+      last_sample = ((memoria[WAVE_RAM_INICIO + (wram_index >> 1)] & 0xF0) >> 4);
 
+    last_byte = (wram_index >> 1);
     wram_index = (wram_index + 1) % 32;
     periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
     periodo_divider = periodo_shadow;
+    if(trigger_delay)
+      --trigger_delay;
   }
 }
 
@@ -66,6 +91,7 @@ void CH3::clear(void){
   dac = false;
   last_sample = 0;
   wram_index = 0;
+  trigger_delay = 0;
   periodo_divider = 0;
   periodo_shadow = 0;
   output_level = 0;

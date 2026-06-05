@@ -114225,7 +114225,7 @@ struct PPU{
 }
 # 13 "/home/radokaz/Trabalho de metodologia/Emulador/include/memorybus.h" 2
 # 1 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 1
-# 26 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
+# 29 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
 # 1 "/usr/include/c++/16.1.1/cmath" 1 3
 # 52 "/usr/include/c++/16.1.1/cmath" 3
 #pragma GCC diagnostic push
@@ -125018,12 +125018,12 @@ namespace std __attribute__ ((__visibility__ ("default")))
 
 
 }
-# 27 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
+# 30 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h" 2
 
 
 
 
-# 30 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
+# 33 "/home/radokaz/Trabalho de metodologia/Emulador/include/apu.h"
 namespace GB{
 
 inline bool is_audio_on(uint8_t *memoria){ return static_cast<bool>((memoria[0xFF26] & (1 << 7)) != 0); }
@@ -125131,8 +125131,10 @@ struct CH3{
 
   uint16_t length_timer {};
   uint8_t output_level {};
-  uint8_t wram_index {1};
+  uint8_t wram_index {};
   uint8_t last_sample {};
+  uint8_t last_byte {};
+  uint8_t trigger_delay {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -125190,6 +125192,7 @@ struct APU{
   int32_t sample_dir {};
   uint8_t div_apu {};
   uint8_t div_prev {};
+  uint8_t apu_hack {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -125203,6 +125206,10 @@ struct APU{
 
   void atualiza_volume(void);
   void limpa_registradores(void);
+  void power_on(void);
+
+  uint8_t& read(uint16_t endereco);
+  void write(uint16_t endereco, uint8_t valor);
 
   void mixer(void);
   void amplifier(void);
@@ -133465,9 +133472,9 @@ struct Timer{
 };
 
 
-static constexpr std::array<uint16_t, 20> audio_registers{
-  0xFF10, 0xFF11, 0xFF12, 0xFF13, 0xFF14, 0xFF16, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1B, 0xFF1C, 0xFF1D,
-  0xFF1E, 0xFF20, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25};
+static constexpr std::array<uint16_t, 16> audio_registers{
+  0xFF10, 0xFF12, 0xFF13, 0xFF14, 0xFF17, 0xFF18, 0xFF19, 0xFF1A, 0xFF1C, 0xFF1D,
+  0xFF1E, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25};
 
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
@@ -133501,59 +133508,9 @@ struct Memorybus{
         case 0xFF41:
           memoria[endereco] |= 0b10000000;
           return memoria[endereco];
-
-
-        case 0xFF10:
-          dma_hack = memoria[0xFF10] | 0x80;
-          return dma_hack;
-        case 0xFF11:
-          dma_hack = memoria[0xFF11] | 0x3F;
-          return dma_hack;
-        case 0xFF14:
-          dma_hack = memoria[0xFF14] | 0xBF;
-          return dma_hack;
-        case 0xFF16:
-          dma_hack = memoria[0xFF16] | 0x3F;
-          return dma_hack;
-        case 0xFF19:
-          dma_hack = memoria[0xFF19] | 0xBF;
-          return dma_hack;
-        case 0xFF1A:
-          dma_hack = memoria[0xFF1A] | 0x7F;
-          return dma_hack;
-        case 0xFF1C:
-          dma_hack = memoria[0xFF1C] | 0x9F;
-          return dma_hack;
-        case 0xFF1E:
-          dma_hack = memoria[0xFF1E] | 0xBF;
-          return dma_hack;
-        case 0xFF23:
-          dma_hack = memoria[0xFF23] | 0xBF;
-          return dma_hack;
-        case 0xFF26:
-          dma_hack = memoria[0xFF26] | 0x70;
-          return dma_hack;
-        case 0xFF13:
-        case 0xFF15:
-        case 0xFF18:
-        case 0xFF1B:
-        case 0xFF1D:
-        case 0xFF1F:
-        case 0xFF20:
-        case 0xFF27:
-        case 0xFF28:
-        case 0xFF29:
-        case 0xFF2A:
-        case 0xFF2B:
-        case 0xFF2C:
-        case 0xFF2D:
-        case 0xFF2E:
-        case 0xFF2F:
-          dma_hack = 0xFF;
-          return dma_hack;
-
         default: break;
     }
+
     if(endereco >= 0xFE00 && endereco < 0xFEA0 && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       dma_hack = 0xFF;
       return dma_hack;
@@ -133563,8 +133520,11 @@ struct Memorybus{
       return dma_hack;
     }
     if(is_channel3_on(memoria.data()) && endereco >= 0xFF30 && endereco < 0xFF40){
-      dma_hack = memoria[0xFF30 + timer->apu->ch3.wram_index/2];
+      dma_hack = (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay) ? memoria[0xFF30 + timer->apu->ch3.last_byte] : 0xFF;
       return dma_hack;
+    }
+    if(endereco >= 0xFF10 && endereco < 0xFF30){
+      return timer->apu->read(endereco);
     }
 
     return memoria[endereco];
@@ -133572,6 +133532,10 @@ struct Memorybus{
 
   void write_byte(uint16_t endereco, uint8_t valor){
     if(!is_audio_on(memoria.data()) && std::ranges::contains(audio_registers, endereco)){
+      return;
+    }
+    if(endereco >= 0xFF10 && endereco < 0xFF30){
+      timer->apu->write(endereco, valor);
       return;
     }
     if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
@@ -133589,6 +133553,9 @@ struct Memorybus{
       return;
     }
     if(is_channel3_on(memoria.data()) && endereco >= 0xFF30 && endereco < 0xFF40){
+      if(timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay){
+        memoria[0xFF30 + timer->apu->ch3.last_byte] = valor;
+      }
       return;
     }
 
@@ -133616,156 +133583,6 @@ struct Memorybus{
       case 0xFF50:{
         if(valor)
           restaura_rom();
-        return;
-      }
-
-
-      case 0xFF26:{
-        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
-        if(!(valor & 0x80))
-          this->timer->apu->limpa_registradores();
-
-        return;
-      }
-      case 0xFF10:{
-        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
-        memoria[0xFF10] = valor;
-        if(direcao_prev && timer->apu->ch1.negate_mode && !(valor & 0x08)){
-          memoria[0xFF26] &= ~(1 << 0);
-        }
-        return;
-      }
-      case 0xFF11:{
-        memoria[0xFF11] = valor;
-        timer->apu->ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
-        return;
-      }
-      case 0xFF12:{
-        timer->apu->ch1.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch1.dac){
-          memoria[0xFF26] &= ~(1 << 0);
-        }
-
-        memoria[0xFF12] = valor;
-        return;
-      }
-      case 0xFF14:{
-        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
-        memoria[0xFF14] = valor;
-
-
-
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch1.sweep_length();
-        }
-
-        if(valor & 0x80){
-          if(timer->apu->ch1.dac)
-            memoria[0xFF26] |= (1 << 0);
-
-          this->timer->apu->ch1.init_ch1();
-
-          if(timer->apu->ch1.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch1.length_timer;
-          }
-
-        }
-
-        return;
-      }
-      case 0xFF16:{
-        memoria[0xFF16] = valor;
-        timer->apu->ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
-        return;
-      }
-      case 0xFF17:{
-        timer->apu->ch2.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch2.dac){
-          memoria[0xFF26] &= ~(1 << 1);
-        }
-
-        memoria[0xFF17] = valor;
-        return;
-      }
-      case 0xFF19:{
-        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
-        memoria[0xFF19] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch2.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch2.init_ch2();
-
-          if(timer->apu->ch2.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch2.length_timer;
-          }
-
-          if(timer->apu->ch2.dac)
-            memoria[0xFF26] |= (1 << 1);
-        }
-        return;
-      }
-      case 0xFF1A:{
-        timer->apu->ch3.dac = ((valor & 0x80) != 0);
-        if(!timer->apu->ch3.dac){
-          memoria[0xFF26] &= ~(1 << 2);
-        }
-
-        memoria[0xFF1A] = valor;
-        return;
-      }
-      case 0xFF1B:{
-        memoria[0xFF1B] = valor;
-        timer->apu->ch3.length_timer = 256 - memoria[0xFF1B];
-        return;
-      }
-      case 0xFF1E:{
-        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
-        memoria[0xFF1E] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch3.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch3.init_ch3();
-
-          if(timer->apu->ch3.length_timer == 256 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch3.length_timer;
-          }
-
-          if(timer->apu->ch3.dac)
-            memoria[0xFF26] |= (1 << 2);
-        }
-        return;
-      }
-      case 0xFF20:{
-        memoria[0xFF20] = valor;
-        timer->apu->ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
-        return;
-      }
-      case 0xFF21:{
-        timer->apu->ch4.dac = ((valor & 0xF8) != 0);
-        if(!timer->apu->ch4.dac)
-            memoria[0xFF26] &= ~(1 << 3);
-
-        memoria[0xFF21] = valor;
-        return;
-      }
-      case 0xFF23:{
-        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
-        memoria[0xFF23] = valor;
-        if(!length_prev && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-          timer->apu->ch4.sweep_length();
-        }
-        if(valor & 0x80){
-          this->timer->apu->ch4.init_ch4();
-
-          if(timer->apu->ch4.length_timer == 64 && (valor & 0x40) && !(timer->apu->div_apu % 2)){
-            --timer->apu->ch4.length_timer;
-          }
-
-          if(timer->apu->ch4.dac)
-            memoria[0xFF26] |= (1 << 3);
-        }
         return;
       }
     }
