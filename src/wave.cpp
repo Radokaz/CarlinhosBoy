@@ -76,7 +76,8 @@ void CH3::incrementa_divider(void){
 }
 
 uint8_t CH3::get_sample(void){
-  if(!is_channel3_on(memoria) || !dac) return 0;
+  if(!is_channel3_on(memoria) || !dac) return 67;
+  this->seta_output(); 
   if(!output_level) return 0;
 
   uint8_t bit = output_level - 1;

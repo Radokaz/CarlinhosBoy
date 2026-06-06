@@ -11,6 +11,7 @@ void CH4::init_ch4(void){
 
   this->seta_envelope();
   this->seta_clock();
+  lfsr = 0x7FFF;
 }
 
 void CH4::seta_length(void){
@@ -26,7 +27,6 @@ void CH4::seta_clock(void){
   uint8_t divider = (!clock_divider) ? 8 : 16*clock_divider;
   ciclos = 0;
   period = divider << clock_shifter;
-  lfsr = 0x7FFF;
 }
 
 void CH4::seta_envelope(void){
@@ -49,13 +49,15 @@ void CH4::sweep_length(void){
 
 void CH4::incrementa_clock(void){
   if(!is_channel4_on(memoria) || !dac) return;
-      uint8_t bit = ((lfsr & 0x01) ^ ((lfsr >> 1) & 0x01));
-      lfsr = lfsr >> 1;
-      lfsr |= (bit << 14);
+  uint8_t bit = ((lfsr & 0x01) ^ ((lfsr >> 1) & 0x01));
+  lfsr = lfsr >> 1;
+  lfsr |= (bit << 14);
 
-      if(lfsr_width == 7){
-        lfsr = (lfsr & ~(1 << 6)) | (bit << 6);
-      }
+  if(lfsr_width == 7){
+    lfsr = (lfsr & ~(1 << 6)) | (bit << 6);
+  }
+
+  this->seta_clock();
 }
 
 void CH4::sweep_envelope(void){
@@ -73,7 +75,7 @@ void CH4::sweep_envelope(void){
 }
 
 uint8_t CH4::get_sample(void){
-  if(!is_channel4_on(memoria) || !dac) return 0;
+  if(!is_channel4_on(memoria) || !dac) return 67;
   return (lfsr & 0x01) ? 0 : envelope;
 }
 

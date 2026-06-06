@@ -50,12 +50,12 @@ void CH1::sweep_periodo(void){
       --periodo_count;
       if(!periodo_count){
 
+        uint16_t offset = (periodo_shadow >> ind_step);
+        uint16_t novo_periodo {};
+
         ind_step = memoria[0xFF10] & 0x07;
         periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
         direcao_periodo = ((memoria[0xFF10] & 0x08) >> 3);
-
-        uint16_t offset = (periodo_shadow >> ind_step);
-        uint16_t novo_periodo {};
 
         if(!direcao_periodo){
           novo_periodo = periodo_shadow + offset;
@@ -103,7 +103,7 @@ void CH1::incrementa_divider(void){
     if(!is_channel1_on(memoria) || !dac) return;
     ++periodo_divider;
     if(periodo_divider > 2047){
-      periodo_divider = periodo_shadow;
+      periodo_divider = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
       duty_step = (duty_step + 1) % 8;
     }
 }
@@ -119,7 +119,7 @@ void CH1::sweep_length(void){
 }
 
 uint8_t CH1::get_sample(void){
-  if(!is_channel1_on(memoria) || !dac) return 0;
+  if(!is_channel1_on(memoria) || !dac) return 67;
     uint8_t duty_cycle = ((memoria[0xFF11] & 0xC0) >> 6);
     return (tabela_onda[duty_cycle][duty_step]) ? envelope : 0;
 }
@@ -193,6 +193,7 @@ void CH2::incrementa_divider(void){
     if(!is_channel2_on(memoria) || !dac) return;
     ++periodo_divider;
     if(periodo_divider > 2047){
+      periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
       periodo_divider = periodo_shadow;
       duty_step = (duty_step + 1) % 8;
     }
@@ -209,7 +210,7 @@ void CH2::sweep_length(void){
 }
 
 uint8_t CH2::get_sample(void){
-    if(!is_channel2_on(memoria) || !dac) return 0;
+    if(!is_channel2_on(memoria) || !dac) return 67;
     uint8_t duty_cycle = ((memoria[0xFF16] & 0xC0) >> 6);
     return (tabela_onda[duty_cycle][duty_step]) ? envelope : 0;
 }
