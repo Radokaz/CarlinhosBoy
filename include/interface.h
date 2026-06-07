@@ -4,7 +4,6 @@
 #include "tinyfiledialogs.h"
 
 #define opt_escolha(x) (1 << x)
-#define state_path "state.cfg"
 
 namespace GB{
 
@@ -13,11 +12,12 @@ struct GB_State{
   std::string saves_path;
 
   GB_State(void){
-    std::fstream estado(state_path, estado.in);
+    std::filesystem::path state_path = getExeDir() / "state.cfg";
+    std::fstream estado(state_path.string().c_str(), estado.in);
 
     if(!estado){
       estado.close();
-      std::ofstream novo(state_path);
+      std::ofstream novo(state_path.string().c_str());
       novo << "rom_path: ROMS\n";
       novo << "saves_path: Saves\n";
 
@@ -98,8 +98,10 @@ inline void carrega_rom(GB_State *estado){
 inline void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista){
   const char *resultado = tinyfd_selectFolderDialog("Selecione uma pasta", "");
   if(!resultado) return;
+  
+  std::filesystem::path state_path = getExeDir() / "state.cfg";
 
-  std::fstream arquivo(state_path, arquivo.in | arquivo.out);
+  std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
   std::string result = resultado, buffer{};
   std::vector<std::string> linhas;
 
@@ -107,7 +109,7 @@ inline void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos
     linhas.push_back(buffer);
   }
   arquivo.close();
-  std::ofstream novo(state_path);
+  std::ofstream novo(state_path.string().c_str());
 
   for(auto& linha : linhas){
     size_t pos = linha.find(':');
@@ -180,11 +182,11 @@ inline void init_gui(void){
     }
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
-      define_pasta(&estado, "rom_path", &lista);
+      define_pasta(&estado, "saves_path", &lista);
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
-      define_pasta(&estado, "saves_path", &lista);
+      define_pasta(&estado, "rom_path", &lista);
     }
     if(escolhas & opt_escolha(3)){
       break;
