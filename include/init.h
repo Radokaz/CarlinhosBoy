@@ -26,8 +26,23 @@ struct __attribute__((packed)) Header{
   uint16_t global_checksum;
 };
 
+inline std::filesystem::path getExeDir() {
+#ifdef _WIN32
+    #include <windows.h>
+    char path[MAX_PATH];
+    GetModuleFileName(NULL, path, MAX_PATH);
+    return std::filesystem::path(path).parent_path();
+
+#elif __linux__
+    return std::filesystem::canonical("/proc/self/exe").parent_path();
+
+#endif
+}
+
 inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
-  std::fstream bootrom(BOOT_SOURCE, bootrom.binary | bootrom.in);
+
+  std::filesystem::path boot_src = getExeDir() / BOOT_SOURCE;
+  std::fstream bootrom(boot_src.string().c_str(), bootrom.binary | bootrom.in);
   if(!bootrom){
     std::cerr << "BOOTROM INDISPONÍVEL\n";
     cpu->bus.memoria[0xFF04] = 0xAB;
