@@ -4,8 +4,9 @@
 namespace GB{
 
 void MBC::load(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
+    std::cout << saves << "\n";
+    std::filesystem::create_directories(saves);
+    std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
     save_path.replace_extension(".sav");
 
     std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
@@ -16,8 +17,8 @@ void MBC::load(void){
 }
 
 void MBC::save(void){
-    std::filesystem::create_directories("Saves");
-    std::filesystem::path save_path = std::string("Saves") / std::filesystem::path(fonte).filename();
+    std::filesystem::create_directories(saves);
+    std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
     save_path.replace_extension(".sav");
 
     std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);

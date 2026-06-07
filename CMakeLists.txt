@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Source folder to find the .c/.cpp files
-file(GLOB_RECURSE SOURCES src/*.cpp)
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")
 
 file(COPY ${CMAKE_SOURCE_DIR}/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 # Create executable
