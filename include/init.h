@@ -94,7 +94,7 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
   std::fstream arquivo(src.data(), arquivo.binary | arquivo.in);
   if(!arquivo){
     std::cerr << "Não foi possível abrir a ROM.\n";
-    exit(1);
+    return nullptr;
   }
 
   arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0150);
@@ -126,7 +126,7 @@ inline size_t checa_tamanho_rom(Header *header){
   }
 }
 
-inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
+inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::string_view saves){
 
   const char *ROM_TYPES[] = {
     "ROM ONLY",
@@ -245,7 +245,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
   std::cout << "\t Checksum : " << static_cast<int>(header->checksum) << " (" << ((aux & 0xFF) ? "SUCESSO)\n" : "FALHA)\n") << std::dec; 
   if(!(aux & 0xFF)){
     std::cerr << "Erro ao ler a ROM.\n";
-    exit(1);
+    return false;
   }
   
   size_t ram_sz = checa_tamanho_ram(header);
@@ -255,12 +255,12 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 1:
     case 2:
     case 3:{
-      cpu->bus.mbc = std::make_unique<MBC1>(src, rom_sz, ram_sz);
+      cpu->bus.mbc = std::make_unique<MBC1>(saves, src, rom_sz, ram_sz);
       break;
     }
     case 5:
     case 6:{
-      cpu->bus.mbc = std::make_unique<MBC2>(src, rom_sz);
+      cpu->bus.mbc = std::make_unique<MBC2>(saves, src, rom_sz);
       break;
     }
     case 15:
@@ -268,7 +268,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 17:
     case 18:
     case 19:{
-      cpu->bus.mbc = std::make_unique<MBC3>(src, rom_sz, ram_sz);
+      cpu->bus.mbc = std::make_unique<MBC3>(saves, src, rom_sz, ram_sz);
       break;
     }
     case 25:
@@ -277,7 +277,7 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
     case 28:
     case 29:
     case 30:{
-      cpu->bus.mbc = std::make_unique<MBC5>(src, rom_sz, ram_sz);
+      cpu->bus.mbc = std::make_unique<MBC5>(saves, src, rom_sz, ram_sz);
       break;
     }
     default:{
@@ -285,6 +285,8 @@ inline void checa_validade(Header *header, CPU *cpu, std::string_view src){
       rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
     }
   }
+
+  return true;
 }
 
 
@@ -310,14 +312,22 @@ inline void checa_save(CPU *cpu, uint8_t mbc){
   }
 }
 
-inline void init_game(CPU *cpu, char **argv){
-  Header *header = init_rom(cpu, argv[1]);
+inline bool init_game(CPU *cpu, const char *src, const char *saves){
+  Header *header = init_rom(cpu, src);
+  if(!header) return false;
+
   uint8_t mbc = header->mbc;
-  checa_validade(header, cpu, argv[1]);
-  merge_boot_rom(cpu, argv[1], mbc);
+  if(!checa_validade(header, cpu, src, saves))
+    return false;
+
+  merge_boot_rom(cpu, src, mbc);
   checa_save(cpu, mbc);
+
+  return true;
 }
 
+void debug_func(CPU *cpu);
+void inicia_emulador(std::string_view src, std::string_view saves);
 
 }
 

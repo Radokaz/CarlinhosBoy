@@ -14,6 +14,7 @@ struct MBC{
   std::vector<uint8_t> rom;
   std::vector<uint8_t> ram;
   std::string fonte;
+  std::string saves;
   uint8_t *pega_rom(void){
     return rom.data();
   };
@@ -35,7 +36,7 @@ struct MBC1 : public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC1(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+  MBC1(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -43,6 +44,7 @@ struct MBC1 : public MBC{
     }
 
     fonte = rom_src;
+    saves = sav;
     rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam);
@@ -62,7 +64,7 @@ struct MBC2: public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC2(std::string_view rom_src, size_t rom_tam){
+  MBC2(std::string_view sav, std::string_view rom_src, size_t rom_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -70,6 +72,7 @@ struct MBC2: public MBC{
     }
 
     fonte = rom_src;
+    saves = sav;
     rom.resize(rom_tam);
     ram.resize(512);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
@@ -103,7 +106,7 @@ struct MBC3 : public MBC{
   RTC rtc;
   RTC rtc_latch;
 
-  MBC3(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+  MBC3(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -111,6 +114,7 @@ struct MBC3 : public MBC{
     }
 
     fonte = rom_src;
+    saves = sav;
     arquivo.seekg(0, std::ios::end);
     size_t tamanho = arquivo.tellg();
     arquivo.seekg(0);
@@ -134,7 +138,7 @@ struct MBC5 : public MBC{
   bool ram_ativa {false};
   uint8_t ram_hack {0xFF};
 
-  MBC5(std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+  MBC5(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
     std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
     if(!arquivo){
       std::cerr << "Rom não encontrada.\n";
@@ -142,6 +146,7 @@ struct MBC5 : public MBC{
     }
 
     fonte = rom_src;
+    saves = sav;
     rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam);
