@@ -1,9 +1,7 @@
 #ifndef INIT_H
 #define INIT_H
 
-#include "actions.h"
-#include <string>
-#include <fstream>
+#include "interface.h"
 #include <map>
 
 #define BOOT_SOURCE "dmg_boot.bin"
@@ -25,19 +23,6 @@ struct __attribute__((packed)) Header{
   uint8_t checksum;
   uint16_t global_checksum;
 };
-
-inline std::filesystem::path getExeDir() {
-#ifdef _WIN32
-    #include <windows.h>
-    char path[MAX_PATH];
-    GetModuleFileName(NULL, path, MAX_PATH);
-    return std::filesystem::path(path).parent_path();
-
-#elif __linux__
-    return std::filesystem::canonical("/proc/self/exe").parent_path();
-
-#endif
-}
 
 inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
 
@@ -341,8 +326,6 @@ inline bool init_game(CPU *cpu, const char *src, const char *saves){
   return true;
 }
 
-void debug_func(CPU *cpu);
-void inicia_emulador(std::string_view src, std::string_view saves);
 
 }
 

@@ -16,12 +16,15 @@
 namespace GB{
 
   struct Joypad{
+    const void *teclas {};
     uint8_t output {0xFF};
     uint8_t controles_prev {};
     bool select_dir {};
     bool select_but {};
     uint8_t *p1 {};
     uint8_t controles {};
+
+    Joypad(const void *tec): teclas{tec} {}
 
     uint8_t& get_output(void){
       this->set_select();
@@ -71,7 +74,7 @@ namespace GB{
 
   };
 
-  void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos);
+  void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausado);
 
 }
 

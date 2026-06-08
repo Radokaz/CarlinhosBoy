@@ -2,27 +2,32 @@
 
 namespace GB{
 
-void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos){
+void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausado){
   uint8_t controles {};
 
-  if(segurado(KEY_M)) 
+  const KeyboardKey *map = reinterpret_cast<const KeyboardKey*>(pad.teclas);
+
+  if(segurado(map[0])) 
     controles |= A_BUTTON;
-  if(segurado(KEY_N)) 
+  if(segurado(map[1])) 
     controles |= B_BUTTON;
-  if(segurado(KEY_O))
+  if(segurado(map[2]))
     controles |= START;
-  if(segurado(KEY_P))
+  if(segurado(map[3]))
     controles |= SELECT;
-  if(segurado(KEY_W))
+  if(segurado(map[4]))
     controles |= UP_BUTTON;
-  if(segurado(KEY_A))
+  if(segurado(map[5]))
     controles |= LEFT_BUTTON;
-  if(segurado(KEY_S))
+  if(segurado(map[6]))
     controles |= DOWN_BUTTON;
-  if(segurado(KEY_D))
+  if(segurado(map[7]))
     controles |= RIGHT_BUTTON;
-  if(apertado(KEY_T))
+  if(apertado(map[8]))
     paleta_lcd ^= 1;
+  if(apertado(map[9]))
+    pausado = true;
+
   if(apertado(KEY_ONE)){
     canais_ativos ^= APU_CANAL1;
     std::cout << "Canal 1 " << ((canais_ativos & APU_CANAL1) ? "ATIVADO\n" : "DESATIVADO\n");

@@ -198,8 +198,8 @@ struct CH4{
 struct APU{
   
   uint8_t *memoria {};
-  double capacitor_esq {};
-  double capacitor_dir {};
+  float capacitor_esq {};
+  float capacitor_dir {};
   uint32_t sample_ciclos {};
   uint32_t sample_accumulator {};
   float sample_esq {};

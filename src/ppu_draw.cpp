@@ -83,7 +83,7 @@ uint32_t PPU::esverdear(uint32_t px){
     
   r = (r*0x9B) / 0xFF;
   g = (g*0xBC) / 0xFF;
-  b = (b*0x0F) / 0xFF;
+  b = (b*0x6A) / 0xFF;
     
   return (0xFF << 24) | (b << 16) | (g << 8) | r;
 }

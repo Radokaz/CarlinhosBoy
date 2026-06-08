@@ -345,7 +345,7 @@ void APU::amplifier(void){
 }
 
 void APU::output(void){
-  constexpr double charge {std::pow(0.999858, static_cast<double>(FREQUENCIA_OSCILADOR)/44100.0)};
+  constexpr float charge {static_cast<float>(std::pow(0.999858f, static_cast<float>(FREQUENCIA_OSCILADOR)/44100.0f))};
   
   float esq = sample_esq - capacitor_esq;
   float dir = sample_dir - capacitor_dir;

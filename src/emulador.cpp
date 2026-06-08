@@ -22,7 +22,7 @@ void degub_func(CPU *cpu){
   std::cout << "LY: " << std::dec << static_cast<int>(cpu->bus.memoria[0xFF44]) << "\n";
 }
 
-void inicia_emulador(std::string_view src, std::string_view saves){
+void inicia_emulador(std::string_view src, GB_State *estado){
   constexpr float escala {10.0f};
   ClearBackground(BLACK);
 
@@ -49,7 +49,7 @@ void inicia_emulador(std::string_view src, std::string_view saves){
   SetAudioStreamCallback(stream, GB::audio_callback);
   PlayAudioStream(stream);
 
-  Joypad pad;
+  Joypad pad(reinterpret_cast<const void*>(estado->controles.data()));
   PPU ppu(&texture);
   Timer timer;
   CPU cpu(&timer, &pad, &ppu);
@@ -58,7 +58,7 @@ void inicia_emulador(std::string_view src, std::string_view saves){
   pad.p1 = &cpu.bus.memoria[0xFF00];
   timer.apu = &apu;
 
-  if(!init_game(&cpu, src.data(), saves.data())){
+  if(!init_game(&cpu, src.data(), estado->saves_path.data())){
     ShowCursor();
     UnloadAudioStream(stream);
     CloseAudioDevice();
@@ -72,18 +72,22 @@ void inicia_emulador(std::string_view src, std::string_view saves){
   Vector2 mouse_prev = GetMousePosition();
   Vector2 mouse_atual{};
   double frame_init {}, frame_fim {};
+  bool pausado {false};
 
   while(1){
     if(apertado(KEY_ESCAPE)) break;
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd, apu.canais_ativos);
+    le_input(pad, ppu.paleta_lcd, apu.canais_ativos, pausado);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
     }
     mouse_prev = mouse_atual;
+    if(pausa_jogo(&cpu, estado, pausado)){
+      break;
+    }
 
     ppu.frame_pronto = false;
     while(!ppu.frame_pronto){
@@ -94,7 +98,7 @@ void inicia_emulador(std::string_view src, std::string_view saves){
     }
 
     BeginDrawing();
-    DrawRectangle(1750, 400, 500, 800, BLACK);
+    DrawRectangle(1750, 400, 500, 900, BLACK);
     DrawTextureEx(texture, Vector2{posX, posY}, 0, escala, WHITE);
     EndDrawing();
 
