@@ -204,14 +204,10 @@ struct APU{
   uint32_t sample_accumulator {};
   float sample_esq {};
   float sample_dir {};
+  int16_t accum_count {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
-
-  uint8_t ch1_prev {67};
-  uint8_t ch2_prev {67};
-  uint8_t ch3_prev {67};
-  uint8_t ch4_prev {67};
 
   uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
   uint8_t div_prev {};
@@ -232,7 +228,7 @@ struct APU{
   uint8_t& read(uint16_t endereco);
   void write(uint16_t endereco, uint8_t valor);
   
-  void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
+  void mixer(uint8_t atual, bool esq, bool dir);
   void amplifier(void);
   void output(void);
 
