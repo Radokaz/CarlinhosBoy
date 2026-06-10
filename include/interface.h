@@ -11,16 +11,7 @@
 namespace GB{
 
 inline std::filesystem::path getExeDir() {
-#ifdef _WIN32
-    #include <windows.h>
-    char path[MAX_PATH];
-    GetModuleFileName(NULL, path, MAX_PATH);
-    return std::filesystem::path(path).parent_path();
-
-#elif __linux__
-    return std::filesystem::canonical("/proc/self/exe").parent_path();
-
-#endif
+  return std::filesystem::path(GetApplicationDirectory());
 }
 
 static constexpr char gb_botoes[10][15] = {
