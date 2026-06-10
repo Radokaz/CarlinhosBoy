@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.2.0)
 
 # Project name
-project(Gameboy_brabo LANGUAGES C CXX)
+project(Carlinhos_Boy LANGUAGES C CXX)
 
 # Set C++ standard to C++23
 set(CMAKE_CXX_STANDARD 23)
