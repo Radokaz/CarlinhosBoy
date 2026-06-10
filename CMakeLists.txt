@@ -15,11 +15,12 @@ file(COPY ${CMAKE_SOURCE_DIR}/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 # Create executable
 add_executable(gb ${SOURCES})
 target_compile_options(gb PRIVATE -Werror -g)
+target_include_directories(gb PRIVATE include)
 #target_link_options(gb PRIVATE -fsanitize=address)
 
-target_include_directories(gb PRIVATE include)
 add_subdirectory(include/raylib)
 target_link_libraries(gb PRIVATE raylib)
+
 # For multi-file projects with headers and separate .cpp files
 # or
 # add_executable(rooster main.cpp dog.cpp dog.h cat.cpp cat.h)
