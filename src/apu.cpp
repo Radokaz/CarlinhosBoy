@@ -1,4 +1,5 @@
 #include "apu.h"
+#include "step_table.h"
 #include <iostream>
 #include <atomic>
 
@@ -267,9 +268,13 @@ void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_accumulator = 0;
   capacitor_esq = 0.0;
   capacitor_dir = 0.0;
-  sample_dir = 0;
   sample_esq = 0;
-  accum_count = 0;
+  sample_dir = 0;
+
+  ch1_prev = 67;
+  ch2_prev = 67;
+  ch3_prev = 67;
+  ch4_prev = 67;
   
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
@@ -316,46 +321,45 @@ void APU::frame_sequencer(void){
 }
 
 //67: som mudo 
-void APU::mixer(uint8_t atual, bool esq, bool dir){
-  float sample = (atual == 67) ? 0.0f : (static_cast<float>(atual) - 7.5f);
-  if(esq) 
-    sample_esq+=(sample*volume_esq);
-  if(dir) 
-    sample_dir+=(sample*volume_dir);
+void APU::mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir){
+  if(atual != ultimo){
+    float sample = (atual == 67) ? 0.0f : (static_cast<float>(atual) - 7.5f);
+    float prev = (ultimo == 67) ? 0.0f : (static_cast<float>(ultimo) - 7.5f);
+    float delta = sample - prev;
+    if(esq) 
+      sample_esq+=(delta*volume_esq);
+    if(dir)
+      sample_dir+=(delta*volume_dir);
+
+    ultimo = atual;
+  }
 }
 
 void APU::amplifier(void){
 
-  this->mixer(ch1.get_sample(), is_ch1_left(memoria) && (canais_ativos & APU_CANAL1),
+  this->mixer(ch1.get_sample(), ch1_prev, is_ch1_left(memoria) && (canais_ativos & APU_CANAL1),
       is_ch1_right(memoria) && (canais_ativos & APU_CANAL1));
-  this->mixer(ch2.get_sample(), is_ch2_left(memoria) && (canais_ativos & APU_CANAL2),
+  this->mixer(ch2.get_sample(), ch2_prev, is_ch2_left(memoria) && (canais_ativos & APU_CANAL2),
       is_ch2_right(memoria) && (canais_ativos & APU_CANAL2));
-  this->mixer(ch3.get_sample(), is_ch3_left(memoria) && (canais_ativos & APU_CANAL3),
+  this->mixer(ch3.get_sample(), ch3_prev, is_ch3_left(memoria) && (canais_ativos & APU_CANAL3),
       is_ch3_right(memoria) && (canais_ativos & APU_CANAL3));
-  this->mixer(ch4.get_sample(), is_ch4_left(memoria) && (canais_ativos & APU_CANAL4),
+  this->mixer(ch4.get_sample(), ch4_prev, is_ch4_left(memoria) && (canais_ativos & APU_CANAL4),
       is_ch4_right(memoria) && (canais_ativos & APU_CANAL4));
 
 }
 
 void APU::output(void){
-  constexpr float charge {static_cast<float>(std::pow(0.999858f, static_cast<float>(FREQUENCIA_OSCILADOR)/44100.0f))};
-  
-  float esq = (accum_count > 0) ? sample_esq/(accum_count*240.0f) : 0.0f;
-  float dir = (accum_count > 0) ? sample_dir/(accum_count*240.0f) : 0.0f;
+  constexpr float charge {std::pow(0.999958f, static_cast<float>(FREQUENCIA_OSCILADOR)/44100.0f)};
 
-  sample_dir = 0.0f;
-  sample_esq = 0.0f;
-  accum_count = 0;
-  
+  float esq = sample_esq/240.0f;
+  float dir = sample_dir/240.0f;
+
   float out_esq = esq - capacitor_esq;
   float out_dir = dir - capacitor_dir;
-
   capacitor_esq = esq - out_esq*charge;
   capacitor_dir = dir - out_dir*charge;
 
-  int16_t final_esq = static_cast<int16_t>(out_esq*32767.0f);
-  int16_t final_dir = static_cast<int16_t>(out_dir*32767.0f);
-  ring.push(final_esq, final_dir);
+  ring.push(static_cast<int16_t>(out_esq*32767.0f), static_cast<int16_t>(out_dir*32767.0f));
 }
 
 void APU::step(void){
@@ -365,7 +369,6 @@ void APU::step(void){
   for(size_t i {}; i < 4; ++i){
     ++sample_ciclos;
     ++ch4.ciclos;
-    ++accum_count;
     
     if(sample_ciclos % 2 == 0){
       ch3.incrementa_divider();
@@ -378,11 +381,11 @@ void APU::step(void){
       ch1.incrementa_divider();
       ch2.incrementa_divider();
     }
-    
+
     this->amplifier();
-    sample_accumulator += 44100;
+    sample_accumulator+=44100;
     if(sample_accumulator >= FREQUENCIA_OSCILADOR){
-      sample_accumulator -= FREQUENCIA_OSCILADOR;
+      sample_accumulator-=FREQUENCIA_OSCILADOR;
       this->output();
     }
   }

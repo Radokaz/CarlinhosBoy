@@ -1,3 +1,6 @@
+#ifndef INTERFACE_H
+#define INTERFACE_H
+
 #include "actions.h"
 #include <string>
 #include <fstream>
@@ -172,3 +175,5 @@ void display_controles(GB_State *estado);
 void init_gui(void);
 
 }
+
+#endif

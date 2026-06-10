@@ -55,7 +55,7 @@ inline bool is_ch4_right(uint8_t *memoria) { return static_cast<bool>((memoria[0
 static constexpr std::array<std::array<uint8_t, 8>, 4> tabela_onda{{
     {1, 1, 1, 1, 1, 1, 1, 0},
     {0, 1, 1, 1, 1, 1, 1, 0}, 
-    {1, 1, 1, 1, 0, 0, 0, 0},
+    {1, 1, 1, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 1}
   }}; // 0 - baixo, 1 - alto
 
@@ -198,13 +198,18 @@ struct CH4{
 struct APU{
   
   uint8_t *memoria {};
+
+  CH1 ch1;
+  CH2 ch2;
+  CH3 ch3;
+  CH4 ch4;
+
+  uint64_t sample_ciclos {};
+  uint32_t sample_accumulator {};
   float capacitor_esq {};
   float capacitor_dir {};
-  uint32_t sample_ciclos {};
-  uint32_t sample_accumulator {};
   float sample_esq {};
   float sample_dir {};
-  int16_t accum_count {};
 
   uint16_t volume_dir {};
   uint16_t volume_esq {};
@@ -213,12 +218,12 @@ struct APU{
   uint8_t div_prev {};
   uint8_t apu_hack {};
   uint8_t canais_ativos {0x0F};
+
+  uint8_t ch1_prev {};
+  uint8_t ch2_prev {};
+  uint8_t ch3_prev {};
+  uint8_t ch4_prev {};
   
-  CH1 ch1;
-  CH2 ch2;
-  CH3 ch3;
-  CH4 ch4;
-   
   APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {}
 
   void atualiza_volume(void);
@@ -228,7 +233,7 @@ struct APU{
   uint8_t& read(uint16_t endereco);
   void write(uint16_t endereco, uint8_t valor);
   
-  void mixer(uint8_t atual, bool esq, bool dir);
+  void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
   void amplifier(void);
   void output(void);
 
