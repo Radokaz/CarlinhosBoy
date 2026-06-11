@@ -15,6 +15,8 @@ struct MBC{
   std::vector<uint8_t> ram;
   std::string fonte;
   std::string saves;
+  bool tem_save {false};
+
   uint8_t *pega_rom(void){
     return rom.data();
   };

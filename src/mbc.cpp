@@ -4,7 +4,6 @@
 namespace GB{
 
 void MBC::load(void){
-    std::cout << saves << "\n";
     std::filesystem::create_directories(saves);
     std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
     save_path.replace_extension(".sav");
@@ -199,6 +198,7 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
+
       return;
     }
     if(rtc_selected){
@@ -259,6 +259,7 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
      if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       ram[address] = valor;
+
       return;
     }
   }

@@ -43,7 +43,6 @@ struct Memorybus{
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
-  bool tem_save {false};
 
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     mbc = nullptr;
