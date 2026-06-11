@@ -108,7 +108,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     }
   }
 
-  if(cpu.bus.tem_save){
+  if(cpu.bus.mbc && cpu.bus.mbc->tem_save){
     cpu.bus.mbc->save();
   }
   

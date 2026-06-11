@@ -291,6 +291,8 @@ inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::
 
 
 inline void checa_save(CPU *cpu, uint8_t mbc){
+  if(!cpu->bus.mbc) return;
+
   switch(mbc){
     case 3:
     case 6:
@@ -301,13 +303,13 @@ inline void checa_save(CPU *cpu, uint8_t mbc){
     case 19:
     case 27:
     case 30:
-      cpu->bus.tem_save = true;
+      cpu->bus.mbc->tem_save = true;
       break;
     default:
-      cpu->bus.tem_save = false;
+      break;
   }
 
-  if(cpu->bus.tem_save){
+  if(cpu->bus.mbc->tem_save){
     cpu->bus.mbc->load();
   }
 }

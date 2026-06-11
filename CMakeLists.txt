@@ -18,6 +18,10 @@ target_compile_options(gb PRIVATE -Werror -g)
 target_include_directories(gb PRIVATE include)
 #target_link_options(gb PRIVATE -fsanitize=address)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_options(gb PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
+
 add_subdirectory(include/raylib)
 target_link_libraries(gb PRIVATE raylib)
 
