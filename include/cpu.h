@@ -119,9 +119,9 @@ struct CPU{
   void jump_joypad(void);
 
   void incrementa_pc(void);
-  uint8_t& get_ie(void) { return bus.read_byte(0xFFFF); }
-  uint8_t& get_if(void) { return bus.read_byte(0xFF0F); }
-  uint8_t& get_joypad(void) { return bus.read_byte(0xFF00); }
+  uint8_t& get_ie(void) { return bus.memoria[0xFFFF]; }
+  uint8_t& get_if(void) { return bus.memoria[0xFF0F]; }
+  uint8_t& get_joypad(void) { return bus.memoria[0xFF00]; }
   uint8_t& get_target_ref(reg_target alvo);
   uint8_t get_target_value(reg_target alvo);
   uint16_t get_target_duplo(reg_target alvo);
