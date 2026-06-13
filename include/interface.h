@@ -31,11 +31,14 @@ struct GB_State{
     if(!estado){
       estado.close();
       std::ofstream novo(state_path.string().c_str());
-      novo << "rom_path: ROMS\n";
-      novo << "saves_path: Saves\n";
 
-      rom_path = "ROMS";
-      saves_path = "Saves";
+      std::filesystem::path svs = getExeDir() / "Saves";
+      std::filesystem::path roms = getExeDir() / "ROMS";
+      novo << "rom_path: " << roms.string() << "\n";
+      novo << "saves_path: "<< svs.string() << "\n";
+
+      rom_path = roms.string();
+      saves_path = svs.string();
 
       return;
     }

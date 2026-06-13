@@ -109,7 +109,7 @@ struct PPU{
   bool lcd_start {false};
   bool lcd_prev {false};
   bool stat_prev {false};
-  bool paleta_lcd {false};
+  bool paleta_lcd {true};
   bool frame_pronto {false};
 
   PPU(Texture2D *texture): raylib_texture{texture}{
