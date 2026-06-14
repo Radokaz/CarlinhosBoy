@@ -368,19 +368,15 @@ void APU::step(void){
   this->atualiza_volume();
   for(size_t i {}; i < 4; ++i){
     ++sample_ciclos;
-    ++ch4.ciclos;
     
     if(sample_ciclos % 2 == 0){
       ch3.incrementa_divider();
-    }
-    if(ch4.ciclos % ch4.period == 0){
-      ch4.ciclos = 0;
-      ch4.incrementa_clock();
     }
     if(sample_ciclos % 4 == 0){
       ch1.incrementa_divider();
       ch2.incrementa_divider();
     }
+    ch4.sweep_clock();
 
     this->amplifier();
     sample_accumulator+=44100;
