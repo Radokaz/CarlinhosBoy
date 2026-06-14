@@ -167,7 +167,7 @@ struct CH4{
   bool dac {false};
 
   uint32_t period {8};
-  uint32_t ciclos {};
+  uint32_t clock_timer {};
   uint16_t length_timer {};
 
   uint16_t lfsr {};
@@ -189,6 +189,7 @@ struct CH4{
   void seta_clock(void);
   void seta_envelope(void);
   void sweep_length(void);
+  void sweep_clock(void);
   void incrementa_clock(void);
   void sweep_envelope(void);
   uint8_t get_sample(void);
