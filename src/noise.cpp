@@ -12,6 +12,7 @@ void CH4::init_ch4(void){
   this->seta_envelope();
   this->seta_clock();
   lfsr = 0x7FFF;
+  ultimo_bit = 1;
 }
 
 void CH4::seta_length(void){
@@ -59,6 +60,8 @@ void CH4::sweep_clock(void){
 }
 
 void CH4::incrementa_clock(void){
+  if(clock_shifter >= 14) return;
+
   uint8_t bit0 = (lfsr & 0x01);
   uint8_t bit1 = ((lfsr >> 1) & 0x01);
   uint8_t bit = bit0 ^ bit1;
@@ -69,6 +72,7 @@ void CH4::incrementa_clock(void){
     lfsr = (lfsr & ~(1 << 7)) | (bit << 7);
   }
 
+  ultimo_bit = (lfsr & 0x01);
   lfsr = lfsr >> 1;
 }
 
@@ -88,7 +92,7 @@ void CH4::sweep_envelope(void){
 
 uint8_t CH4::get_sample(void){
   if(!is_channel4_on(memoria) || !dac) return 67;
-  return (lfsr & 0x01) ? 0 : envelope;
+  return (ultimo_bit) ? 0 : envelope;
 }
 
 void CH4::clear(void){
@@ -101,6 +105,7 @@ void CH4::clear(void){
   clock_shifter = 0;
   lfsr_width = 0;
   clock_divider = 0;
+  ultimo_bit = 0;
 
   envelope = 0;
   initial_volume = 0;
