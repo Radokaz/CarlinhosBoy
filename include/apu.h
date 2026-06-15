@@ -174,6 +174,7 @@ struct CH4{
   uint8_t clock_shifter {};
   uint8_t lfsr_width {};
   uint8_t clock_divider {};
+  uint8_t ultimo_bit {};
 
   uint8_t envelope {};
   uint8_t initial_volume {};
