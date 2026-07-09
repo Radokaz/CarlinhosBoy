@@ -14,14 +14,14 @@ inline std::filesystem::path getExeDir() {
   return std::filesystem::path(GetApplicationDirectory());
 }
 
-static constexpr char gb_botoes[10][15] = {
-    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU"
+static constexpr char gb_botoes[11][15] = {
+    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO"
 };
 
 struct GB_State{
   std::string rom_path;
   std::string saves_path;
-  std::array<KeyboardKey, 10> controles;
+  std::array<KeyboardKey, 11> controles;
 
   GB_State(void){
     std::filesystem::path state_path = getExeDir() / "state.cfg";
@@ -34,6 +34,8 @@ struct GB_State{
 
       std::filesystem::path svs = getExeDir() / "Saves";
       std::filesystem::path roms = getExeDir() / "ROMS";
+      std::filesystem::create_directories(svs);
+      std::filesystem::create_directories(roms);
       novo << "rom_path: " << roms.string() << "\n";
       novo << "saves_path: "<< svs.string() << "\n";
 
@@ -71,7 +73,7 @@ struct GB_State{
     if(!control){
       control.close();
       std::ofstream controle_novo(control_path.string().c_str());
-      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C};
+      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F};
       
       for(size_t i {}; i < std::size(gb_botoes); ++i){
         controle_novo << gb_botoes[i] << ": " << std::to_underlying<KeyboardKey>(controles[i]) << "\n";

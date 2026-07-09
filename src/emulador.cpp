@@ -67,19 +67,22 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     return;
   }
 
-  constexpr double tempo_frame = 1.0/59.7;
+  constexpr double tempo_frame60 = 1.0/59.7;
+  constexpr double tempo_frame120 = 1.0/119.4;
 
   Vector2 mouse_prev = GetMousePosition();
   Vector2 mouse_atual{};
   double frame_init {}, frame_fim {};
   bool pausado {false};
+  bool is_120 = false;
+  SetTargetFPS(60);
 
   while(1){
     if(apertado(KEY_ESCAPE)) break;
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd, apu.canais_ativos, pausado);
+    le_input(pad, ppu.paleta_lcd, apu.canais_ativos, pausado, is_120);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
@@ -103,8 +106,10 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     EndDrawing();
 
     frame_fim = GetTime() - frame_init;
-    if(frame_fim < tempo_frame){
-      WaitTime(tempo_frame - frame_fim);
+    double tempo_atual = (is_120) ? tempo_frame120 : tempo_frame60;
+
+    if(frame_fim < tempo_atual){
+      WaitTime(tempo_atual - frame_fim);
     }
   }
 
