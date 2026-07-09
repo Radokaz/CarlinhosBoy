@@ -2,7 +2,7 @@
 
 namespace GB{
 
-void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausado){
+void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausado, bool& is_120){
   uint8_t controles {};
 
   const KeyboardKey *map = reinterpret_cast<const KeyboardKey*>(pad.teclas);
@@ -27,6 +27,10 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
     paleta_lcd ^= 1;
   if(apertado(map[9]))
     pausado = true;
+  if(apertado(map[10])){
+    is_120 ^= 1;
+    SetTargetFPS(static_cast<int>(is_120)*60 + 60);
+  }
 
   if(apertado(KEY_ONE)){
     canais_ativos ^= APU_CANAL1;

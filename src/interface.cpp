@@ -7,10 +7,11 @@ namespace GB{
 void display_controles(GB_State *estado){
   ClearBackground(BLACK);
 
-  const char *botoes[10];
-  for(size_t i {}; i < 10; ++i){
+  const char *botoes[std::size(gb_botoes)];
+  for(size_t i {}; i < std::size(gb_botoes); ++i){
     botoes[i] = GetKeyName(estado->controles[i]);
   }
+  bool frame_inicial = true;
 
   while(1){
     BeginDrawing();
@@ -21,16 +22,20 @@ void display_controles(GB_State *estado){
     DrawText("CARLINHOS BOY", 650, 80, 150, GOLD);
     DrawLine(565, 250, 2000, 250, GRAY);
 
-    for(size_t i {}; i < 5; ++i){
+    for(size_t i {}; i < 6; ++i){
       Rectangle r(650, 400 + 200*i, 500, 100);
 
-      if(i == 3 || i == 2){
+      if(i == 3 || i == 2 || i == 5){
         DrawText(gb_botoes[i], 850, 350 + 200*i, 25, GOLD);
+      }
+      else if(i == 4){
+        DrawText(gb_botoes[i], 875, 350 + 200*i, 25, GOLD);
       }
       else{
         DrawText(gb_botoes[i], 900, 350 + 200*i, 25, GOLD);
       }
-      if(GuiButton(r, botoes[i])){
+
+      if(GuiButton(r, botoes[i]) && !frame_inicial){
         int tecla = 0;
         while(tecla == 0){
           BeginDrawing();
@@ -46,16 +51,16 @@ void display_controles(GB_State *estado){
       }
     }
 
-    for(size_t i {5}; i < 10; ++i){
-      Rectangle r(1400, 400 + 200*(i - 5), 500, 100);
+    for(size_t i {6}; i < 11; ++i){
+      Rectangle r(1400, 400 + 200*(i - 6), 500, 100);
       if(i == 8){
-        DrawText(gb_botoes[i], 1550, 350 + 200*(i - 5), 25, GOLD);
+        DrawText(gb_botoes[i], 1550, 350 + 200*(i - 6), 25, GOLD);
       }
       else{
-        DrawText(gb_botoes[i], 1600, 350 + 200*(i - 5), 25, GOLD);
+        DrawText(gb_botoes[i], 1600, 350 + 200*(i - 6), 25, GOLD);
       }
       
-      if(GuiButton(r, botoes[i])){
+      if(GuiButton(r, botoes[i]) && !frame_inicial){
         int tecla = 0;
         while(tecla == 0){
           BeginDrawing();
@@ -69,6 +74,8 @@ void display_controles(GB_State *estado){
           botoes[i] = GetKeyName(estado->controles[i]);
         }
       }
+
+      frame_inicial = false;
     }
 
     DrawText("Aperte ESC para voltar", 1500, 1500, 30, GOLD);
