@@ -2,8 +2,41 @@
 
 namespace GB{
 
-uint32_t PPU::decide_bg_color(tile_pixel px){
+uint16_t PPU::pega_cor_bg(uint8_t paleta, uint8_t indice){
+  uint8_t byte1 = this->bg_palette_ram[paleta*8 + indice*2];
+  uint8_t byte2 = this->bg_palette_ram[paleta*8 + indice*2 + 1];
+  uint16_t cor = (byte2 << 8) | byte1;
+  return cor;
+}
 
+uint16_t PPU::pega_cor_obj(uint8_t paleta, uint8_t indice){
+  uint8_t byte1 = this->obj_palette_ram[paleta*8 + indice*2];
+  uint8_t byte2 = this->obj_palette_ram[paleta*8 + indice*2 + 1];
+  uint16_t cor = (byte2 << 8) | byte1;
+  return cor;
+}
+
+uint32_t PPU::rgb555_to_rgb888(uint16_t cor){
+  uint8_t r5 = cor & 0x1F;
+  uint8_t g5 = (cor >> 5) & 0x1F;
+  uint8_t b5 = (cor >> 10) & 0x1F;
+
+  uint32_t r = r5*26 + g5*4 + b5*2;
+  uint32_t g = g5*24 + b5*8;
+  uint32_t b = r5*6 + g5*4 + b5*22;
+
+  r = std::min(960u, r) >> 2;
+  g = std::min(960u, g) >> 2;
+  b = std::min(960u, b) >> 2;
+
+  uint8_t r8 = static_cast<uint8_t>(r);
+  uint8_t g8 = static_cast<uint8_t>(g);
+  uint8_t b8 = static_cast<uint8_t>(b);
+
+  return 0xFF000000 | ((b8 << 16) | (g8 << 8) | r8);
+}
+
+uint32_t PPU::decide_bg_color_dmg(tile_pixel px){
     uint8_t cor_final{};
     uint8_t bgp {this->memoria[0xFF47]};
     switch(px){
@@ -26,21 +59,26 @@ uint32_t PPU::decide_bg_color(tile_pixel px){
         return 0xFF0000FF;
     }
 
-    switch(cor_final){
-      case 0:
-        return 0xFFFFFFFF;
-      case 1:
-        return 0xFFAAAAAA;
-      case 2:
-        return 0xFF555555;
-      case 3:
-        return 0xFF000000;
-      default:
-        return 0xFFFFFFFF;
+    if(!this->paleta_cgb){
+      switch(cor_final){
+        case 0:
+          return 0xFFFFFFFF;
+        case 1:
+          return 0xFFAAAAAA;
+        case 2:
+          return 0xFF555555;
+        case 3:
+          return 0xFF000000;
+        default:
+          return 0xFFFFFFFF;
+      }
     }
+    
+    uint16_t cor555 = pega_cor_bg(0, cor_final);
+    return this->rgb555_to_rgb888(cor555);
 }
 
-uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
+uint32_t PPU::decide_obj_color_dmg(const Sprite& sprite, tile_pixel pos){
     using enum tile_pixel;
     uint8_t obj_palette = (sprite.flags & (1 << 4)) ? this->memoria[0xFF49] : this->memoria[0xFF48];
     uint8_t cor_final {};
@@ -48,7 +86,6 @@ uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
     switch(pos){
       case INDEX_ZERO: 
         return 0x00; //transparente
-        break;
       case INDEX_ONE:
         cor_final = (obj_palette >> 2) & 0x03;
         break;
@@ -62,18 +99,73 @@ uint32_t PPU::decide_obj_color(const Sprite& sprite, tile_pixel pos){
         return 0xFF00FF00;
     }
 
-    switch(cor_final){
-      case 0:
-        return 0xFFFFFFFF;
-      case 1:
-        return 0xFFAAAAAA;
-      case 2:
-        return 0xFF555555;
-      case 3:
-        return 0xFF000000;
-      default:
-        return 0x00;
+    if(!this->paleta_cgb){
+      switch(cor_final){
+        case 0:
+          return 0xFFFFFFFF;
+        case 1:
+          return 0xFFAAAAAA;
+        case 2:
+          return 0xFF555555;
+        case 3:
+          return 0xFF000000;
+        default:
+          return 0x00;
+      }
     }
+
+    uint8_t paleta = (sprite.flags & (1 << 4)) ? 1 : 0;
+    uint16_t cor555 = pega_cor_obj(paleta, cor_final);
+    return this->rgb555_to_rgb888(cor555);
+}
+
+uint32_t PPU::decide_obj_color_cgb(const Sprite& sprite, tile_pixel px){
+  using enum tile_pixel;
+  uint8_t obj_palette = sprite.flags & 0x07;
+  uint16_t cor_final {};
+
+  switch(px){
+    case INDEX_ZERO:
+      return 0x00;
+    case INDEX_ONE:
+      cor_final = pega_cor_obj(obj_palette, 1);
+      break;
+    case INDEX_TWO:
+      cor_final = pega_cor_obj(obj_palette, 2);
+      break;
+    case INDEX_THREE:
+      cor_final = pega_cor_obj(obj_palette, 3);
+      break;
+    default:
+      return 0x00;
+  }
+
+  return rgb555_to_rgb888(cor_final);
+}
+
+uint32_t PPU::decide_bg_color_cgb(tile_pixel px, uint8_t atributos){
+  using enum tile_pixel;
+  uint8_t bg_palette = atributos & 0x07;
+  uint16_t cor_final;
+
+  switch(px){
+    case INDEX_ZERO:
+      cor_final = pega_cor_bg(bg_palette, 0);
+      break;
+    case INDEX_ONE:
+      cor_final = pega_cor_bg(bg_palette, 1);
+      break;
+    case INDEX_TWO:
+      cor_final = pega_cor_bg(bg_palette, 2);
+      break;
+    case INDEX_THREE:
+      cor_final = pega_cor_bg(bg_palette, 3);
+      break;
+    default:
+      return 0xFFFF0000;
+  }
+
+  return rgb555_to_rgb888(cor_final);
 }
 
 uint32_t PPU::esverdear(uint32_t px){
@@ -139,12 +231,22 @@ void PPU::verifica_penalidade(const Sprite& sprite){
   this->fetcher.sprite_penality += (6 + ((penalidade <= 0) ? 0 : penalidade)); 
 }
 
-uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
+uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att){
   uint8_t ly = this->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
 
   for(size_t i {}; i < sprites_count; ++i){
     const Sprite& sprite = sprites_sel[i];
+
+     if(bg_cor != tile_pixel::INDEX_ZERO){
+      if(!modo_cpu){
+        if(sprite.flags & (1 << 7)) continue; //prioridade do background
+      }
+      else{
+        if(this->is_bg_enabled() && ((sprite.flags & (1 << 7)) || (tile_att & (1 << 7)))) continue; //prioridade de bg para o cgb
+      }    
+    }
+
     int32_t tela_x = sprite.x - 8;
     int32_t tela_y = sprite.y - 16;
 
@@ -170,9 +272,17 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
         pixel_y-=8;
       }
     }
+    
+    uint8_t byte1 {}, byte2 {};
+    if(!modo_cpu || !(sprite.flags & 0x08)){
+      byte1 = this->memoria[VRAM_INICIO + pixel_tile*16 + pixel_y*2];
+      byte2 = this->memoria[VRAM_INICIO + pixel_tile*16 + pixel_y*2 + 1];
+    }
+    else{
+      byte1 = this->vram_bank1[pixel_tile*16 + pixel_y*2];
+      byte2 = this->vram_bank1[pixel_tile*16 + pixel_y*2 + 1];
+    }
 
-    uint8_t byte1 = this->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2];
-    uint8_t byte2 = this->memoria[FIRST_TILE1 + pixel_tile*16 + pixel_y*2 + 1];
     uint8_t bit = 7 - pixel_x;
     
     tile_pixel result = tile_pixel::INDEX_NULO;
@@ -194,12 +304,15 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor){
     }
 
     if(result == tile_pixel::INDEX_ZERO || result == tile_pixel::INDEX_NULO) continue; //transparente
-    if((sprite.flags & (1 << 7)) && bg_cor != tile_pixel::INDEX_ZERO) continue; //prioridade do background
 
-    return this->decide_obj_color(sprite, result);
+    return (!this->modo_cpu) ? this->decide_obj_color_dmg(sprite, result) : this->decide_obj_color_cgb(sprite, result);
   }
 
-  return (this->is_bg_enabled()) ? this->decide_bg_color(bg_cor) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
+  if(this->is_bg_enabled() && !modo_cpu){
+    return this->decide_bg_color_dmg(bg_cor);
+  } 
+  
+  return (!this->modo_cpu) ? this->decide_bg_color_dmg(tile_pixel::INDEX_ZERO) : this->decide_bg_color_cgb(bg_cor, tile_att);
 }
 
 void PPU::checa_sprites(uint8_t x_atual){
@@ -235,17 +348,23 @@ void PPU::draw_step(void){
     return;
   }
 
-  tile_pixel px = this->fetcher.pop();
+  auto [px, atributo] = this->fetcher.pop();
 
   uint32_t cor_px {};
-  if(this->is_sprite_enabled()){
+  if(this->speed_bug == 1)
+    cor_px = 0xFF000000;
+  else if(this->is_sprite_enabled() && this->speed_bug != 2){
     this->checa_sprites(this->fetcher.x_pos);
-    cor_px = this->merge_sprites(this->fetcher.x_pos, px);
+    cor_px = this->merge_sprites(this->fetcher.x_pos, px, atributo);
   }
-  else
-    cor_px = (this->is_bg_enabled()) ? this->decide_bg_color(px) : this->decide_bg_color(tile_pixel::INDEX_ZERO);
+  else{
+    if(!modo_cpu)
+      cor_px = (this->is_bg_enabled()) ? this->decide_bg_color_dmg(px) : this->decide_bg_color_dmg(tile_pixel::INDEX_ZERO);
+    else
+      cor_px = this->decide_bg_color_cgb(px, atributo);
+  }
   
-  if(this->paleta_lcd)
+  if(this->paleta_lcd && !this->paleta_cgb)
     cor_px = this->esverdear(cor_px);
 
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;

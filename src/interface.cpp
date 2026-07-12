@@ -135,12 +135,12 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado){
 }
 
 void carrega_rom(GB_State *estado){
-    const char *extensoes[] = {"*.gb"};
+    const char *extensoes[] = {"*.gb", "*.gbc"};
 
     const char *resultado = tinyfd_openFileDialog(
         "Escolha a rom",  // título
         "",               // pasta inicial
-        1,                // número de filtros
+        2,                // número de filtros
         extensoes,          // extensões permitidas
         "", // descrição
         0                 // 0 = um arquivo, 1 = múltiplos
@@ -188,6 +188,35 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
   }
 }
 
+void toggle_paleta(GB_State *estado){
+  estado->paleta_cgb ^= 1;
+  std::filesystem::path state_path = getExeDir() / "state.cfg";
+  std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
+  std::string buffer{};
+  std::vector<std::string> linhas;
+
+  while(std::getline(arquivo, buffer)){
+    linhas.push_back(buffer);
+  }
+  arquivo.close();
+  std::ofstream novo(state_path.string().c_str());
+
+  for(auto& linha : linhas){
+    size_t pos = linha.find(':');
+    if(pos == std::string::npos){
+      novo << linha << "\n";
+      continue;
+    }
+
+    if(linha.substr(0, pos) == "paleta_cgb"){
+      linha.replace(pos + 2, linha.size(), std::to_string(estado->paleta_cgb));
+    }
+          
+    novo << linha << "\n";
+  }
+
+}
+
 void init_gui(void){
   auto monitor = GetCurrentMonitor();
 
@@ -195,13 +224,13 @@ void init_gui(void){
   SetTargetFPS(60);
   
   std::string opcoes[] = {
-    "Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair"
+    "Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair",
   };
 
   uint8_t escolhas {};
 
   GB_State estado;
-  ListaArquivos lista(&estado);
+  ListaArquivos lista(&estado, ".gb");
     
   int scroll_index {}, ativo {-1};
   bool mostra_lista {true};
@@ -222,12 +251,15 @@ void init_gui(void){
     }
 
     GuiListView({1750, 400, 500, 900}, lista.geral.c_str(), &scroll_index, &ativo);
+    DrawText("Modo CGB", 1750, 1400, 23, GOLD);
+    if(GuiButton(Rectangle{1900, 1380, 100, 50}, (estado.paleta_cgb) ? "ON" : "OFF")){
+      toggle_paleta(&estado);
+    }
 
     if(ativo >= 0 && ativo < static_cast<int>(lista.arquivos.count)){
       inicia_emulador(lista.arquivos.paths[ativo], &estado);
       ativo = -1;
     }
-    
     
     if(escolhas & opt_escolha(0)){
       mostra_lista = false;

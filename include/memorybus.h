@@ -39,19 +39,50 @@ struct Memorybus{
   Timer *timer {};
   Joypad *pad {};
   PPU *ppu {};
+  std::unique_ptr<uint8_t[]> cgb_wram {};
   std::unique_ptr<MBC> mbc {};
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
+  bool key0_blocked {false};
+  bool opri_blocked {false};
+
+  struct HDMA{
+    uint16_t restante {};
+    uint16_t destino {};
+    uint16_t origem {};
+    uint8_t hblank_count {};
+    bool modo_hblank {false};
+    bool ativo {false};
+
+    void init_transfer(uint8_t vdma);
+    void step(Memorybus *bus);
+  } hdma;
 
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     mbc = nullptr;
+    cgb_wram = nullptr;
+    ppu->memoria = memoria.data();
+    ppu->hdma_hblank = &hdma.modo_hblank;
+    ppu->hdma_ativo = &hdma.ativo;
+    pad->p1 = &memoria[0xFF00];
   }
 
   uint8_t& read_byte(uint16_t endereco){
     if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
       return mbc->read(endereco);
     }
+    if(cgb_wram && endereco >= 0xC000 && endereco < 0xD000){
+      return cgb_wram[endereco - 0xC000];
+    }
+    if(cgb_wram && endereco >= 0xD000 && endereco < 0xE000){
+      uint8_t bank = memoria[0xFF70] & 0x07;
+      if(!bank)
+        bank = 1;
+
+      return cgb_wram[bank*0x1000 + (endereco - 0xD000)];
+    }
+
     switch(endereco){
         case 0xFF07: //tac
           memoria[endereco] |= 0b11111000; 
@@ -64,19 +95,67 @@ struct Memorybus{
         case 0xFF41: //stat
           memoria[endereco] |= 0b10000000; 
           return memoria[endereco];
+        case 0xFF4F: //vram_bank
+          memoria[endereco] |= 0b11111110;
+          return memoria[endereco];
+        case 0xFF69:{ //BGPD
+          if(ppu->modo_atual == screen_mode::DRAWING || !ppu->paleta_cgb){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          uint8_t indice = memoria[0xFF68] & 0x3F;
+          return ppu->bg_palette_ram[indice];
+        }
+        case 0xFF6B:{ //OBPD
+          if(ppu->modo_atual == screen_mode::DRAWING || !ppu->paleta_cgb){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+          
+          uint8_t indice = memoria[0xFF6A] & 0x3F;
+          return ppu->obj_palette_ram[indice];
+        }
+        case 0xFF74:{
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          return memoria[endereco];
+        }
+        case 0xFF75:{
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          memoria[endereco] &= 0x70;
+          return memoria[endereco];
+        }
         default: break;
     }
 
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && 
+        (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       dma_hack = 0xFF;
       return dma_hack;
     }
-    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL && (ppu->modo_atual == screen_mode::DRAWING)){
-      dma_hack = 0xFF;
-      return dma_hack;
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
+      if(ppu->modo_atual == screen_mode::DRAWING){
+        dma_hack = 0xFF;
+        return dma_hack;
+      }
+
+      return ppu->read_vram(endereco);
     }
     if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
-      dma_hack = (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay) ? memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte] : 0xFF;
+      if(ppu->paleta_cgb || (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.delay_hack)){
+        dma_hack = memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte];
+        return dma_hack;
+      }
+
+      dma_hack = 0xFF;
       return dma_hack;
     }
     if(endereco >= AUDIO_INICIO && endereco < AUDIO_FIM){
@@ -101,15 +180,43 @@ struct Memorybus{
     if(endereco < 0x8000){
       return;
     }
-    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      ppu->write_vram(endereco, valor);
+
+    if(endereco >= 0xC000 && endereco < 0xD000){
+      if(cgb_wram)
+        cgb_wram[endereco - 0xC000] = valor;
+      else
+        memoria[endereco] = valor;
+
+      memoria[0xE000 + (endereco - 0xC000)] = valor;
       return;
     }
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+    if(endereco >= 0xD000 && endereco < 0xE000){
+      if(cgb_wram){
+        uint8_t bank = memoria[0xFF70] & 0x07;
+        if(!bank)
+          bank = 1;
+
+        cgb_wram[bank*0x1000 + (endereco - 0xD000)] = valor;
+      }
+      else
+        memoria[endereco] = valor;
+
+      if(endereco < 0xDE00)
+        memoria[0xF000 + (endereco - 0xD000)] = valor;
+
+      return;
+    }
+
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
+      ppu->write_vram(endereco, valor, false);
+      return;
+    }
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && 
+        (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
       return;
     }
     if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
-      if(timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.trigger_delay){
+      if(ppu->paleta_cgb || (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.delay_hack)){
         memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte] = valor;
       }
       return;
@@ -136,11 +243,94 @@ struct Memorybus{
         dma.start(valor);
         return;
       }
-      case 0xFF50:{
-        if(valor)
+      case 0xFF50:{ //bank
+        if(valor){
           restaura_rom();
+          key0_blocked = true;
+          opri_blocked = true;
+        }
         return;
       }
+      case 0xFF4C:{ //key0
+        if(key0_blocked || !ppu->modo_cpu) return;
+
+        memoria[endereco] = valor;
+        return;
+      }
+      case 0xFF4D:{ //key1
+        if(!ppu->modo_cpu) return;
+        memoria[endereco] = (memoria[endereco] & 0xFE) | (valor & 0x01);
+        return;
+      }
+      case 0xFF55:{ //hdma
+        if(!ppu->modo_cpu) return;
+        if(ppu->modo_atual == screen_mode::HBLANK && (valor & 0x80)) return;
+        if(hdma.modo_hblank && !(valor & 0x80)){
+          hdma.ativo = false;
+          hdma.modo_hblank = false;
+          hdma.restante = 0;
+          hdma.hblank_count = 0;
+          memoria[endereco] |= 0x80;
+          return;
+        }
+
+        uint16_t dest = ((memoria[0xFF53] << 8) | memoria[0xFF54]);
+        uint16_t src = ((memoria[0xFF51] << 8) | memoria[0xFF52]);
+
+        memoria[endereco] = valor & 0x7F;
+        hdma.destino = dest & 0x1FF0;
+        hdma.origem = src & 0xFFF0;
+        hdma.init_transfer(valor);
+
+        return;
+      }
+      case 0xFF69:{ //bgpd
+        if(ppu->modo_atual == screen_mode::DRAWING || !ppu->paleta_cgb)
+          return;
+
+        uint8_t bgpi = memoria[0xFF68];
+        uint8_t indice = bgpi & 0x3F;
+        ppu->bg_palette_ram[indice] = valor;
+        if(bgpi & 0x80){
+          indice = (indice + 1) % 64; 
+          memoria[0xFF68] = (memoria[0xFF68] & 0x80) | indice;
+        }
+
+        return;
+      }
+      case 0xFF6B:{ //obpd
+        if(ppu->modo_atual == screen_mode::DRAWING || !ppu->paleta_cgb)
+          return;
+        
+        uint8_t obpi = memoria[0xFF6A];
+        uint8_t indice = obpi & 0x3F;
+        ppu->obj_palette_ram[indice] = valor;
+        if(obpi & 0x80){
+          indice = (indice + 1) % 64; 
+          memoria[0xFF6A] = (memoria[0xFF6A] & 0x80) | indice;
+        }
+
+        return;
+      }
+      case 0xFF6C:{ //opri
+        if(opri_blocked || !ppu->modo_cpu) return;
+
+        memoria[endereco] = valor;
+        return;
+      }
+      case 0xFF74:{
+        if(!ppu->modo_cpu) return;
+
+        memoria[endereco] = valor;
+        return;
+      }
+      case 0xFF75:{
+        if(!ppu->modo_cpu) return;
+
+        memoria[endereco] = valor & 0x70;
+        return;
+      }
+
     }
 
     memoria[endereco] = valor;

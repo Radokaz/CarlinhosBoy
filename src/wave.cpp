@@ -10,7 +10,7 @@ void CH3::init_ch3(void){
   this->seta_length();
   this->seta_output();
 
-  if(is_channel3_on(memoria) && (periodo_divider <= periodo_shadow)){
+  if(!modo_cgb && is_channel3_on(memoria) && periodo_divider == periodo_shadow){
     
     if(last_byte < 4){
       uint8_t byte = memoria[WAVE_RAM_INICIO + last_byte];
@@ -33,7 +33,16 @@ void CH3::init_ch3(void){
 
   periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
   periodo_divider = periodo_shadow;
-  trigger_delay = 2;
+
+  if(!is_channel3_on(memoria)){
+    trigger_delay = 1;
+    if(modo_cgb)
+      periodo_divider-=3;
+  }
+
+  if(!modo_cgb)
+    delay_hack = 1;
+  last_byte = 0;
   wram_index = 0;
 }
 
@@ -61,17 +70,32 @@ void CH3::incrementa_divider(void){
   ++periodo_divider;
   if(periodo_divider > 2047){
 
+    periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
+    periodo_divider = periodo_shadow;
+
+    if(trigger_delay){
+      --trigger_delay;
+      wram_index = (wram_index + 1) % 32;
+      return;
+    }
+
     if(wram_index % 2) //ímpar: lower_nibble
       last_sample = memoria[WAVE_RAM_INICIO + (wram_index >> 1)] & 0x0F;
     else
       last_sample = ((memoria[WAVE_RAM_INICIO + (wram_index >> 1)] & 0xF0) >> 4);
+    
+    if(!modo_cgb){
+      last_byte = (wram_index >> 1);
+      wram_index = (wram_index + 1) % 32;
+    }
+    else{
+      wram_index = (wram_index + 1) % 32;
+      last_byte = (wram_index >> 1);
+    }
 
-    last_byte = (wram_index >> 1);
-    wram_index = (wram_index + 1) % 32;
-    periodo_shadow = (((memoria[0xFF1E] & 0x07) << 8) | memoria[0xFF1D]);
-    periodo_divider = periodo_shadow;
-    if(trigger_delay)
-      --trigger_delay;
+    if(delay_hack){
+      --delay_hack;
+    }
   }
 }
 

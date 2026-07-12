@@ -54,11 +54,9 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   Timer timer;
   CPU cpu(&timer, &pad, &ppu);
   APU apu(cpu.bus.memoria.data());
-  ppu.memoria = cpu.bus.memoria.data();
-  pad.p1 = &cpu.bus.memoria[0xFF00];
   timer.apu = &apu;
 
-  if(!init_game(&cpu, src.data(), estado->saves_path.data())){
+  if(!init_game(&cpu, src.data(), estado->saves_path.data(), estado->paleta_cgb)){
     ShowCursor();
     UnloadAudioStream(stream);
     CloseAudioDevice();
@@ -101,7 +99,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     }
 
     BeginDrawing();
-    DrawRectangle(1750, 400, 500, 900, BLACK);
+    DrawRectangle(1725, 400, 525, 910, BLACK);
     DrawTextureEx(texture, Vector2{posX, posY}, 0, escala, WHITE);
     EndDrawing();
 
@@ -117,6 +115,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     cpu.bus.mbc->save();
   }
   
+  limpa_samples();
   ShowCursor();
   UnloadAudioStream(stream);
   CloseAudioDevice();
