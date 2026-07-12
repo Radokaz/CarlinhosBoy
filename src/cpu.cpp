@@ -10,7 +10,29 @@ void roda_cpu(CPU *atual){
     atual->stepping = true;
   }
   if(!atual->stepping) 
-    return; 
+    return;
+
+  if(atual->pausa_ciclos > 0){
+    atual->bus.ppu->step();
+    atual->bus.timer->apu->step();
+    atual->pausa_ciclos-=atual->pausa_offset;
+
+    if(atual->pausa_ciclos <= 0){
+      atual->pausa_ciclos = 0;
+      atual->pausa_offset = 0;
+      atual->bus.ppu->speed_bug = 0;
+      atual->bus.memoria[0xFF4D] ^= 0x81;
+    }
+
+    return;
+  }
+
+  if(atual->modo > 0 && atual->bus.hdma.ativo && !atual->halted){
+    atual->bus.hdma.step(&atual->bus);
+    roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
+    return;
+  }
+
   atual->check();
   atual->step();
 }

@@ -38,6 +38,9 @@ uint8_t& MBC1::read(uint16_t endereco){
 
     uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
     ram_hack = 0xFF;
+    if(address >= ram.size())
+        address &= (ram.size() - 1);
+
     return (ram_ativa && ram.size()) ? ram[address] : ram_hack;
 }
 
@@ -78,6 +81,9 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
     
     if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
+      if(address >= ram.size())
+        address &= (ram.size() - 1);
+
       ram[address] = valor;
     }
   }
@@ -97,6 +103,9 @@ uint8_t& MBC2::read(uint16_t endereco){
   }
 
   uint32_t address = endereco - 0xA000;
+  if(address >= ram.size())
+        address &= (ram.size() - 1);
+
   ram_hack = (ram_ativa) ? (ram[address] | 0xF0) : 0xFF;
   return ram_hack;
 }
@@ -118,6 +127,9 @@ void MBC2::write(uint16_t endereco, uint8_t valor){
   
   if(endereco >= 0xA000 && endereco < 0xA200 && ram_ativa){
     uint32_t address = endereco - 0xA000;
+    if(address >= ram.size())
+        address &= (ram.size() - 1);
+
     ram[address] = valor & 0x0F;
   }
 }
@@ -148,6 +160,9 @@ uint8_t& MBC3::read(uint16_t endereco){
     }
 
     uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
+    if(address >= ram.size())
+        address &= (ram.size() - 1);
+
     return ram[address];
   }
 
@@ -197,6 +212,9 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
 
     if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
+      if(address >= ram.size())
+        address &= (ram.size() - 1);
+
       ram[address] = valor;
 
       return;
@@ -233,6 +251,9 @@ uint8_t& MBC5::read(uint16_t endereco){
 
     uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
     ram_hack = 0xFF;
+    if(address >= ram.size())
+      address &= (ram.size() - 1);
+
     return (ram_ativa && ram.size()) ? ram[address] : ram_hack;
 }
 
@@ -258,6 +279,9 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
   if(endereco >= 0xA000 && endereco < 0xC000){
      if(ram_ativa && ram.size()){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
+      if(address >= ram.size())
+        address &= (ram.size() - 1);
+
       ram[address] = valor;
 
       return;

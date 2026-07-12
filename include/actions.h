@@ -12,7 +12,22 @@ namespace GBInstruct{
     }
 
     inline void STOP(const Action& atual, CPU *cpu){
-      cpu->stepping = false;
+      if(cpu->modo > 0 && (cpu->bus.memoria[0xFF4D] & 0x01)){
+        cpu->pausa_ciclos = 8200;
+        cpu->pausa_offset = (cpu->bus.memoria[0xFF4D] & 0x80) ? 2 : 4;
+
+        if(cpu->bus.ppu->modo_atual == screen_mode::HBLANK || cpu->bus.ppu->modo_atual == screen_mode::VBLANK)
+          cpu->bus.ppu->speed_bug = 1;
+        else if(cpu->bus.ppu->modo_atual == screen_mode::SOAMRAM)
+          cpu->bus.ppu->speed_bug = 2;
+        else
+          cpu->bus.ppu->speed_bug = 0;
+
+      }
+      else{
+        cpu->stepping = false;
+      }
+
       cpu->incrementa_pc();
       cpu->ciclos_esperados = 1;
     }

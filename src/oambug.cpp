@@ -56,7 +56,7 @@ void PPU::oam_readwrite_corruption(uint8_t scan_row){
 }
 
 void PPU::check_oam(uint16_t registrador, oam_corruption corruption){
-  if(this->modo_atual != screen_mode::SOAMRAM) return;
+  if(this->modo_atual != screen_mode::SOAMRAM || this->paleta_cgb) return;
   if(registrador < 0xFE00 || registrador > 0xFEFF) return;
 
   uint8_t scan_row = this->sprites_lidos*0.5f;

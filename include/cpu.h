@@ -90,6 +90,7 @@ struct CPU{
   uint16_t pc {0x0100}; 
   uint16_t sp {0xFFFE}; 
   uint16_t last_instruct {};
+  int16_t pausa_ciclos {};
   uint8_t ime_count {};
   uint8_t ciclos_esperados {};
   bool skipa_fetch {false};
@@ -97,6 +98,8 @@ struct CPU{
   bool haltbug {false};
   bool stepping {true};
   bool ime {false};
+  uint8_t modo {}; //0: DMG only, 1: DMG e CGB, 2: CGB only
+  int8_t pausa_offset {};
   uint8_t hack {};
   
   CPU(Timer *tm, Joypad *jp, PPU *p): bus(tm, jp, p) {}

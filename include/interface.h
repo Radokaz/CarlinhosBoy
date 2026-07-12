@@ -19,9 +19,10 @@ static constexpr char gb_botoes[11][15] = {
 };
 
 struct GB_State{
+  std::array<KeyboardKey, 11> controles;
   std::string rom_path;
   std::string saves_path;
-  std::array<KeyboardKey, 11> controles;
+  int paleta_cgb {};
 
   GB_State(void){
     std::filesystem::path state_path = getExeDir() / "state.cfg";
@@ -31,13 +32,15 @@ struct GB_State{
     if(!estado){
       estado.close();
       std::ofstream novo(state_path.string().c_str());
+      paleta_cgb = 0;
 
       std::filesystem::path svs = getExeDir() / "Saves";
       std::filesystem::path roms = getExeDir() / "ROMS";
       std::filesystem::create_directories(svs);
       std::filesystem::create_directories(roms);
       novo << "rom_path: " << roms.string() << "\n";
-      novo << "saves_path: "<< svs.string() << "\n";
+      novo << "saves_path: " << svs.string() << "\n";
+      novo << "paleta_cgb: " << std::to_string(paleta_cgb) << "\n";
 
       rom_path = roms.string();
       saves_path = svs.string();
@@ -62,6 +65,8 @@ struct GB_State{
           rom_path = value_buffer;
         else if(key_buffer == "saves_path")
           saves_path = value_buffer;
+        else if(key_buffer == "paleta_cgb")
+          paleta_cgb = std::stoi(value_buffer);
       }
     }
   }
@@ -136,10 +141,11 @@ struct GB_State{
 struct ListaArquivos{
   
   FilePathList arquivos;
+  const char *extensao {};
   std::string geral;
 
-  ListaArquivos(GB_State *estado){
-    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
+  ListaArquivos(GB_State *estado, const char *ext): extensao{ext}{
+    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), extensao, true);
     this->atualiza_string();
   }
 
@@ -156,7 +162,7 @@ struct ListaArquivos{
 
   void atualiza_lista(GB_State *estado){
     UnloadDirectoryFiles(arquivos);
-    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
+    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), extensao, true);
     this->atualiza_string();
   }
 

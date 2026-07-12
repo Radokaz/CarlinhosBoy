@@ -31,6 +31,7 @@
 #define FREQUENCIA_OSCILADOR 4194304
 
 #include <cstdint>
+#include <iostream>
 #include <cmath>
 #include <array>
 #include <raylib.h>
@@ -85,6 +86,8 @@ struct CH1{
     uint8_t envelope_count {};
     uint8_t periodo_count {};
 
+    bool modo_cgb {false};
+
     CH1(uint8_t *mem): memoria{mem} {};
 
     bool is_length_enabled();
@@ -118,6 +121,8 @@ struct CH2{
     
     uint8_t envelope_count {};
 
+    bool modo_cgb {false};
+
     CH2(uint8_t *mem): memoria{mem} {};
 
     bool is_length_enabled(void);
@@ -146,6 +151,9 @@ struct CH3{
   uint8_t last_sample {};
   uint8_t last_byte {};
   uint8_t trigger_delay {};
+  uint8_t delay_hack {};
+
+  bool modo_cgb {false};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -181,6 +189,8 @@ struct CH4{
   uint8_t envelope_pace {};
   uint8_t direcao_envelope {};
   uint8_t envelope_count {};
+
+  bool modo_cgb {false};
 
   CH4(uint8_t *mem): memoria{mem} {}
 
@@ -225,12 +235,13 @@ struct APU{
   uint8_t ch2_prev {};
   uint8_t ch3_prev {};
   uint8_t ch4_prev {};
-  
+
   APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {}
 
   void atualiza_volume(void);
   void limpa_registradores(void);
   void power_on(void);
+  void seta_modo(bool cpu_m);
 
   uint8_t& read(uint16_t endereco);
   void write(uint16_t endereco, uint8_t valor);
@@ -244,6 +255,7 @@ struct APU{
 };
 
 void audio_callback(void* buffer, unsigned int frames);
+void limpa_samples(void);
 
 }
 

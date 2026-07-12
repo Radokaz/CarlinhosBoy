@@ -5,6 +5,13 @@
 
 namespace GB{
 
+void APU::seta_modo(bool cpu_m){
+  this->ch1.modo_cgb = cpu_m;
+  this->ch2.modo_cgb = cpu_m;
+  this->ch3.modo_cgb = cpu_m;
+  this->ch4.modo_cgb = cpu_m;
+}
+
 uint8_t& APU::read(uint16_t endereco){
 
     switch(endereco){
@@ -263,6 +270,12 @@ void audio_callback(void* buffer, unsigned int frames){
     }
 }
 
+void limpa_samples(void){
+  ring.samples.fill(0);
+  ring.write_pos = 0;
+  ring.read_pos = 0;
+}
+
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_ciclos = 0;
   sample_accumulator = 0;
@@ -291,7 +304,17 @@ void APU::power_on(void){
   ch1.duty_step = 0;
   ch2.duty_step = 0;
   ch3.last_sample = 0;
-}
+  if(ch1.modo_cgb){
+    ch1.length_timer = 0;
+    ch2.length_timer = 0;
+    ch3.length_timer = 0;
+    ch4.length_timer = 0;
+    memoria[0xFF11] = 0;
+    memoria[0xFF16] = 0;
+    memoria[0xFF1B] = 0;
+    memoria[0xFF20] = 0;
+  }
+ }
 
 void APU::atualiza_volume(void){
   uint8_t master_volume = memoria[0xFF24];
@@ -366,7 +389,11 @@ void APU::step(void){
   if(!is_audio_on(memoria)) return;
   
   this->atualiza_volume();
-  for(size_t i {}; i < 4; ++i){
+  size_t limiar {4};
+  if(ch1.modo_cgb && (memoria[0xFF4D] & 0x80))
+    limiar = 2;
+
+  for(size_t i {}; i < limiar; ++i){
     ++sample_ciclos;
     
     if(sample_ciclos % 2 == 0){

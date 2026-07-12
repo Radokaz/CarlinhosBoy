@@ -7,7 +7,8 @@ void Timer::step(Memorybus& bus){
     ++div_count;
     bus.memoria[0xFF04] = this->get_div();
     
-    uint8_t apu_temp = (bus.memoria[0xFF04] >> 4) & 0x01;
+    bool double_speed = (bus.ppu->modo_cpu > 0 && (bus.memoria[0xFF4D] & 0x80) != 0);
+    uint8_t apu_temp = (bus.memoria[0xFF04] >> ((double_speed) ? 5 : 4)) & 0x01;
     if(!apu_temp && apu->div_prev){
       apu->frame_sequencer();
     }

@@ -74,9 +74,27 @@ void PPU::avanca_ly(void){
     this->check_stat_interruption();
 }
 
-void PPU::write_vram(uint16_t endereco, uint8_t valor){
-  if(this->modo_atual != screen_mode::DRAWING)
-    memoria[endereco] = valor;
+uint8_t& PPU::read_vram(uint16_t endereco){
+  if(vram_bank1){
+    uint8_t bank = memoria[0xFF4F] & 0x01;
+    if(bank)
+      return vram_bank1[endereco - VRAM_INICIO];
+  }
+  
+  return memoria[endereco];
+}
+
+void PPU::write_vram(uint16_t endereco, uint8_t valor, bool hdma){
+  if(this->modo_atual == screen_mode::DRAWING && !hdma) return;
+  if(vram_bank1){
+    uint8_t bank = memoria[0xFF4F] & 0x01;
+    if(bank){
+      vram_bank1[endereco - VRAM_INICIO] = valor;
+      return;
+    }
+  }
+
+  memoria[endereco] = valor;
 }
 
 void PPU::reset_sprites(void){
@@ -112,7 +130,11 @@ void PPU::step(void){
     this->set_mode(screen_mode::SOAMRAM);
   }
   
-  for(size_t i {}; i < 4; ++i){
+  size_t limiar {4};
+  if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
+    limiar = 2;
+
+  for(size_t i {}; i < limiar; ++i){
     ++this->ciclos;
     
     switch(this->modo_atual){
@@ -122,10 +144,11 @@ void PPU::step(void){
         if(!(this->ciclos % 2)){
           this->scan_oam();
           if(sprites_lidos >= 40){
-            std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
-            [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
 
-            //std::cout << std::dec << "SOAMRAM ciclos: " << static_cast<int>(ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
+            if(this->modo_cpu == 0 || (this->memoria[0xFF6C] & 0x01)){
+              std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
+              [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
+            }
             ciclos = 0;
             this->reset_sprites();
             this->fetcher.clear();
@@ -152,6 +175,11 @@ void PPU::step(void){
             //std::cout << "HBLANK ciclos: " << static_cast<int>(hblank_ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
             if(fetcher.window_ativa)
               ++fetcher.win_line;
+
+            if(modo_cpu > 0 && *hdma_hblank){
+              *hdma_ativo = true;
+            }
+
             this->set_mode(screen_mode::HBLANK);
           }
         break;

@@ -4,7 +4,8 @@
 #include "interface.h"
 #include <map>
 
-#define BOOT_SOURCE "dmg_boot.bin"
+#define BOOT_SOURCE_DMG "dmg_boot.bin"
+#define BOOT_SOURCE_CGB "cgb_boot.bin"
 
 namespace GB{
 
@@ -26,32 +27,52 @@ struct __attribute__((packed)) Header{
 
 inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
 
-  std::filesystem::path boot_src = getExeDir() / BOOT_SOURCE;
+  std::filesystem::path boot_src = (cpu->bus.ppu->paleta_cgb) ? getExeDir() / BOOT_SOURCE_CGB : getExeDir() / BOOT_SOURCE_DMG;
   std::fstream bootrom(boot_src.string().c_str(), bootrom.binary | bootrom.in);
+
   if(!bootrom){
     std::cerr << "BOOTROM INDISPONÍVEL\n";
-    cpu->bus.memoria[0xFF04] = 0xAB;
-    cpu->bus.memoria[0xFF05] = 0x00;
-    cpu->bus.memoria[0xFF06] = 0x00;
-    cpu->bus.memoria[0xFF07] = 0xF8;
+    if(cpu->modo > 0){
+      cpu->registradores.a = 0x11;
+      cpu->registradores.b = 0x00;
+      cpu->registradores.c = 0x00; 
+      cpu->registradores.d = 0xFF;
+      cpu->registradores.e = 0x56;
+      cpu->registradores.h = 0x00;
+      cpu->registradores.l = 0x0D;
+      cpu->registradores.f = 0x80;
+      cpu->bus.memoria[0xFF4D] = 0x7E;
+    }
+    
+    if(cpu->modo == 3){
+      cpu->bus.ppu->paleta_cgb = false;
+      cpu->bus.timer->apu->seta_modo(cpu->bus.ppu->paleta_cgb);
+    }
+
+    cpu->bus.memoria[0xFF00] = 0xCF; //Joypad
+    cpu->bus.memoria[0xFF04] = 0xAB; //DIV
+    cpu->bus.memoria[0xFF05] = 0x00; //TIMA
+    cpu->bus.memoria[0xFF06] = 0x00; //TMA
+    cpu->bus.memoria[0xFF07] = 0xF8; //TAC
+    cpu->bus.memoria[0xFF0F] = 0xE1; //IF
     cpu->bus.memoria[0xFF10] = 0x80;
     cpu->bus.memoria[0xFF11] = 0xBF;
     cpu->bus.memoria[0xFF12] = 0xF3;
     cpu->bus.memoria[0xFF14] = 0xBF;
     cpu->bus.memoria[0xFF16] = 0x3F;
-    cpu->bus.memoria[0xFF0F] = 0xE1; //IF
-    cpu->bus.memoria[0xFFFF] = 0x00; //IE
-    cpu->bus.memoria[0xFF00] = 0xFF; //Joypad
     cpu->bus.memoria[0xFF40] = 0x91; // LCDC
     cpu->bus.memoria[0xFF41] = 0x85; // STAT
+    cpu->bus.memoria[0xFF42] = 0x00; // SCY
+    cpu->bus.memoria[0xFF43] = 0x00; // SCX
     cpu->bus.memoria[0xFF44] = 0x00; // LY
     cpu->bus.memoria[0xFF45] = 0x00; // LYC
-    cpu->bus.memoria[0xFF46] = 0xFF; // DMA
+    cpu->bus.memoria[0xFF46] = (cpu->bus.ppu->paleta_cgb) ? 0x00 : 0xFF; // DMA
     cpu->bus.memoria[0xFF47] = 0xFC; // BGP
     cpu->bus.memoria[0xFF48] = 0xFF; // OBP0
     cpu->bus.memoria[0xFF49] = 0xFF; // OBP1
     cpu->bus.memoria[0xFF4A] = 0x00; // WY
     cpu->bus.memoria[0xFF4B] = 0x00; // WX
+    cpu->bus.memoria[0xFFFF] = 0x00; //IE
     return;
   }
 
@@ -74,18 +95,56 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     case 28:
     case 29:
     case 30:
-      bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
-      cpu->bus.restaura_rom = [src, cpu](){
-        std::fstream rom(src.data(), rom.binary | rom.in);
-        rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
-      };
+      if(cpu->bus.ppu->paleta_cgb){
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+        bootrom.seekg(0x0200, std::ios::beg);
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom() + 0x0200), 0x0700);
+        cpu->bus.restaura_rom = [src, cpu](){
+          std::fstream rom(src.data(), rom.binary | rom.in);
+          rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+          rom.seekg(0x0200, std::ios::beg);
+          rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom() + 0x200), 0x0700);
+          if(cpu->modo == 3){
+            cpu->modo = 0;
+            cpu->bus.ppu->modo_cpu = 0;
+            cpu->bus.cgb_wram.reset();
+            cpu->bus.ppu->vram_bank1.reset();
+          }
+        };
+      }
+      else{
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+        cpu->bus.restaura_rom = [src, cpu](){
+          std::fstream rom(src.data(), rom.binary | rom.in);
+          rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
+        };
+      }
       break;
     default:
-      bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
-      cpu->bus.restaura_rom = [src, cpu](){
-        std::fstream rom(src.data(), rom.binary | rom.in);
-        rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
-      };
+      if(cpu->bus.ppu->paleta_cgb){
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+        bootrom.seekg(0x0200, std::ios::beg);
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data() + 0x0200), 0x0700);
+        cpu->bus.restaura_rom = [src, cpu](){
+          std::fstream rom(src.data(), rom.binary | rom.in);
+          rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+          rom.seekg(0x0200, std::ios::beg);
+          rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data() + 0x200), 0x0700);
+          if(cpu->modo == 3){
+            cpu->modo = 0;
+            cpu->bus.ppu->modo_cpu = 0;
+            cpu->bus.cgb_wram.reset();
+            cpu->bus.ppu->vram_bank1.reset();
+          }
+        };
+      }
+      else{
+        bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+        cpu->bus.restaura_rom = [src, cpu](){
+          std::fstream rom(src.data(), rom.binary | rom.in);
+          rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
+        };
+      }
       break;
   }
 }
@@ -99,6 +158,46 @@ inline Header *init_rom(CPU *cpu, std::string_view src){
 
   arquivo.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0150);
   return reinterpret_cast<Header*>(&cpu->bus.memoria[0x100]);
+}
+
+inline void checa_modo(CPU *cpu, int paleta){
+  uint8_t modo = cpu->bus.memoria[0x143];
+  if(modo == 0x80 && paleta){
+    cpu->modo = 1;
+    cpu->bus.ppu->modo_cpu = 1;
+    cpu->bus.ppu->paleta_cgb = true;
+    cpu->bus.cgb_wram = std::make_unique<uint8_t[]>(32*1024);
+    cpu->bus.ppu->vram_bank1 = std::make_unique<uint8_t[]>(8*1024);
+    cpu->bus.ppu->bg_palette_ram = std::make_unique<uint8_t[]>(64);
+    cpu->bus.ppu->obj_palette_ram = std::make_unique<uint8_t[]>(64);
+    std::cout << "Inicializando DMG em CGB Mode.\n";
+  }
+  else if(modo == 0xC0){
+    cpu->modo = 2;
+    cpu->bus.ppu->modo_cpu = 2;
+    cpu->bus.ppu->paleta_cgb = true;
+    cpu->bus.cgb_wram = std::make_unique<uint8_t[]>(32*1024);
+    cpu->bus.ppu->vram_bank1 = std::make_unique<uint8_t[]>(8*1024);
+    cpu->bus.ppu->bg_palette_ram = std::make_unique<uint8_t[]>(64);
+    cpu->bus.ppu->obj_palette_ram = std::make_unique<uint8_t[]>(64);
+    std::cout << "Inicializando em CBG Only.\n";
+  }
+  else{
+    cpu->modo = 0;
+    cpu->bus.ppu->modo_cpu = 0;
+    cpu->bus.ppu->paleta_cgb = (paleta) ? true : false;
+    if(paleta){
+      cpu->bus.ppu->bg_palette_ram = std::make_unique<uint8_t[]>(64);
+      cpu->bus.ppu->obj_palette_ram = std::make_unique<uint8_t[]>(64);
+      cpu->bus.cgb_wram = std::make_unique<uint8_t[]>(32*1024);
+      cpu->bus.ppu->vram_bank1 = std::make_unique<uint8_t[]>(8*1024);
+      cpu->modo = 3;
+      cpu->bus.ppu->modo_cpu = 3;
+    }
+    std::cout << "Inicializando em DMG Only.\n";
+  }
+
+  cpu->bus.timer->apu->seta_modo(cpu->bus.ppu->paleta_cgb);
 }
 
 inline size_t checa_tamanho_ram(Header *header){
@@ -126,7 +225,7 @@ inline size_t checa_tamanho_rom(Header *header){
   }
 }
 
-inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::string_view saves){
+inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::string_view saves, int paleta){
 
   const char *ROM_TYPES[] = {
     "ROM ONLY",
@@ -248,6 +347,7 @@ inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::
     return false;
   }
   
+  checa_modo(cpu, paleta);
   size_t ram_sz = checa_tamanho_ram(header);
   size_t rom_sz = checa_tamanho_rom(header);
 
@@ -314,12 +414,12 @@ inline void checa_save(CPU *cpu, uint8_t mbc){
   }
 }
 
-inline bool init_game(CPU *cpu, const char *src, const char *saves){
+inline bool init_game(CPU *cpu, const char *src, const char *saves, int paleta){
   Header *header = init_rom(cpu, src);
   if(!header) return false;
 
   uint8_t mbc = header->mbc;
-  if(!checa_validade(header, cpu, src, saves))
+  if(!checa_validade(header, cpu, src, saves, paleta))
     return false;
 
   merge_boot_rom(cpu, src, mbc);

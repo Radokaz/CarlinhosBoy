@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")
 
 file(COPY ${CMAKE_SOURCE_DIR}/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/cgb_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 # Create executable
 add_executable(gb ${SOURCES})
 target_compile_options(gb PRIVATE -Werror -g)
