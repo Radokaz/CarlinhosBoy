@@ -155,7 +155,7 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
   const char *resultado = tinyfd_selectFolderDialog("Selecione uma pasta", "");
   if(!resultado) return;
   
-  std::filesystem::path state_path = getExeDir() / "state.cfg";
+  std::filesystem::path state_path = estado->main_dir / "state.cfg";
 
   std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
   std::string result = resultado, buffer{};
@@ -190,7 +190,7 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
 
 void toggle_paleta(GB_State *estado){
   estado->paleta_cgb ^= 1;
-  std::filesystem::path state_path = getExeDir() / "state.cfg";
+  std::filesystem::path state_path = estado->main_dir / "state.cfg";
   std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
   std::string buffer{};
   std::vector<std::string> linhas;

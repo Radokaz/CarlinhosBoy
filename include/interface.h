@@ -20,22 +20,29 @@ static constexpr char gb_botoes[11][15] = {
 
 struct GB_State{
   std::array<KeyboardKey, 11> controles;
+  std::filesystem::path main_dir;
   std::string rom_path;
   std::string saves_path;
   int paleta_cgb {};
 
   GB_State(void){
-    std::filesystem::path state_path = getExeDir() / "state.cfg";
+#ifdef _WIN32
+    main_dir = getExeDir();
+#else
+    main_dir = this->linux_dir();
+#endif
+
+    std::filesystem::path state_path = main_dir / "state.cfg";
     std::fstream estado(state_path.string().c_str(), estado.in);
 
     this->seta_controles();
     if(!estado){
       estado.close();
       std::ofstream novo(state_path.string().c_str());
-      paleta_cgb = 0;
+      paleta_cgb = 1;
 
-      std::filesystem::path svs = getExeDir() / "Saves";
-      std::filesystem::path roms = getExeDir() / "ROMS";
+      std::filesystem::path svs = main_dir / "Saves";
+      std::filesystem::path roms = main_dir / "ROMS";
       std::filesystem::create_directories(svs);
       std::filesystem::create_directories(roms);
       novo << "rom_path: " << roms.string() << "\n";
@@ -71,8 +78,28 @@ struct GB_State{
     }
   }
 
+  std::filesystem::path linux_dir(void){
+    const char* xdgData = std::getenv("XDG_DATA_HOME");
+    std::filesystem::path base;
+
+    if(xdgData != nullptr && xdgData[0] != '\0'){
+      base = std::filesystem::path(xdgData);
+    } 
+    else{
+      const char* home = std::getenv("HOME");
+      if(!home){
+        home = "/tmp";
+      }
+      base = std::filesystem::path(home) / ".local" / "share";
+    }
+
+    std::filesystem::path dir = base / "CarlinhosBoy";
+    std::filesystem::create_directories(dir);
+    return dir;
+  }
+
   void seta_controles(void){
-    std::filesystem::path control_path = getExeDir() / "controles.cfg";
+    std::filesystem::path control_path = main_dir / "controles.cfg";
     std::fstream control(control_path.string().c_str(), control.in | control.out);
 
     if(!control){
@@ -105,7 +132,7 @@ struct GB_State{
   }
 
   void atualiza_controles(void){
-    std::filesystem::path control_path = getExeDir() / "controles.cfg";
+    std::filesystem::path control_path = main_dir / "controles.cfg";
     std::fstream control(control_path.string().c_str(), control.in | control.out);
     
     std::vector<std::string> linhas;
