@@ -218,8 +218,9 @@ void toggle_paleta(GB_State *estado){
 }
 
 void init_gui(void){
-  
-  InitWindow(GetScreenWidth(), GetScreenHeight(), "Carlinhos Boy");
+
+  InitWindow(1920, 1080, "Carlinhos Boy");
+  SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
   ToggleFullscreen();
   SetTargetFPS(60);
   
