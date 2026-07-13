@@ -13,6 +13,9 @@
 #include "apu.h"
 #include "mbc.h"
 
+#define ECHO_RAM_INICIO 0xE000
+#define ECHO_RAM_FIM 0xFE00
+
 namespace GB{
 
 struct Memorybus;
@@ -81,6 +84,9 @@ struct Memorybus{
   }
 
   uint8_t& read_byte(uint16_t endereco){
+    if(endereco >= ECHO_RAM_INICIO && endereco < ECHO_RAM_FIM){
+      return read_byte(endereco - 0x2000);
+    }
     if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
       return mbc->read(endereco);
     }
@@ -93,6 +99,31 @@ struct Memorybus{
         bank = 1;
 
       return cgb_wram[bank*0x1000 + (endereco - 0xD000)];
+    }
+    if(endereco >= OAM_INICIO && endereco < OAM_FIM && 
+        (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
+      dma_hack = 0xFF;
+      return dma_hack;
+    }
+    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
+      if(ppu->modo_atual == screen_mode::DRAWING){
+        dma_hack = 0xFF;
+        return dma_hack;
+      }
+
+      return ppu->read_vram(endereco);
+    }
+    if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
+      if(ppu->paleta_cgb || (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.delay_hack)){
+        dma_hack = memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte];
+        return dma_hack;
+      }
+
+      dma_hack = 0xFF;
+      return dma_hack;
+    }
+    if(endereco >= AUDIO_INICIO && endereco < AUDIO_FIM){
+      return timer->apu->read(endereco);
     }
 
     switch(endereco){
@@ -147,33 +178,7 @@ struct Memorybus{
         }
         default: break;
     }
-
-    if(endereco >= OAM_INICIO && endereco < OAM_FIM && 
-        (dma.ativo || ppu->modo_atual == screen_mode::DRAWING || ppu->modo_atual == screen_mode::SOAMRAM)){
-      dma_hack = 0xFF;
-      return dma_hack;
-    }
-    if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      if(ppu->modo_atual == screen_mode::DRAWING){
-        dma_hack = 0xFF;
-        return dma_hack;
-      }
-
-      return ppu->read_vram(endereco);
-    }
-    if(is_channel3_on(memoria.data()) && endereco >= WAVE_RAM_INICIO && endereco < WAVE_RAM_FIM){
-      if(ppu->paleta_cgb || (timer->apu->ch3.periodo_divider > 2046 && !timer->apu->ch3.delay_hack)){
-        dma_hack = memoria[WAVE_RAM_INICIO + timer->apu->ch3.last_byte];
-        return dma_hack;
-      }
-
-      dma_hack = 0xFF;
-      return dma_hack;
-    }
-    if(endereco >= AUDIO_INICIO && endereco < AUDIO_FIM){
-      return timer->apu->read(endereco);
-    }
-    
+        
     return memoria[endereco];
   }
 
@@ -199,7 +204,6 @@ struct Memorybus{
       else
         memoria[endereco] = valor;
 
-      memoria[0xE000 + (endereco - 0xC000)] = valor;
       return;
     }
     if(endereco >= 0xD000 && endereco < 0xE000){
@@ -213,9 +217,10 @@ struct Memorybus{
       else
         memoria[endereco] = valor;
 
-      if(endereco < 0xDE00)
-        memoria[0xF000 + (endereco - 0xD000)] = valor;
-
+      return;
+    }
+    if(endereco >= ECHO_RAM_INICIO && endereco < ECHO_RAM_FIM){
+      write_byte(endereco - 0x2000, valor);
       return;
     }
 
@@ -342,7 +347,7 @@ struct Memorybus{
         memoria[endereco] = valor & 0x70;
         return;
       }
-
+      default: break;
     }
 
     memoria[endereco] = valor;
