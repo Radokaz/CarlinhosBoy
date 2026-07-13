@@ -1,0 +1,11 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/gb.dir/src/cpu.cpp.obj",
+"requires": [
+]
+}
+],
+"version": 0,
+"revision": 0
+}

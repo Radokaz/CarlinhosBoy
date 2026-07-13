@@ -45,6 +45,10 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     }
     
     if(cpu->modo == 3){
+      cpu->modo = 0;
+      cpu->bus.ppu->modo_cpu = 0;
+      cpu->bus.cgb_wram.reset();
+      cpu->bus.ppu->vram_bank1.reset();
       cpu->bus.ppu->paleta_cgb = false;
       cpu->bus.timer->apu->seta_modo(cpu->bus.ppu->paleta_cgb);
     }

@@ -1,0 +1,11 @@
+{
+"rules": [
+{
+"primary-output": "CMakeFiles/gb.dir/src/emulador.cpp.obj",
+"requires": [
+]
+}
+],
+"version": 0,
+"revision": 0
+}
