@@ -139,6 +139,11 @@ struct Memorybus{
           memoria[endereco] |= 0b10000000; 
           return memoria[endereco];
         case 0xFF4F: //vram_bank
+          if(!ppu->modo_cpu){
+            dma_hack = (ppu->paleta_cgb) ? 0xFE : 0xFF;
+            return dma_hack;
+          }
+
           memoria[endereco] |= 0b11111110;
           return memoria[endereco];
         case 0xFF69:{ //BGPD
@@ -158,6 +163,15 @@ struct Memorybus{
           
           uint8_t indice = memoria[0xFF6A] & 0x3F;
           return ppu->obj_palette_ram[indice];
+        }
+        case 0xFF70:{ //Wram bank
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          memoria[endereco] |= 0xF8;
+          return memoria[endereco];
         }
         case 0xFF74:{
           if(!ppu->modo_cpu){

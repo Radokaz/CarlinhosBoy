@@ -308,11 +308,11 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att
     return (!this->modo_cpu) ? this->decide_obj_color_dmg(sprite, result) : this->decide_obj_color_cgb(sprite, result);
   }
 
-  if(this->is_bg_enabled() && !modo_cpu){
-    return this->decide_bg_color_dmg(bg_cor);
+  if(!modo_cpu){
+    return (this->is_bg_enabled()) ? this->decide_bg_color_dmg(bg_cor) : this->decide_bg_color_dmg(tile_pixel::INDEX_ZERO);
   } 
   
-  return (!this->modo_cpu) ? this->decide_bg_color_dmg(tile_pixel::INDEX_ZERO) : this->decide_bg_color_cgb(bg_cor, tile_att);
+  return this->decide_bg_color_cgb(bg_cor, tile_att);
 }
 
 void PPU::checa_sprites(uint8_t x_atual){
