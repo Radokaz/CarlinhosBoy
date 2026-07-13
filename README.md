@@ -3,6 +3,7 @@
 ## Modo de uso:
 
 O programa já tem uma interface. Basta escolher a rom diretamente pelo botão "Abrir ROM" ou selecionar a pasta em que o programa irá buscar arquivos com a extensão ".gb" para exibir na lista à direita do menu principal. Note que a lista de arquivos mostra apenas extensões de DMG, jogos de Game Boy Color precisam ser selecionados manualmente pelo menu.
+Para salvar um jogo que tenha suporte a bateria, certifique-se de fechar o jogo pelo menu.
 
 ## Controles:
 
@@ -16,9 +17,9 @@ Por padrão:
 - A: `M`
 - START: `O`
 - SELECT: `P`
-- ESC: Fecha o jogo e salva, caso o cartucho tenha suporte a bateria.
 - T: Alterna entre uma paleta verde que emula as cores da tela LCD do dmg original e a paleta preto e branco (DMG Only).
 - C: Abre o menu de pausa durante a reprodução do jogo.
+- ESC: Mesma coisa que o comando acima, mas não pode ser remapeada no menu.
 - F: Ativa o Fast Forward.
 
 Os comandos listados acima (com exceção do ESC) podem ser alterados tanto no menu principal quanto no menu de pausa.

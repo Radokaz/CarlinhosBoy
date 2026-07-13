@@ -76,7 +76,6 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   SetTargetFPS(60);
 
   while(1){
-    if(apertado(KEY_ESCAPE)) break;
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
@@ -88,6 +87,10 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     mouse_prev = mouse_atual;
     if(pausa_jogo(&cpu, estado, pausado)){
       break;
+    }
+
+    if(cpu.bus.tem_rtc){
+      cpu.bus.mbc->atualiza_rtc();
     }
 
     ppu.frame_pronto = false;
@@ -116,6 +119,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   }
   
   limpa_samples();
+  SetTargetFPS(60);
   ShowCursor();
   UnloadAudioStream(stream);
   CloseAudioDevice();

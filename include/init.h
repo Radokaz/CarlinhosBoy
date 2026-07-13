@@ -373,6 +373,7 @@ inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::
     case 18:
     case 19:{
       cpu->bus.mbc = std::make_unique<MBC3>(saves, src, rom_sz, ram_sz);
+      cpu->bus.tem_rtc = true;
       break;
     }
     case 25:
