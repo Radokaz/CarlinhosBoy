@@ -11,7 +11,6 @@
 #include "joypad.h"
 #include "ppu.h"
 #include "apu.h"
-#include "dma.h"
 #include "mbc.h"
 
 namespace GB{
@@ -19,13 +18,37 @@ namespace GB{
 struct Memorybus;
 
 struct Timer{
-    APU *apu {};
-    uint16_t div_count {0xABCC};
-    bool prev_bit {};
-    uint8_t timaoverflow_count {};
+  APU *apu {};
+  uint16_t div_count {0xABCC};
+  bool prev_bit {};
+  uint8_t timaoverflow_count {};
 
-    void step(Memorybus& bus);
-    uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
+  void step(Memorybus& bus);
+  uint8_t get_div(void) { return static_cast<uint8_t>((div_count >> 8) & 0xFF); }
+};
+
+struct DMA{
+  MBC *mbc {nullptr};
+  uint8_t *wram {nullptr};
+  bool ativo {false};
+  uint8_t byte {};
+  uint8_t valor {};
+  int8_t atraso {};
+
+  void start(uint8_t valor);
+  void step(Memorybus *bus);
+};
+
+struct HDMA{
+  uint16_t restante {};
+  uint16_t destino {};
+  uint16_t origem {};
+  uint8_t hblank_count {};
+  bool modo_hblank {false};
+  bool ativo {false};
+
+  void init_transfer(uint8_t vdma);
+  void step(Memorybus *bus);
 };
 
 //todos os que tem escrita bloqueada quando o APU está desligado
@@ -36,6 +59,7 @@ static constexpr std::array<uint16_t, 16> audio_registers{
 struct Memorybus{
   std::array<uint8_t, 0xFFFF + 1> memoria{};
   DMA dma;
+  HDMA hdma;
   Timer *timer {};
   Joypad *pad {};
   PPU *ppu {};
@@ -46,19 +70,7 @@ struct Memorybus{
   uint8_t serial_count {};
   bool key0_blocked {false};
   bool opri_blocked {false};
-
-  struct HDMA{
-    uint16_t restante {};
-    uint16_t destino {};
-    uint16_t origem {};
-    uint8_t hblank_count {};
-    bool modo_hblank {false};
-    bool ativo {false};
-
-    void init_transfer(uint8_t vdma);
-    void step(Memorybus *bus);
-  } hdma;
-
+  
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     mbc = nullptr;
     cgb_wram = nullptr;

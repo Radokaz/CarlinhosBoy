@@ -47,7 +47,7 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
     }
   }
   timer->step(atual->bus);
-  atual->bus.dma.step(atual->bus.memoria.data());
+  atual->bus.dma.step(&atual->bus);
   ppu->step();
   timer->apu->step();
   //++debug_cycles;

@@ -2,7 +2,7 @@
 
 namespace GB{
 
-void Memorybus::HDMA::init_transfer(uint8_t vdma){
+void HDMA::init_transfer(uint8_t vdma){
   uint16_t tamanho = ((vdma & 0x7F) + 1)*0x10;
   modo_hblank = (vdma & 0x80) != 0;
   restante = tamanho;
@@ -11,7 +11,7 @@ void Memorybus::HDMA::init_transfer(uint8_t vdma){
   ativo = true;
 }
 
-void Memorybus::HDMA::step(Memorybus *bus){
+void HDMA::step(Memorybus *bus){
   if(!ativo) return;
   
   size_t offset {2};
