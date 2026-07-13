@@ -240,6 +240,60 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     }
   }
 
+void MBC3::save(void){
+  std::filesystem::create_directories(saves);
+  std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
+  save_path.replace_extension(".sav");
+
+  std::ofstream arquivo(save_path, arquivo.binary | arquivo.trunc);
+  if(!arquivo) return;
+
+  arquivo.write(reinterpret_cast<char*>(ram.data()), ram.size());
+  arquivo.write(reinterpret_cast<char*>(&rtc), sizeof(RTC));
+  arquivo.write(reinterpret_cast<char*>(&rtc_latch), sizeof(RTC));
+  arquivo.write(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
+  std::cout << "Jogo salvo.\n";
+}
+
+void MBC3::load(void){
+  std::filesystem::create_directories(saves);
+  std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
+  save_path.replace_extension(".sav");
+
+  std::fstream arquivo(save_path, arquivo.in | arquivo.binary);
+  if(!arquivo) return;
+
+  arquivo.read(reinterpret_cast<char*>(ram.data()), ram.size());
+  arquivo.read(reinterpret_cast<char*>(&rtc), sizeof(RTC));
+  arquivo.read(reinterpret_cast<char*>(&rtc_latch), sizeof(RTC));
+  arquivo.read(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
+  std::cout << "Save carregado.\n";
+}
+
+void MBC3::atualiza_rtc(void){
+  if(rtc.f & 0x40) return;
+
+  auto clock_atual = std::chrono::system_clock::now();
+  auto seg_passados = std::chrono::duration_cast<std::chrono::seconds>(clock_atual - rtc_last).count();
+
+  if(seg_passados < 1) return;
+  rtc_last = clock_atual;
+
+  uint64_t total_seg = rtc.s + seg_passados;
+  uint64_t total_min = rtc.m + total_seg/60;
+  uint64_t total_hour = rtc.h + total_min/60;
+  uint32_t total_days = (((rtc.f & 0x01) << 8) | rtc.d) + total_hour/24;
+
+  rtc.s = total_seg % 60;
+  rtc.m = total_min % 60;
+  rtc.h = total_hour % 24;
+  rtc.d = total_days & 0xFF;
+  rtc.f = (rtc.f & 0xC0) | ((total_days >> 8) & 0x01);
+
+  if(total_days > 511)
+    rtc.f |= 0x80;
+}
+
 uint8_t& MBC5::read(uint16_t endereco){
    if(endereco < 0x4000){
       return rom[endereco];

@@ -218,9 +218,9 @@ void toggle_paleta(GB_State *estado){
 }
 
 void init_gui(void){
-  auto monitor = GetCurrentMonitor();
-
-  InitWindow(GetMonitorWidth(monitor), GetMonitorHeight(monitor), "Carlinhos Boy");
+  
+  InitWindow(GetScreenWidth(), GetScreenHeight(), "Carlinhos Boy");
+  ToggleFullscreen();
   SetTargetFPS(60);
   
   std::string opcoes[] = {

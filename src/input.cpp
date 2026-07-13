@@ -25,13 +25,13 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
     controles |= RIGHT_BUTTON;
   if(apertado(map[8]))
     paleta_lcd ^= 1;
-  if(apertado(map[9]))
+  if(apertado(map[9]) || apertado(KEY_ESCAPE))
     pausado = true;
   if(apertado(map[10])){
     is_120 ^= 1;
     SetTargetFPS(static_cast<int>(is_120)*60 + 60);
   }
-
+  
   if(apertado(KEY_ONE)){
     canais_ativos ^= APU_CANAL1;
     std::cout << "Canal 1 " << ((canais_ativos & APU_CANAL1) ? "ATIVADO\n" : "DESATIVADO\n");

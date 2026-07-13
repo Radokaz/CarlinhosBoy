@@ -71,6 +71,7 @@ struct Memorybus{
   std::function<void()> restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
+  bool tem_rtc {false};
   bool key0_blocked {false};
   bool opri_blocked {false};
   
@@ -87,7 +88,7 @@ struct Memorybus{
     if(endereco >= ECHO_RAM_INICIO && endereco < ECHO_RAM_FIM){
       return read_byte(endereco - 0x2000);
     }
-    if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
+    if(mbc && (endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000))){
       return mbc->read(endereco);
     }
     if(cgb_wram && endereco >= 0xC000 && endereco < 0xD000){
@@ -204,7 +205,7 @@ struct Memorybus{
       timer->apu->write(endereco, valor);
       return;
     }
-    if((endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000)) && mbc){
+    if(mbc && (endereco < 0x8000 || (endereco >= 0xA000 && endereco < 0xC000))){
       mbc->write(endereco, valor);
       return;
     }

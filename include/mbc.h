@@ -7,6 +7,7 @@
 #include <vector>
 #include <array>
 #include <filesystem>
+#include <chrono>
 
 namespace GB{
 
@@ -24,8 +25,9 @@ struct MBC{
   virtual uint8_t& read(uint16_t endereco)=0;
   virtual void write(uint16_t endereco, uint8_t valor)=0;
 
-  void save(void);
-  void load(void);
+  virtual void save(void);
+  virtual void load(void);
+  virtual void atualiza_rtc(void) { return; }
   virtual ~MBC() = default;
 };
 
@@ -88,6 +90,7 @@ struct MBC2: public MBC{
 };
 
 struct MBC3 : public MBC{
+  std::chrono::system_clock::time_point rtc_last {};
   uint16_t total_banks{};
   uint8_t rom_bank {1};
   uint8_t ram_bank {};
@@ -115,6 +118,7 @@ struct MBC3 : public MBC{
       std::terminate();
     }
 
+    rtc_last = std::chrono::system_clock::now();
     fonte = rom_src;
     saves = sav;
     arquivo.seekg(0, std::ios::end);
@@ -131,6 +135,9 @@ struct MBC3 : public MBC{
 
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;
+  void atualiza_rtc(void) override;
+  virtual void save(void) override;
+  virtual void load(void) override;
 };
 
 struct MBC5 : public MBC{
