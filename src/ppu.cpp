@@ -46,18 +46,23 @@ void PPU::set_mode(screen_mode modo){
     this->check_stat_interruption();
 }
 
+void PPU::lyc_compare(void){
+  uint8_t ly = memoria[0xFF44];
+  uint8_t lyc = memoria[0xFF45];
+  uint8_t& stat = memoria[0xFF41];
+  if(ly == lyc)
+    stat |= LYC_Comparison_Signal;
+  else
+    stat &= ~LYC_Comparison_Signal;
+}
+
 bool PPU::check_stat(void){
     if(!this->is_lcd_enabled())
       return false;
 
-    uint8_t ly = memoria[0xFF44];
-    uint8_t lyc = memoria[0xFF45];
-    uint8_t& stat = memoria[0xFF41];
-    if(ly == lyc)
-      stat |= LYC_Comparison_Signal;
-    else
-      stat &= ~LYC_Comparison_Signal;
-  
+    uint8_t stat = memoria[0xFF41];
+    this->lyc_compare(); //hack pra compensar a imprecisão nos ciclos
+
     return (((stat & LYC_Comparison_Signal) && (stat & LYC_ENABLE)) ||
     ((this->modo_atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
     ((this->modo_atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
@@ -140,7 +145,7 @@ void PPU::step(void){
 
   for(size_t i {}; i < limiar; ++i){
     ++this->ciclos;
-    
+        
     switch(this->modo_atual){
       using enum screen_mode;
 
