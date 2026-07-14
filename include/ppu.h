@@ -135,7 +135,7 @@ struct PPU{
   }
 
   uint8_t& read_vram(uint16_t endereco);
-  void write_vram(uint16_t endereco, uint8_t valor, bool hdma);
+  void write_vram(uint16_t endereco, uint8_t valor);
   void step(void);
   void scan_oam(void);
   void verifica_penalidade(const Sprite& sprite);

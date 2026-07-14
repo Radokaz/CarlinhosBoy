@@ -147,6 +147,37 @@ struct Memorybus{
 
           memoria[endereco] |= 0b11111110;
           return memoria[endereco];
+        case 0xFF4C:{ //key0
+          if(!ppu->paleta_cgb){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          return memoria[endereco];
+        }
+        case 0xFF4D:{ //key1
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+          
+          dma_hack = (memoria[endereco] & 0x81) | 0x7E;
+          return dma_hack;
+        }
+        case 0xFF51:
+        case 0xFF52:
+        case 0xFF53:
+        case 0xFF54:
+          dma_hack = 0xFF;
+          return dma_hack;
+        case 0xFF55:{ //hdma
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          return memoria[endereco];
+        }
         case 0xFF69:{ //BGPD
           if(ppu->modo_atual == screen_mode::DRAWING || !ppu->paleta_cgb){
             dma_hack = 0xFF;
@@ -240,7 +271,7 @@ struct Memorybus{
     }
 
     if(endereco >= VRAM_INICIO && endereco < VRAM_FINAL){
-      ppu->write_vram(endereco, valor, false);
+      ppu->write_vram(endereco, valor);
       return;
     }
     if(endereco >= OAM_INICIO && endereco < OAM_FIM && 

@@ -21,15 +21,16 @@ void roda_cpu(CPU *atual){
       atual->pausa_ciclos = 0;
       atual->pausa_offset = 0;
       atual->bus.ppu->speed_bug = 0;
-      atual->bus.memoria[0xFF4D] ^= 0x81;
+      atual->bus.memoria[0xFF4D] &= ~0x01;
+      atual->bus.memoria[0xFF4D] ^= 0x80;
     }
 
     return;
   }
 
   if(atual->bus.hdma.ativo && !atual->halted){
-    roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
     atual->bus.hdma.step(&atual->bus);
+    roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
     return;
   }
 
@@ -59,7 +60,7 @@ void CPU::check(void){
     if(Ie & If & 0x1F)
       this->halted = false;
 
-    if(this->ime){
+    if(this->ime && !this->bus.hdma.ativo){
       if(Ie & If & BIT_VBLANK){
         this->jump_vblank();
       }

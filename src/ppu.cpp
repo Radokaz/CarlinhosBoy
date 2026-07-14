@@ -84,8 +84,8 @@ uint8_t& PPU::read_vram(uint16_t endereco){
   return memoria[endereco];
 }
 
-void PPU::write_vram(uint16_t endereco, uint8_t valor, bool hdma){
-  if(this->modo_atual == screen_mode::DRAWING && !hdma) return;
+void PPU::write_vram(uint16_t endereco, uint8_t valor){
+  if(this->modo_atual == screen_mode::DRAWING) return;
   if(vram_bank1){
     uint8_t bank = memoria[0xFF4F] & 0x01;
     if(bank){
