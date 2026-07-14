@@ -8,7 +8,8 @@ void HDMA::init_transfer(uint8_t vdma){
   restante = tamanho;
   if(modo_hblank)
     hblank_count = 16;
-  ativo = true;
+  else
+    ativo = true;
 }
 
 void HDMA::step(Memorybus *bus){
