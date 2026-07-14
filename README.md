@@ -21,8 +21,9 @@ Por padrão:
 - C: Abre o menu de pausa durante a reprodução do jogo.
 - ESC: Mesma coisa que o comando acima, mas não pode ser remapeada no menu.
 - F: Ativa o Fast Forward.
+- F11: Alterna entre modo janela e fullscreen.
 
-Os comandos listados acima (com exceção do ESC) podem ser alterados tanto no menu principal quanto no menu de pausa.
+Os comandos listados acima (com exceção de ESC) podem ser alterados tanto no menu principal quanto no menu de pausa.
 As teclas '1', '2', '3' e '4' desligam/ativam os respectivos canais de áudio e não devem ser mapeadas, pois são comandos de debugging.
 
 ## Modo CBG

@@ -31,6 +31,8 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
     is_120 ^= 1;
     SetTargetFPS(static_cast<int>(is_120)*60 + 60);
   }
+  if(apertado(map[11]))
+    ToggleFullscreen();
   
   if(apertado(KEY_ONE)){
     canais_ativos ^= APU_CANAL1;

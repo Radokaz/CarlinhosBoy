@@ -14,12 +14,12 @@ inline std::filesystem::path getExeDir() {
   return std::filesystem::path(GetApplicationDirectory());
 }
 
-static constexpr char gb_botoes[11][15] = {
-    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO"
+static constexpr char gb_botoes[12][15] = {
+    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO", "FULLSCREEN"
 };
 
 struct GB_State{
-  std::array<KeyboardKey, 11> controles;
+  std::array<KeyboardKey, 12> controles;
   std::filesystem::path main_dir;
   std::string rom_path;
   std::string saves_path;
@@ -105,7 +105,7 @@ struct GB_State{
     if(!control){
       control.close();
       std::ofstream controle_novo(control_path.string().c_str());
-      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F};
+      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F, KEY_F11};
       
       for(size_t i {}; i < std::size(gb_botoes); ++i){
         controle_novo << gb_botoes[i] << ": " << std::to_underlying<KeyboardKey>(controles[i]) << "\n";
@@ -202,6 +202,7 @@ void carrega_rom(GB_State *estado);
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista);
 void display_controles(GB_State *estado);
 void init_gui(void);
+const char *getDisplayName(KeyboardKey key);
 
 }
 
