@@ -91,7 +91,6 @@ struct CPU{
   uint16_t sp {0xFFFE}; 
   uint16_t last_instruct {};
   int16_t pausa_ciclos {};
-  uint8_t irq_latch {};
   uint8_t ime_count {};
   uint8_t ciclos_esperados {};
   bool skipa_fetch {false};
@@ -116,7 +115,6 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
-  void attend_irq(void);
   void jump_vblank(void);
   void jump_serial(void);
   void jump_timer(void);
