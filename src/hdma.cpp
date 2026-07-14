@@ -6,6 +6,9 @@ void HDMA::init_transfer(uint8_t vdma){
   uint16_t tamanho = ((vdma & 0x7F) + 1)*0x10;
   modo_hblank = (vdma & 0x80) != 0;
   restante = tamanho;
+  if(origem >= 0xE000)
+    origem = 0xA000 + (origem & 0x1FFF);
+
   if(modo_hblank)
     hblank_count = 16;
   else
@@ -22,7 +25,7 @@ void HDMA::step(Memorybus *bus){
   if(!modo_hblank){
     for(size_t i {}; i < offset; ++i){
       uint8_t valor = bus->read_byte(origem);
-      bus->ppu->write_vram(0x8000 + destino, valor, true);
+      bus->ppu->write_vram(0x8000 + destino, valor);
       ++destino;
       ++origem;
       --restante;
@@ -44,7 +47,7 @@ void HDMA::step(Memorybus *bus){
   else{
     for(size_t i {}; i < offset; ++i){
       uint8_t valor = bus->read_byte(origem);
-      bus->ppu->write_vram(0x8000 + destino, valor, true);
+      bus->ppu->write_vram(0x8000 + destino, valor);
       ++destino;
       ++origem;
       --restante;
