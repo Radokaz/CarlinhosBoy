@@ -4,18 +4,54 @@
 
 namespace GB{
 
-void display_controles(GB_State *estado){
-  ClearBackground(BLACK);
+const char *getDisplayName(KeyboardKey key){
+  const char *tecla = GetKeyName(key);
+  if(tecla)
+    return tecla;
 
+  switch(key){
+    case KEY_UP: return "Up";
+    case KEY_DOWN: return "Down";
+    case KEY_LEFT:  return "Left";
+    case KEY_RIGHT: return "Right";
+    case KEY_ENTER: return "Enter";
+    case KEY_BACKSPACE: return "Backspace";
+    case KEY_ESCAPE: return "Esc";
+    case KEY_SPACE: return "Space";
+    case KEY_LEFT_SHIFT: return "LSHIFT";
+    case KEY_RIGHT_SHIFT: return "RSHIFT";
+    case KEY_TAB: return "Tab";
+    case KEY_F1: return "F1";
+    case KEY_F2: return "F2";
+    case KEY_F3: return "F3";
+    case KEY_F4: return "F4";
+    case KEY_F5: return "F5";
+    case KEY_F6: return "F6";
+    case KEY_F7: return "F7";
+    case KEY_F8: return "F8";
+    case KEY_F9: return "F9";
+    case KEY_F10: return "F10";
+    case KEY_F11: return "F11";
+    case KEY_F12: return "F12";
+    case KEY_LEFT_CONTROL: return "LCTRL";
+    case KEY_RIGHT_CONTROL: return "RCTRL";
+    case KEY_LEFT_ALT: return "ALT";
+    case KEY_RIGHT_ALT: return "ALTGR";
+    default: return "Undefined";
+  }
+}
+
+void display_controles(GB_State *estado){
   const char *botoes[std::size(gb_botoes)];
   for(size_t i {}; i < std::size(gb_botoes); ++i){
-    botoes[i] = GetKeyName(estado->controles[i]);
+    botoes[i] = getDisplayName(estado->controles[i]);
   }
-  bool frame_inicial = true;
+  bool frame_inicial {true};
 
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
+    bool tecla_apertada {false};
 
     DrawRectangle(1750, 400, 500, 900, BLACK);
     
@@ -46,15 +82,19 @@ void display_controles(GB_State *estado){
         }
         if(tecla != 0){
           estado->controles[i] = static_cast<KeyboardKey>(tecla);
-          botoes[i] = GetKeyName(estado->controles[i]);
+          botoes[i] = getDisplayName(estado->controles[i]);
+          tecla_apertada = true;
         }
       }
     }
 
-    for(size_t i {6}; i < 11; ++i){
+    for(size_t i {6}; i < 12; ++i){
       Rectangle r(1400, 400 + 200*(i - 6), 500, 100);
       if(i == 8){
         DrawText(gb_botoes[i], 1550, 350 + 200*(i - 6), 25, GOLD);
+      }
+      else if(i == 11){
+        DrawText(gb_botoes[i], 1575, 350 + 200*(i - 6), 25, GOLD);
       }
       else{
         DrawText(gb_botoes[i], 1600, 350 + 200*(i - 6), 25, GOLD);
@@ -71,16 +111,20 @@ void display_controles(GB_State *estado){
         }
         if(tecla != 0){
           estado->controles[i] = static_cast<KeyboardKey>(tecla);
-          botoes[i] = GetKeyName(estado->controles[i]);
+          botoes[i] = getDisplayName(estado->controles[i]);
+          tecla_apertada = true;
         }
       }
 
       frame_inicial = false;
     }
 
-    DrawText("Aperte ESC para voltar", 1500, 1500, 30, GOLD);
+    DrawText("Aperte ESC para voltar", 175, 400, 30, GOLD);
 
-    if(apertado(KEY_ESCAPE)){
+    if(apertado(estado->controles[11]) && !tecla_apertada)
+      ToggleFullscreen();
+
+    if(apertado(KEY_ESCAPE) && !tecla_apertada){
       estado->atualiza_controles();
       break;
     }
@@ -101,6 +145,9 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado){
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
+
+    if(apertado(estado->controles[11]))
+      ToggleFullscreen();
 
     if(apertado(KEY_ESCAPE) || apertado(estado->controles[9]))
       break;
@@ -240,6 +287,9 @@ void init_gui(void){
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(BLACK);
+
+    if(apertado(estado.controles[11]))
+      ToggleFullscreen();
 
     DrawText("CARLINHOS BOY", 650, 80, 150, GOLD);
     DrawLine(565, 250, 2000, 250, GRAY);

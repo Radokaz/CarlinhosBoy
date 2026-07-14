@@ -24,7 +24,6 @@ void degub_func(CPU *cpu){
 
 void inicia_emulador(std::string_view src, GB_State *estado){
   constexpr float escala {10.0f};
-  ClearBackground(BLACK);
 
   Image framebuffer = GenImageColor(160, 144, RAYWHITE);
   ImageFormat(&framebuffer, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
@@ -76,6 +75,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   SetTargetFPS(60);
 
   while(1){
+    ClearBackground(BLACK);
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
