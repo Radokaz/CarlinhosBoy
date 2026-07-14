@@ -303,13 +303,15 @@ struct Memorybus{
         return;
       }
       case 0xFF41:{ //stat
-        if(ppu->is_lcd_enabled()){
-          uint8_t stat_temp = memoria[endereco];
+        if(!ppu->paleta_cgb && ppu->is_lcd_enabled() && 
+            (ppu->modo_atual != screen_mode::DRAWING || (memoria[0xFF41] & LYC_Comparison_Signal))){
+          ppu->stat_bug = true;
+          ppu->stat_cache = valor;
           memoria[endereco] |= 0x78;
           ppu->check_stat_interruption();
-          memoria[endereco] = stat_temp;
         }
-        memoria[endereco] = (valor & 0x78) | (memoria[endereco] & 0x07);
+        else
+          memoria[endereco] = (valor & 0x78) | (memoria[endereco] & 0x07);
         return;
       }
       case 0xFF46:{ //dma

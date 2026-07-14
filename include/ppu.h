@@ -116,6 +116,8 @@ struct PPU{
   uint16_t draw_ciclos {};
   uint16_t hblank_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
+  bool stat_bug {};
+  uint8_t stat_cache {};
   uint8_t sprites_count {};
   uint8_t sprites_lidos {};
   uint8_t modo_cpu {}; //0: DMG only, 1: DMG e CGB, 2: CGB only
@@ -156,6 +158,7 @@ struct PPU{
   uint8_t& get_winx(void);
   uint8_t& get_winy(void);
   void set_mode(screen_mode modo);
+  void lyc_compare(void);
   bool check_stat(void);
   void check_stat_interruption(void);
   //ly é o registrador que marca a linha sendo scaneada no momento
