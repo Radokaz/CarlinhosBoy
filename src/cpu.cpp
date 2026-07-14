@@ -34,12 +34,11 @@ void roda_cpu(CPU *atual){
     return;
   }
 
-  atual->attend_irq();
+  atual->check();
   atual->step();
 }
 
 void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
-  atual->check();
   if(atual->bus.serial_count){
     --atual->bus.serial_count;
     if(!atual->bus.serial_count){
@@ -61,47 +60,23 @@ void CPU::check(void){
     if(Ie & If & 0x1F)
       this->halted = false;
 
-    if(Ie & If & BIT_VBLANK){
-      this->irq_latch = 1;
+    if(this->ime && !this->bus.hdma.ativo){
+      if(Ie & If & BIT_VBLANK){
+        this->jump_vblank();
+      }
+      else if(Ie & If & BIT_LCDSTAT){
+        this->jump_lcdstat();
+      }
+      else if(Ie & If & BIT_TIMER){
+        this->jump_timer();
+      }
+      else if(Ie & If & BIT_SERIAL){
+        this->jump_serial();
+      }
+      else if(Ie & If & BIT_JOYPAD){
+        this->jump_joypad();
+      }
     }
-    else if(Ie & If & BIT_LCDSTAT){
-      this->irq_latch = 2;
-    }
-    else if(Ie & If & BIT_TIMER){
-      this->irq_latch = 3;
-    }
-    else if(Ie & If & BIT_SERIAL){
-      this->irq_latch = 4;
-    }
-    else if(Ie & If & BIT_JOYPAD){
-      this->irq_latch = 5;
-    }
-}
-
-void CPU::attend_irq(void){
-  if(!this->irq_latch) return;
-  if(!this->ime || this->bus.hdma.ativo) return;
-
-  switch(irq_latch){
-    case 1:
-      this->jump_vblank();
-      break;
-    case 2:
-      this->jump_lcdstat();
-      break;
-    case 3:
-      this->jump_timer();
-      break;
-    case 4:
-      this->jump_serial();
-      break;
-    case 5:
-      this->jump_joypad();
-      break;
-    default: break;
-  }
-
-  this->irq_latch = 0;
 }
 
 bool CPU::check_joypad(void){
