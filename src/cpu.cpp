@@ -27,9 +27,9 @@ void roda_cpu(CPU *atual){
     return;
   }
 
-  if(atual->modo > 0 && atual->bus.hdma.ativo && !atual->halted){
-    atual->bus.hdma.step(&atual->bus);
+  if(atual->bus.hdma.ativo && !atual->halted){
     roda_perifericos(atual, atual->bus.timer, atual->bus.ppu);
+    atual->bus.hdma.step(&atual->bus);
     return;
   }
 
@@ -94,6 +94,7 @@ bool CPU::check_joypad(void){
 
 void CPU::step(){
   //debug_cycles = 0;
+  if(this->bus.hdma.ativo && !this->halted) return;
   if(this->halted){
     roda_perifericos(this, this->bus.timer, this->bus.ppu);
     return;
