@@ -36,7 +36,7 @@ void CH3::init_ch3(void){
 
   if(!is_channel3_on(memoria)){
     trigger_delay = 1;
-    if(modo_cgb)
+    if(modo_cgb && periodo_divider > 2)
       periodo_divider-=3;
   }
 
