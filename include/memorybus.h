@@ -302,6 +302,16 @@ struct Memorybus{
         }
         return;
       }
+      case 0xFF41:{ //stat
+        if(ppu->is_lcd_enabled()){
+          uint8_t stat_temp = memoria[endereco];
+          memoria[endereco] |= 0x78;
+          ppu->check_stat_interruption();
+          memoria[endereco] = stat_temp;
+        }
+        memoria[endereco] = (valor & 0x78) | (memoria[endereco] & 0x07);
+        return;
+      }
       case 0xFF46:{ //dma
         dma.start(valor);
         return;

@@ -53,8 +53,12 @@ bool PPU::check_stat(void){
     uint8_t ly = memoria[0xFF44];
     uint8_t lyc = memoria[0xFF45];
     uint8_t& stat = memoria[0xFF41];
+    if(ly == lyc)
+      stat |= LYC_Comparison_Signal;
+    else
+      stat &= ~LYC_Comparison_Signal;
   
-    return (((ly == lyc) && (stat & LYC_ENABLE)) ||
+    return (((stat & LYC_Comparison_Signal) && (stat & LYC_ENABLE)) ||
     ((this->modo_atual == screen_mode::HBLANK) && (stat & HBLANK_ENABLE )) ||
     ((this->modo_atual == screen_mode::SOAMRAM) && (stat & OAM_ENABLE)) ||
     ((this->modo_atual == screen_mode::VBLANK) && ((stat & VBLANK_ENABLE) || (stat & OAM_ENABLE))));
