@@ -115,12 +115,8 @@ struct CPU{
   void call(uint16_t endereco);
   void ret(void);
 
-  void jump_vblank(void);
-  void jump_serial(void);
-  void jump_timer(void);
-  void jump_lcdstat(void);
-  void jump_joypad(void);
-
+  void jump_interruption(void);
+  
   void incrementa_pc(void);
   uint8_t& get_ie(void) { return bus.memoria[0xFFFF]; }
   uint8_t& get_if(void) { return bus.memoria[0xFF0F]; }
