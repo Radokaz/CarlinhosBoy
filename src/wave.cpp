@@ -66,7 +66,11 @@ void CH3::sweep_length(void){
 }
 
 void CH3::incrementa_divider(void){
-  if(!is_channel3_on(memoria) || !dac) return;
+  if(!is_channel3_on(memoria) || !dac){
+    ch3_prev = 0;
+    return;
+  }
+
   ++periodo_divider;
   if(periodo_divider > 2047){
 
@@ -96,16 +100,23 @@ void CH3::incrementa_divider(void){
     if(delay_hack){
       --delay_hack;
     }
+
+    this->amplifier();
   }
 }
 
 uint8_t CH3::get_sample(void){
-  if(!is_channel3_on(memoria) || !dac) return 67;
   this->seta_output(); 
   if(!output_level) return 0;
 
   uint8_t bit = output_level - 1;
   return (last_sample >> bit);
+}
+
+void CH3::amplifier(void){
+  uint8_t sample = this->get_sample();
+  mixer(sample, ch3_prev, is_ch3_left(memoria) && (APU::canais_ativos & APU_CANAL3),
+      is_ch3_right(memoria) && (APU::canais_ativos & APU_CANAL3));
 }
 
 void CH3::clear(void){
