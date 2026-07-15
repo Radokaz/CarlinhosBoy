@@ -78,10 +78,7 @@ void CH4::incrementa_clock(void){
 }
 
 void CH4::sweep_envelope(void){
-  if(!is_channel4_on(memoria) || !dac){
-    ch4_prev = 0;
-    return;
-  }
+  if(!is_channel4_on(memoria) || !dac) return;
 
   if(envelope_count){
     --envelope_count;
@@ -122,6 +119,7 @@ void CH4::clear(void){
   envelope_pace = 0;
   direcao_envelope = 0;
   envelope_count = 0;
+  ch4_prev = 0;
 
   memoria[0xFF21] = 0;
   memoria[0xFF22] = 0;
