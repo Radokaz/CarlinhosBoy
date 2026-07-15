@@ -87,8 +87,9 @@ struct CH1{
     uint8_t periodo_count {};
 
     bool modo_cgb {false};
+    uint8_t ch1_prev {};
 
-    CH1(uint8_t *mem): memoria{mem} {};
+    CH1(uint8_t *mem): memoria{mem} {}
 
     bool is_length_enabled();
     void init_ch1(void);
@@ -99,14 +100,13 @@ struct CH1{
     void incrementa_divider(void);
     void sweep_length(void);
     uint8_t get_sample(void);
+    void amplifier(void);
     void clear(void);
 };
 
 struct CH2{
 
     uint8_t *memoria;
-    
-    bool dac {false};
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
@@ -121,9 +121,11 @@ struct CH2{
     
     uint8_t envelope_count {};
 
+    bool dac {false};
     bool modo_cgb {false};
+    uint8_t ch2_prev {};
 
-    CH2(uint8_t *mem): memoria{mem} {};
+    CH2(uint8_t *mem): memoria{mem} {}
 
     bool is_length_enabled(void);
     void init_ch2(void);
@@ -133,14 +135,13 @@ struct CH2{
     void incrementa_divider(void);
     void sweep_length(void);
     uint8_t get_sample(void);
+    void amplifier(void);
     void clear(void);
 };
 
 struct CH3{
 
   uint8_t *memoria;
-
-  bool dac {false};
 
   uint16_t periodo_divider {};
   uint16_t periodo_shadow {};
@@ -153,7 +154,9 @@ struct CH3{
   uint8_t trigger_delay {};
   uint8_t delay_hack {};
 
+  bool dac {false};
   bool modo_cgb {false};
+  uint8_t ch3_prev {};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -165,14 +168,13 @@ struct CH3{
   void incrementa_divider(void);
   void read_waveram(void);
   uint8_t get_sample(void);
+  void amplifier(void);
   void clear(void);
 };
 
 struct CH4{
 
   uint8_t *memoria;
-
-  bool dac {false};
 
   uint32_t period {8};
   uint32_t clock_timer {};
@@ -190,7 +192,9 @@ struct CH4{
   uint8_t direcao_envelope {};
   uint8_t envelope_count {};
 
+  bool dac {false};
   bool modo_cgb {false};
+  uint8_t ch4_prev {};
 
   CH4(uint8_t *mem): memoria{mem} {}
 
@@ -204,11 +208,18 @@ struct CH4{
   void incrementa_clock(void);
   void sweep_envelope(void);
   uint8_t get_sample(void);
+  void amplifier(void);
   void clear(void);
 };
 
 struct APU{
   
+  inline static uint8_t canais_ativos {0x0F}; //debug apenas
+  inline static float sample_esq {};
+  inline static float sample_dir {};
+  inline static uint16_t volume_dir {};
+  inline static uint16_t volume_esq {};
+
   uint8_t *memoria {};
 
   CH1 ch1;
@@ -220,21 +231,10 @@ struct APU{
   uint32_t sample_accumulator {};
   float capacitor_esq {};
   float capacitor_dir {};
-  float sample_esq {};
-  float sample_dir {};
-
-  uint16_t volume_dir {};
-  uint16_t volume_esq {};
-
+  
   uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
   uint8_t div_prev {};
   uint8_t apu_hack {};
-  uint8_t canais_ativos {0x0F};
-
-  uint8_t ch1_prev {};
-  uint8_t ch2_prev {};
-  uint8_t ch3_prev {};
-  uint8_t ch4_prev {};
 
   APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {}
 
@@ -246,7 +246,6 @@ struct APU{
   uint8_t& read(uint16_t endereco);
   void write(uint16_t endereco, uint8_t valor);
   
-  void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
   void amplifier(void);
   void output(void);
 
@@ -254,8 +253,9 @@ struct APU{
   void step(void);
 };
 
+void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
 void audio_callback(void* buffer, unsigned int frames);
-void limpa_samples(void);
+void limpa_samples(APU *apu);
 
 }
 

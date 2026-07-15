@@ -270,10 +270,11 @@ void audio_callback(void* buffer, unsigned int frames){
     }
 }
 
-void limpa_samples(void){
+void limpa_samples(APU *apu){
   ring.samples.fill(0);
   ring.write_pos = 0;
   ring.read_pos = 0;
+  apu->limpa_registradores();
 }
 
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
@@ -283,11 +284,13 @@ void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   capacitor_dir = 0.0;
   sample_esq = 0;
   sample_dir = 0;
+  volume_esq = 0;
+  volume_dir = 0;
 
-  ch1_prev = 67;
-  ch2_prev = 67;
-  ch3_prev = 67;
-  ch4_prev = 67;
+  ch1.ch1_prev = 0;
+  ch2.ch2_prev = 0;
+  ch3.ch3_prev = 0;
+  ch4.ch4_prev = 0;
   
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
@@ -343,32 +346,18 @@ void APU::frame_sequencer(void){
   
 }
 
-//67: som mudo 
-void APU::mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir){
+void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir){
   if(atual != ultimo){
-    float sample = (atual == 67) ? 0.0f : (static_cast<float>(atual) - 7.5f);
-    float prev = (ultimo == 67) ? 0.0f : (static_cast<float>(ultimo) - 7.5f);
+    float sample = (static_cast<float>(atual) - 7.5f);
+    float prev = (static_cast<float>(ultimo) - 7.5f);
     float delta = sample - prev;
     if(esq) 
-      sample_esq+=(delta*volume_esq);
+      APU::sample_esq+=(delta*APU::volume_esq);
     if(dir)
-      sample_dir+=(delta*volume_dir);
+      APU::sample_dir+=(delta*APU::volume_dir);
 
     ultimo = atual;
   }
-}
-
-void APU::amplifier(void){
-
-  this->mixer(ch1.get_sample(), ch1_prev, is_ch1_left(memoria) && (canais_ativos & APU_CANAL1),
-      is_ch1_right(memoria) && (canais_ativos & APU_CANAL1));
-  this->mixer(ch2.get_sample(), ch2_prev, is_ch2_left(memoria) && (canais_ativos & APU_CANAL2),
-      is_ch2_right(memoria) && (canais_ativos & APU_CANAL2));
-  this->mixer(ch3.get_sample(), ch3_prev, is_ch3_left(memoria) && (canais_ativos & APU_CANAL3),
-      is_ch3_right(memoria) && (canais_ativos & APU_CANAL3));
-  this->mixer(ch4.get_sample(), ch4_prev, is_ch4_left(memoria) && (canais_ativos & APU_CANAL4),
-      is_ch4_right(memoria) && (canais_ativos & APU_CANAL4));
-
 }
 
 void APU::output(void){
@@ -405,7 +394,6 @@ void APU::step(void){
     }
     ch4.sweep_clock();
 
-    this->amplifier();
     sample_accumulator+=44100;
     if(sample_accumulator >= FREQUENCIA_OSCILADOR){
       sample_accumulator-=FREQUENCIA_OSCILADOR;

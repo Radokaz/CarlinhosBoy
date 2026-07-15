@@ -79,7 +79,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     frame_init = GetTime();
 
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd, apu.canais_ativos, pausado, is_120);
+    le_input(pad, ppu.paleta_lcd, APU::canais_ativos, pausado, is_120);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
@@ -118,7 +118,8 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     cpu.bus.mbc->save();
   }
   
-  limpa_samples();
+  limpa_samples(&apu);
+  APU::canais_ativos = 0x0F;
   SetTargetFPS(60);
   ShowCursor();
   UnloadAudioStream(stream);

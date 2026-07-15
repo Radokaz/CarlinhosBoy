@@ -100,11 +100,16 @@ void CH1::sweep_envelope(void){
 }
 
 void CH1::incrementa_divider(void){
-    if(!is_channel1_on(memoria) || !dac) return;
+    if(!is_channel1_on(memoria) || !dac){
+      ch1_prev = 0;
+      return;
+    }
+
     ++periodo_divider;
     if(periodo_divider > 2047){
       periodo_divider = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
       duty_step = (duty_step + 1) % 8;
+      this->amplifier();
     }
 }
 
@@ -119,9 +124,14 @@ void CH1::sweep_length(void){
 }
 
 uint8_t CH1::get_sample(void){
-  if(!is_channel1_on(memoria) || !dac) return 67;
     uint8_t duty_cycle = ((memoria[0xFF11] & 0xC0) >> 6);
     return (tabela_onda[duty_cycle][duty_step]) ? envelope : 0;
+}
+
+void CH1::amplifier(void){
+  uint8_t sample = this->get_sample();
+  mixer(sample, ch1_prev, is_ch1_left(memoria) && (APU::canais_ativos & APU_CANAL1),
+      is_ch1_right(memoria) && (APU::canais_ativos & APU_CANAL1));
 }
 
 void CH1::clear(void){
@@ -190,12 +200,17 @@ void CH2::sweep_envelope(void){
 }
 
 void CH2::incrementa_divider(void){
-    if(!is_channel2_on(memoria) || !dac) return;
+    if(!is_channel2_on(memoria) || !dac){
+      ch2_prev = 0;
+      return;
+    }
+
     ++periodo_divider;
     if(periodo_divider > 2047){
       periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
       periodo_divider = periodo_shadow;
       duty_step = (duty_step + 1) % 8;
+      this->amplifier();
     }
 }
 
@@ -210,9 +225,14 @@ void CH2::sweep_length(void){
 }
 
 uint8_t CH2::get_sample(void){
-    if(!is_channel2_on(memoria) || !dac) return 67;
     uint8_t duty_cycle = ((memoria[0xFF16] & 0xC0) >> 6);
     return (tabela_onda[duty_cycle][duty_step]) ? envelope : 0;
+}
+
+void CH2::amplifier(void){
+  uint8_t sample = this->get_sample();
+  mixer(sample, ch2_prev, is_ch2_left(memoria) && (APU::canais_ativos & APU_CANAL2),
+      is_ch2_right(memoria) && (APU::canais_ativos & APU_CANAL2));
 }
 
 void CH2::clear(void){
