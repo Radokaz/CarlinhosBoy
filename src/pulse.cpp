@@ -100,10 +100,7 @@ void CH1::sweep_envelope(void){
 }
 
 void CH1::incrementa_divider(void){
-    if(!is_channel1_on(memoria) || !dac){
-      ch1_prev = 0;
-      return;
-    }
+    if(!is_channel1_on(memoria) || !dac) return;
 
     ++periodo_divider;
     if(periodo_divider > 2047){
@@ -143,7 +140,8 @@ void CH1::clear(void){
   ind_step = 0;
   direcao_periodo = 0;
 
-  duty_step = 0;;
+  duty_step = 0;
+  ch1_prev = 0;
 
   envelope = 0;
   initial_volume = 0;
@@ -200,10 +198,7 @@ void CH2::sweep_envelope(void){
 }
 
 void CH2::incrementa_divider(void){
-    if(!is_channel2_on(memoria) || !dac){
-      ch2_prev = 0;
-      return;
-    }
+    if(!is_channel2_on(memoria) || !dac) return;
 
     ++periodo_divider;
     if(periodo_divider > 2047){
@@ -241,6 +236,7 @@ void CH2::clear(void){
   dac = false;
 
   duty_step = 0;
+  ch2_prev = 0;
 
   envelope = 0;
   initial_volume = 0;

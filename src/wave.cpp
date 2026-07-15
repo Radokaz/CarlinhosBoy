@@ -66,10 +66,7 @@ void CH3::sweep_length(void){
 }
 
 void CH3::incrementa_divider(void){
-  if(!is_channel3_on(memoria) || !dac){
-    ch3_prev = 0;
-    return;
-  }
+  if(!is_channel3_on(memoria) || !dac) return;
 
   ++periodo_divider;
   if(periodo_divider > 2047){
@@ -127,6 +124,7 @@ void CH3::clear(void){
   periodo_divider = 0;
   periodo_shadow = 0;
   output_level = 0;
+  ch3_prev = 0;
   memoria[0xFF1A] = 0;
   memoria[0xFF1C] = 0;
   memoria[0xFF1D] = 0;
