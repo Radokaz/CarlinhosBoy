@@ -69,22 +69,76 @@ void CPU::check(void){
       return;
 
     if(this->ime && !this->bus.hdma.ativo){
-      if(Ie & If & BIT_VBLANK){
-        this->jump_vblank();
-      }
-      else if(Ie & If & BIT_LCDSTAT){
-        this->jump_lcdstat();
-      }
-      else if(Ie & If & BIT_TIMER){
-        this->jump_timer();
-      }
-      else if(Ie & If & BIT_SERIAL){
-        this->jump_serial();
-      }
-      else if(Ie & If & BIT_JOYPAD){
-        this->jump_joypad();
-      }
+      this->jump_interruption();
     }
+}
+
+void CPU::jump_interruption(void){
+  this->ime = false;
+  roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  roda_perifericos(this, this->bus.timer, this->bus.ppu);
+  uint16_t end_inicial {0x70};
+  uint16_t end_final {0x70};
+  uint8_t bit {};
+  uint8_t Ie = this->get_ie();
+  uint8_t If = this->get_if();
+
+  if(Ie & If & BIT_VBLANK){
+    this->get_if() &= ~BIT_VBLANK;
+    end_inicial = 0x40;
+  }
+  else if(Ie & If & BIT_LCDSTAT){
+    this->get_if() &= ~BIT_LCDSTAT;
+    end_inicial = 0x48;
+  }
+  else if(Ie & If & BIT_TIMER){
+    this->get_if() &= ~BIT_TIMER;
+    end_inicial = 0x50;
+  }
+  else if(Ie & If & BIT_SERIAL){
+    this->get_if() &= ~BIT_SERIAL;
+    end_inicial = 0x58;
+  }
+  else if(Ie & If & BIT_JOYPAD){
+    this->get_if() &= ~BIT_JOYPAD;
+    end_inicial = 0x60;
+  }
+
+  this->push(this->pc);
+
+  If = this->get_if();
+  Ie = this->get_ie();
+
+  if(Ie & If & BIT_VBLANK){
+    bit = BIT_VBLANK;
+    end_final = 0x40;
+  }
+  else if(Ie & If & BIT_LCDSTAT){
+    bit = BIT_LCDSTAT;
+    end_final = 0x48;
+  }
+  else if(Ie & If & BIT_TIMER){
+    bit = BIT_TIMER;
+    end_final = 0x50;
+  }
+  else if(Ie & If & BIT_SERIAL){
+    bit = BIT_SERIAL;
+    end_final = 0x58;
+  }
+  else if(Ie & If & BIT_JOYPAD){
+    bit = BIT_JOYPAD;
+    end_final = 0x60;
+  }
+
+  if(end_inicial < end_final){
+    this->pc = end_inicial;
+  }
+  else{
+    this->pc = end_final;
+    this->get_if() &= ~bit;
+  }
+
+  roda_perifericos(this, this->bus.timer, this->bus.ppu);
 }
 
 bool CPU::check_joypad(void){
@@ -149,61 +203,6 @@ void CPU::step(){
   }
 
   this->skipa_fetch = false;
-}
-
-void CPU::jump_vblank(void){
-  this->ime = false;
-  this->get_if() &= ~BIT_VBLANK;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  //std::cout << "Interrupção: VBLANK, PC: " << this->pc << "\n"; 
-  this->push(this->pc);
-  this->pc = 0x0040;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-}
-
-void CPU::jump_serial(void){
-  this->ime = false;
-  this->get_if() &= ~BIT_SERIAL;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  //std::cout << "Interrupção: SERIAL, PC: " << this->pc << "\n"; 
-  this->push(this->pc);
-  this->pc = 0x0058;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-}
-
-void CPU::jump_timer(void){
-  this->ime = false;
-  this->get_if() &= ~BIT_TIMER;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  //std::cout << "Interrupção: TIMER, PC: " << this->pc << "\n"; 
-  this->push(this->pc);
-  this->pc = 0x0050;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-}
-
-void CPU::jump_lcdstat(void){
-  this->ime = false;
-  this->get_if() &= ~BIT_LCDSTAT;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  //std::cout << "Interrupção: STAT, PC: " << this->pc << "\n"; 
-  this->push(this->pc);
-  this->pc = 0x0048;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-}
-
-void CPU::jump_joypad(void){
-  this->ime = false;
-  this->get_if() &= ~BIT_JOYPAD;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
-  //std::cout << "Interrupção: JOYPAD, PC: " << this->pc << "\n"; 
-  this->push(this->pc);
-  this->pc = 0x0060;
-  roda_perifericos(this, this->bus.timer, this->bus.ppu);
 }
 
 uint8_t& CPU::get_target_ref(reg_target alvo){
