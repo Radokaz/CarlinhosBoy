@@ -110,7 +110,7 @@ uint8_t& MBC2::read(uint16_t endereco){
   if(address >= ram.size())
         address &= (ram.size() - 1);
 
-  ram_hack = (ram_ativa) ? (ram[address] | 0xF0) : 0xFF;
+  ram_hack = (ram_ativa) ? ((ram[address] & 0x0F) | 0x10) : 0xFF;
   return ram_hack;
 }
 

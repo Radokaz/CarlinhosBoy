@@ -55,7 +55,7 @@ struct MBC1 : public MBC{
     saves = sav;
     rom.resize(rom_tam);
     if(ram_tam)
-      ram.resize(ram_tam);
+      ram.resize(ram_tam, 0xFF);
     total_banks = rom.size()/(16*1024);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     std::cout << "MBC1 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
@@ -82,7 +82,7 @@ struct MBC2: public MBC{
     fonte = rom_src;
     saves = sav;
     rom.resize(rom_tam);
-    ram.resize(512);
+    ram.resize(512, 0x0F);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     total_banks = rom.size()/(16*1024);
     std::cout << "MBC2 inicializado. RAM alocada: 512 bytes\n";
@@ -130,7 +130,7 @@ struct MBC3 : public MBC{
     arquivo.seekg(0);
     rom.resize(rom_tam);
     if(ram_tam)
-      ram.resize(ram_tam);
+      ram.resize(ram_tam, 0xFF);
     total_banks = rom.size()/(16*1024);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     std::cout << "MBC3 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
@@ -162,7 +162,7 @@ struct MBC5 : public MBC{
     saves = sav;
     rom.resize(rom_tam);
     if(ram_tam)
-      ram.resize(ram_tam);
+      ram.resize(ram_tam, 0xFF);
     total_banks = rom.size()/(16*1024);
     arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
     std::cout << "MBC5 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
