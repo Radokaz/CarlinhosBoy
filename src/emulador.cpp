@@ -114,6 +114,10 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     DrawTextureEx(texture, Vector2{posX, posY}, 0, escala, WHITE);
     EndDrawing();
 
+    if(cpu.bus.mbc && cpu.bus.mbc->jogo_salvo){
+      checa_save(cpu.bus.mbc.get());
+    }
+
     frame_fim = GetTime() - frame_init;
     double tempo_atual = (is_120) ? tempo_frame120 : tempo_frame60;
 

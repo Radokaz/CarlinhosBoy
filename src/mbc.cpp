@@ -84,6 +84,10 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
       if(address >= ram.size())
         address &= (ram.size() - 1);
 
+      if(tem_save && !jogo_salvo){
+        ultimo_save = std::chrono::system_clock::now();
+        jogo_salvo = true;
+      }
       ram[address] = valor;
     }
   }
@@ -130,6 +134,10 @@ void MBC2::write(uint16_t endereco, uint8_t valor){
     if(address >= ram.size())
         address &= (ram.size() - 1);
 
+    if(tem_save && !jogo_salvo){
+      ultimo_save = std::chrono::system_clock::now();
+      jogo_salvo = true;
+    }
     ram[address] = valor & 0x0F;
   }
 }
@@ -214,6 +222,11 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
       uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
       if(address >= ram.size())
         address &= (ram.size() - 1);
+
+      if(tem_save && !jogo_salvo){
+        ultimo_save = std::chrono::system_clock::now();
+        jogo_salvo = true;
+      }
 
       ram[address] = valor;
 
@@ -336,10 +349,25 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
       if(address >= ram.size())
         address &= (ram.size() - 1);
 
+      if(tem_save && !jogo_salvo){
+        ultimo_save = std::chrono::system_clock::now();
+        jogo_salvo = true;
+      }
+
       ram[address] = valor;
 
       return;
     }
+  }
+}
+
+void checa_save(MBC *mbc){
+  auto clock_atual = std::chrono::system_clock::now();
+  auto diff = std::chrono::duration_cast<std::chrono::seconds>(clock_atual - mbc->ultimo_save).count();
+
+  if(diff >= 5){
+    mbc->jogo_salvo = false;
+    mbc->save();
   }
 }
 
