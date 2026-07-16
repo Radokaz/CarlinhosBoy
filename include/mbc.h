@@ -16,7 +16,11 @@ struct MBC{
   std::vector<uint8_t> ram;
   std::string fonte;
   std::string saves;
+  std::chrono::system_clock::time_point ultimo_save {};
   bool tem_save {false};
+  bool jogo_salvo {false};
+  
+  friend void checa_save(MBC *mbc);
 
   uint8_t *pega_rom(void){
     return rom.data();
@@ -168,6 +172,8 @@ struct MBC5 : public MBC{
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;
 };
+
+void checa_save(MBC *mbc);
 
 }
 
