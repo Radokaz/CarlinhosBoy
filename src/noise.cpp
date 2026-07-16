@@ -55,7 +55,6 @@ void CH4::sweep_clock(void){
     if(!clock_timer){
       this->seta_clock();
       this->incrementa_clock();
-      this->amplifier();
     }
   }
 }
@@ -75,6 +74,7 @@ void CH4::incrementa_clock(void){
 
   ultimo_bit = (lfsr & 0x01);
   lfsr = lfsr >> 1;
+  this->amplifier();
 }
 
 void CH4::sweep_envelope(void){

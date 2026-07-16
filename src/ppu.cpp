@@ -139,6 +139,7 @@ void PPU::step(void){
     this->set_mode(screen_mode::SOAMRAM);
   }
   
+  this->lyc_compare(); //tecnicamente errado, mas necessário pro road rash
   size_t limiar {4};
   if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
     limiar = 2;
@@ -175,13 +176,11 @@ void PPU::step(void){
           ++draw_ciclos;
           if(this->fetcher.finalizado){
             ciclos = 0;
-            //std::cout << "DRAWING ciclos: " << static_cast<int>(draw_ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
             hblank_ciclos = 456 - this->draw_ciclos - 80;
             if(lcd_start){
               hblank_ciclos -= 4;
               lcd_start = false;
             }
-            //std::cout << "HBLANK ciclos: " << static_cast<int>(hblank_ciclos) << ", LY: " << static_cast<int>(bus->memoria[0xFF44]) << "\n";
             if(fetcher.window_ativa)
               ++fetcher.win_line;
 
@@ -217,8 +216,9 @@ void PPU::step(void){
         }
         if(this->ciclos >= 456){
           ciclos = 0;
-          if(memoria[0xFF44] != 0)
+          if(memoria[0xFF44] != 0){
             this->avanca_ly();
+          }
           else{
             fetcher.win_line = 0;
             this->frame_pronto = true;
