@@ -15,7 +15,7 @@ const char *getDisplayName(KeyboardKey key){
     case KEY_LEFT:  return "Left";
     case KEY_RIGHT: return "Right";
     case KEY_ENTER: return "Enter";
-    case KEY_BACKSPACE: return "Backspace";
+    case KEY_BACKSPACE: return "Backsp.";
     case KEY_ESCAPE: return "Esc";
     case KEY_SPACE: return "Space";
     case KEY_LEFT_SHIFT: return "LSHIFT";
@@ -37,46 +37,88 @@ const char *getDisplayName(KeyboardKey key){
     case KEY_RIGHT_CONTROL: return "RCTRL";
     case KEY_LEFT_ALT: return "ALT";
     case KEY_RIGHT_ALT: return "ALTGR";
-    default: return "Undefined";
+    default: return "Undef.";
   }
+}
+
+Rectangle get_ret(float x, float y, float w, float h){
+  constexpr float width = 1920.0f;
+  constexpr float height = 1080.0f;
+  float screen_w = GetScreenWidth()/width;
+  float screen_h = GetScreenHeight()/height;
+  float scale = std::min(screen_w, screen_h);
+  return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
 
 void display_controles(GB_State *estado){
   const char *botoes[std::size(gb_botoes)];
+  std::string botoes_show[std::size(gb_botoes)];
+
   for(size_t i {}; i < std::size(gb_botoes); ++i){
     botoes[i] = getDisplayName(estado->controles[i]);
+    botoes_show[i] = (std::string(gb_botoes[i]) + " : ");
   }
-  bool frame_inicial {true};
+
+  constexpr float width = 1920.0f;
+  constexpr float height = 1080.0f;
+  float screen_w = GetScreenWidth()/width;
+  float screen_h = GetScreenHeight()/height;
+  float scale = std::min(screen_w, screen_h);
+  GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+  GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
 
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
     bool tecla_apertada {false};
-
-    DrawRectangle(1750, 400, 500, 900, BLACK);
     
-    DrawText("CARLINHOS BOY", 650, 80, 150, GOLD);
-    DrawLine(565, 250, 2000, 250, GRAY);
+    if(IsWindowResized()){
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    }
+    
+    DrawText("CONTROLES", scale*500.0f, scale*80.0f, scale*150.0f, GOLD);
+    DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
-    for(size_t i {}; i < 6; ++i){
-      Rectangle r(650, 400 + 200*i, 500, 100);
+    for(size_t i {}; i < 8; ++i){
+      Rectangle r = get_ret(400.0f, 290.0f + 75.0f*i, 100.0f, 50.0f);
 
-      if(i == 3 || i == 2 || i == 5){
-        DrawText(gb_botoes[i], 850, 350 + 200*i, 25, GOLD);
+      if(i == 2){
+        DrawText(botoes_show[i].c_str(), scale*297.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
+      }
+      else if(i == 3){
+        DrawText(botoes_show[i].c_str(), scale*286.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
       }
       else if(i == 4){
-        DrawText(gb_botoes[i], 875, 350 + 200*i, 25, GOLD);
+        DrawText(botoes_show[i].c_str(), scale*344.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
+      }
+      else if(i == 5 || i == 6){
+        DrawText(botoes_show[i].c_str(), scale*313.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
+      }
+      else if(i == 7){
+        DrawText(botoes_show[i].c_str(), scale*303.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
       }
       else{
-        DrawText(gb_botoes[i], 900, 350 + 200*i, 25, GOLD);
+        DrawText(botoes_show[i].c_str(), scale*361.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
       }
 
-      if(GuiButton(r, botoes[i]) && !frame_inicial){
+      if(GuiButton(r, botoes[i])){
         int tecla = 0;
         while(tecla == 0){
+          if(IsWindowResized()){
+            screen_w = GetScreenWidth()/width;
+            screen_h = GetScreenHeight()/height;
+            scale = std::min(screen_w, screen_h);
+            GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+            GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+          }
+
           BeginDrawing();
           ClearBackground(BLACK);
-          DrawText("Aperte alguma tecla...", 1150, 400, 30, GOLD);
+          DrawText("Aperte alguma tecla...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
           EndDrawing();
           tecla = GetKeyPressed();
         }
@@ -88,24 +130,32 @@ void display_controles(GB_State *estado){
       }
     }
 
-    for(size_t i {6}; i < 12; ++i){
-      Rectangle r(1400, 400 + 200*(i - 6), 500, 100);
-      if(i == 8){
-        DrawText(gb_botoes[i], 1550, 350 + 200*(i - 6), 25, GOLD);
+    for(size_t i {8}; i < 12; ++i){
+      Rectangle r = get_ret(860.0f, 290.0f + 75.0f*(i - 8), 100.0f, 50.0f);
+      if(i == 8 || i == 11){
+        DrawText(botoes_show[i].c_str(), scale*680.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
-      else if(i == 11){
-        DrawText(gb_botoes[i], 1575, 350 + 200*(i - 6), 25, GOLD);
+      else if(i == 9){
+        DrawText(botoes_show[i].c_str(), scale*763.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
       else{
-        DrawText(gb_botoes[i], 1600, 350 + 200*(i - 6), 25, GOLD);
+        DrawText(botoes_show[i].c_str(), scale*747.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
       
-      if(GuiButton(r, botoes[i]) && !frame_inicial){
+      if(GuiButton(r, botoes[i])){
         int tecla = 0;
         while(tecla == 0){
+          if(IsWindowResized()){
+            screen_w = GetScreenWidth()/width;
+            screen_h = GetScreenHeight()/height;
+            scale = std::min(screen_w, screen_h);
+            GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+            GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+          }
+
           BeginDrawing();
           ClearBackground(BLACK);
-          DrawText("Aperte alguma tecla...", 1150, 400, 30, GOLD);
+          DrawText("Aperte alguma tecla...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
           EndDrawing();
           tecla = GetKeyPressed();
         }
@@ -115,11 +165,9 @@ void display_controles(GB_State *estado){
           tecla_apertada = true;
         }
       }
-
-      frame_inicial = false;
     }
 
-    DrawText("Aperte ESC para voltar", 175, 400, 30, GOLD);
+    DrawText("Aperte ESC para voltar", scale*300.0f, scale*950.0f, scale*22, GOLD);
 
     if(apertado(estado->controles[11]) && !tecla_apertada)
       ToggleFullscreen();
@@ -133,7 +181,7 @@ void display_controles(GB_State *estado){
   }
 }
 
-bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado){
+bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido){
   if(!pausado) return false; 
 
   BeginDrawing();
@@ -142,9 +190,27 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado){
   
   const char opcoes[3][10] = {"Resumir", "Controles", "Sair"};
   uint8_t escolhas {};
+
+  constexpr float width = 1920.0f;
+  constexpr float height = 1080.0f;
+
+  float screen_w = GetScreenWidth()/width;
+  float screen_h = GetScreenHeight()/height;
+  float scale = std::min(screen_w, screen_h);
+  GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+  GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
+
+    if(IsWindowResized()){
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+    }
 
     if(apertado(estado->controles[11]))
       ToggleFullscreen();
@@ -152,22 +218,29 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado){
     if(apertado(KEY_ESCAPE) || apertado(estado->controles[9]))
       break;
 
-    DrawText("PAUSE", 1000, 80, 150, GOLD);
-    DrawLine(600, 250, 1850, 250, GRAY);
+    DrawText("PAUSE", scale*690.0f, scale*80.0f, scale*150.0f, GOLD);
+    DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
     for(size_t i {}; i < 3; ++i){
-      Rectangle r(1000, 400 + 150*i, 500, 100);
+      Rectangle r = get_ret(790.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
       if(GuiButton(r, opcoes[i]))
         escolhas |= opt_escolha(i);
     }
 
     if(escolhas & opt_escolha(0)){
       escolhas &= ~opt_escolha(0);
+      resumido = true;
       break;
     }
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
       display_controles(estado);
+
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
@@ -266,7 +339,10 @@ void toggle_paleta(GB_State *estado){
 
 void init_gui(void){
 
-  InitWindow(1920, 1080, "Carlinhos Boy");
+  constexpr float width = 1920.0f;
+  constexpr float height = 1080.0f;
+
+  InitWindow(width, height, "Carlinhos Boy");
   SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
   SetTargetFPS(60);
   
@@ -280,46 +356,74 @@ void init_gui(void){
   ListaArquivos lista(&estado, ".gb");
     
   int scroll_index {}, ativo {-1};
-  bool mostra_lista {true};
+  
+  float screen_w = GetScreenWidth()/width;
+  float screen_h = GetScreenHeight()/height;
+  float scale = std::min(screen_w, screen_h);
 
-  GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
-  GuiSetStyle(BUTTON, TEXT_SIZE, 24);
+  GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+  GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(BLACK);
+    
+    if(IsWindowResized()){
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+    }
 
     if(apertado(estado.controles[11]))
       ToggleFullscreen();
 
-    DrawText("CARLINHOS BOY", 650, 80, 150, GOLD);
-    DrawLine(565, 250, 2000, 250, GRAY);
+    DrawText("CARLINHOS BOY", scale*325.0f, scale*80.0f, scale*150.0f, GOLD);
+    DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
     for(size_t i {}; i < 5; ++i){
-      Rectangle r(1000, 400 + 150*i, 500, 100);
+      Rectangle r = get_ret(550.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
       if(GuiButton(r, opcoes[i].c_str()))
         escolhas |= opt_escolha(i);
     }
 
-    GuiListView({1750, 400, 500, 900}, lista.geral.c_str(), &scroll_index, &ativo);
-    DrawText("Modo CGB", 1750, 1400, 23, GOLD);
-    if(GuiButton(Rectangle{1900, 1380, 100, 50}, (estado.paleta_cgb) ? "ON" : "OFF")){
+    GuiListView(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), lista.geral.c_str(), &scroll_index, &ativo);
+    DrawText("Modo CGB: ", scale*1010.0f, scale*980.0f, scale*25.0f, GOLD);
+    if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado.paleta_cgb) ? "ON" : "OFF")){
       toggle_paleta(&estado);
     }
 
     if(ativo >= 0 && ativo < static_cast<int>(lista.arquivos.count)){
       inicia_emulador(lista.arquivos.paths[ativo], &estado);
       ativo = -1;
+
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
     
     if(escolhas & opt_escolha(0)){
-      mostra_lista = false;
       escolhas &= ~opt_escolha(0);
       carrega_rom(&estado);
-      mostra_lista = true;
+
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
       display_controles(&estado);
+
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);

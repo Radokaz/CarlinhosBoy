@@ -23,18 +23,17 @@ void degub_func(CPU *cpu){
 }
 
 void inicia_emulador(std::string_view src, GB_State *estado){
-  constexpr float escala {10.0f};
 
   Image framebuffer = GenImageColor(160, 144, RAYWHITE);
   ImageFormat(&framebuffer, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
   Texture2D texture = LoadTextureFromImage(framebuffer);
   UnloadImage(framebuffer);
   SetTextureFilter(texture, TEXTURE_FILTER_POINT);
-
-  constexpr float texture_w = 160*escala;
-  constexpr float texture_h = 144*escala;
-
-  float posX = (GetScreenWidth()  - texture_w)/2.0f;
+  
+  float escala = std::min(GetScreenWidth()/1920.0f, GetScreenHeight()/1080.0f)*7.0f;
+  float texture_w = 160*escala;
+  float texture_h = 144*escala;
+  float posX = (GetScreenWidth() - texture_w)/2.0f;
   float posY = (GetScreenHeight() - texture_h)/2.0f;
 
   InitAudioDevice();
@@ -71,13 +70,14 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   Vector2 mouse_atual{};
   double frame_init {}, frame_fim {};
   bool pausado {false};
-  bool is_120 = false;
+  bool resumido {false};
+  bool is_120 {false};
   SetTargetFPS(60);
 
   while(1){
     ClearBackground(BLACK);
+    
     frame_init = GetTime();
-
     mouse_atual = GetMousePosition();
     le_input(pad, ppu.paleta_lcd, APU::canais_ativos, pausado, is_120);
     
@@ -85,8 +85,17 @@ void inicia_emulador(std::string_view src, GB_State *estado){
       ShowCursor();
     }
     mouse_prev = mouse_atual;
-    if(pausa_jogo(&cpu, estado, pausado)){
+    if(pausa_jogo(&cpu, estado, pausado, resumido)){
       break;
+    }
+
+    if(IsWindowResized() || resumido){
+      resumido = false;
+      escala = std::min(GetScreenWidth()/1920.0f, GetScreenHeight()/1080.0f)*7.0f;
+      texture_w = 160*escala;
+      texture_h = 144*escala;
+      posX = (GetScreenWidth() - texture_w)/2.0f;
+      posY = (GetScreenHeight() - texture_h)/2.0f;
     }
 
     if(cpu.bus.tem_rtc){
@@ -102,7 +111,6 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     }
 
     BeginDrawing();
-    DrawRectangle(1725, 400, 525, 910, BLACK);
     DrawTextureEx(texture, Vector2{posX, posY}, 0, escala, WHITE);
     EndDrawing();
 

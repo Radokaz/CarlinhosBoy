@@ -196,13 +196,14 @@ struct ListaArquivos{
 };
 
 void debug_func(CPU *cpu);
-bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado);
+bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido);
 void inicia_emulador(std::string_view src, GB_State *estado);
 void carrega_rom(GB_State *estado);
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista);
 void display_controles(GB_State *estado);
 void init_gui(void);
 const char *getDisplayName(KeyboardKey key);
+Rectangle get_ret(float x, float y, float w, float h);
 
 }
 

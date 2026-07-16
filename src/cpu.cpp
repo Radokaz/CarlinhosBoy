@@ -54,7 +54,6 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
     ppu->stat_cache = 0;
     ppu->stat_bug = false;
   }
-  ppu->lyc_compare(); //tecnicamente errado, mas necessário pro road rash
   ppu->step();
   timer->apu->step();
   //++debug_cycles;
@@ -75,13 +74,14 @@ void CPU::check(void){
 
 void CPU::jump_interruption(void){
   this->ime = false;
+  uint8_t Ie = this->get_ie();
+  uint8_t If = this->get_if();
+
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   uint16_t end_inicial {0x70};
   uint16_t end_final {0x70};
   uint8_t bit {};
-  uint8_t Ie = this->get_ie();
-  uint8_t If = this->get_if();
 
   if(Ie & If & BIT_VBLANK){
     this->get_if() &= ~BIT_VBLANK;
