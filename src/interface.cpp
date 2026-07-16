@@ -169,8 +169,14 @@ void display_controles(GB_State *estado){
 
     DrawText("Aperte ESC para voltar", scale*300.0f, scale*950.0f, scale*22, GOLD);
 
-    if(apertado(estado->controles[11]) && !tecla_apertada)
+    if(apertado(estado->controles[11]) && !tecla_apertada){
       ToggleFullscreen();
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    }
 
     if(apertado(KEY_ESCAPE) && !tecla_apertada){
       estado->atualiza_controles();
@@ -212,8 +218,14 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido){
       GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
 
-    if(apertado(estado->controles[11]))
+    if(apertado(estado->controles[11])){
       ToggleFullscreen();
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    }
 
     if(apertado(KEY_ESCAPE) || apertado(estado->controles[9]))
       break;
@@ -376,8 +388,14 @@ void init_gui(void){
       GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     }
 
-    if(apertado(estado.controles[11]))
+    if(apertado(estado.controles[11])){
       ToggleFullscreen();
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    }
 
     DrawText("CARLINHOS BOY", scale*325.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);

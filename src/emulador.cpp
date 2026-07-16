@@ -71,6 +71,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   double frame_init {}, frame_fim {};
   bool pausado {false};
   bool resumido {false};
+  bool janela_alterada {false};
   bool is_120 {false};
   SetTargetFPS(60);
 
@@ -79,7 +80,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     
     frame_init = GetTime();
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd, APU::canais_ativos, pausado, is_120);
+    le_input(pad, ppu.paleta_lcd, APU::canais_ativos, pausado, is_120, janela_alterada);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
@@ -89,7 +90,8 @@ void inicia_emulador(std::string_view src, GB_State *estado){
       break;
     }
 
-    if(IsWindowResized() || resumido){
+    if(IsWindowResized() || resumido || janela_alterada){
+      janela_alterada = false;
       resumido = false;
       escala = std::min(GetScreenWidth()/1920.0f, GetScreenHeight()/1080.0f)*7.0f;
       texture_w = 160*escala;
