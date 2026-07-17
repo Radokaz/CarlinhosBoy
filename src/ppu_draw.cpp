@@ -286,7 +286,8 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att
     uint8_t bit = 7 - pixel_x;
     
     tile_pixel result = tile_pixel::INDEX_NULO;
-    switch((((byte2 >> bit) & 0x01) << 1) | ((byte1 >> bit) & 0x01)){
+    uint8_t index = (((byte2 >> bit) & 0x01) << 1) | ((byte1 >> bit) & 0x01);
+    switch(index){
       using enum tile_pixel;
 
       case 0x00:
