@@ -374,12 +374,12 @@ void APU::output(void){
   ring.push(static_cast<int16_t>(out_esq*32767.0f), static_cast<int16_t>(out_dir*32767.0f));
 }
 
-void APU::step(void){
+void APU::step(uint8_t modo_cpu){
   if(!is_audio_on(memoria)) return;
   
   this->atualiza_volume();
   size_t limiar {4};
-  if(ch1.modo_cgb && (memoria[0xFF4D] & 0x80))
+  if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
     limiar = 2;
 
   for(size_t i {}; i < limiar; ++i){

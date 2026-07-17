@@ -250,7 +250,7 @@ struct APU{
   void output(void);
 
   void frame_sequencer(void);
-  void step(void);
+  void step(uint8_t modo_cpu);
 };
 
 void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
