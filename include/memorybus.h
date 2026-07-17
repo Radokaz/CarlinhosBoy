@@ -314,6 +314,9 @@ struct Memorybus{
           memoria[endereco] = (valor & 0x78) | (memoria[endereco] & 0x07);
         return;
       }
+      case 0xFF44:{ //ly
+        return;
+      }
       case 0xFF46:{ //dma
         dma.start(valor);
         return;
