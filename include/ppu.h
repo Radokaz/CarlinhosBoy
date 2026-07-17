@@ -98,6 +98,10 @@ struct PPU_fetcher{
   void clear(void);
 
   void step(PPU *ppu);
+  void id_step(PPU *ppu);
+  void low_step(PPU *ppu);
+  void high_step(PPU *ppu);
+  void push_tile(PPU *ppu);
 };
 
 
@@ -140,7 +144,13 @@ struct PPU{
 
   uint8_t& read_vram(uint16_t endereco);
   void write_vram(uint16_t endereco, uint8_t valor);
+
   void step(void);
+  void soamram_step(void);
+  void mode3_step(void);
+  void hblank_step(void);
+  void vblank_step(void);
+
   void scan_oam(void);
   void verifica_penalidade(const Sprite& sprite);
   void checa_sprites(uint8_t x_atual);

@@ -240,7 +240,7 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att
 
      if(bg_cor != tile_pixel::INDEX_ZERO){
       if(!modo_cpu){
-        if(sprite.flags & (1 << 7)) continue; //prioridade do background
+        if(sprite.flags & (1 << 7)) continue; //prioridade do background para o dmg
       }
       else{
         if(this->is_bg_enabled() && ((sprite.flags & (1 << 7)) || (tile_att & (1 << 7)))) continue; //prioridade de bg para o cgb
@@ -327,21 +327,21 @@ void PPU::checa_sprites(uint8_t x_atual){
 }
 
 void PPU::draw_step(void){
-  uint8_t ly = this->memoria[0xFF44];
-  int32_t wx = static_cast<int>(this->get_winx()) - 7;
+  if(!this->fetcher.window_ativa){
+    int32_t wx = static_cast<int>(this->get_winx()) - 7;
 
-  if(!this->fetcher.window_ativa && this->is_win_enabled()
-      && fetcher.window_trigger && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
-    fetcher.window_ativa = true;
-    this->fetcher.clear();
-    this->tiles_lidos.fill(0);
-    fetcher.drop_pixels = 0;
+    if(this->is_win_enabled() && fetcher.window_trigger && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
+      fetcher.window_ativa = true;
+      this->fetcher.clear();
+      this->tiles_lidos.fill(0);
+      fetcher.drop_pixels = 0;
+    }
   }
 
   this->fetcher.step(this);
   if(fetcher.atual == fetcher_estado::FLUSH || fetcher.sprite_penality) return;
 
-  if(this->fetcher.size <= 0) return;
+  if(!this->fetcher.size) return;
   if(this->fetcher.drop_pixels > 0){
     this->fetcher.pop();
     --fetcher.drop_pixels;
@@ -366,6 +366,8 @@ void PPU::draw_step(void){
   
   if(this->paleta_lcd && !this->paleta_cgb)
     cor_px = this->esverdear(cor_px);
+
+  uint8_t ly = this->memoria[0xFF44];
 
   this->framebuffer[ly*160 + this->fetcher.x_pos] = cor_px;
   ++fetcher.x_pos;

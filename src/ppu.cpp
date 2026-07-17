@@ -117,6 +117,96 @@ void PPU::reset_sprites(void){
   this->sprites_lidos = 0;
 }
 
+void PPU::soamram_step(void){
+  if(this->ciclos % 2) return;
+
+  this->scan_oam();
+  if(sprites_lidos >= 40){
+    if(this->modo_cpu == 0 || (this->memoria[0xFF6C] & 0x01)){
+      std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count, 
+          [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
+    }
+    ciclos = 0;
+    this->reset_sprites();
+    this->fetcher.clear();
+    fetcher.x_pos = 0;
+    draw_ciclos = 0;
+    fetcher.drop_pixels = this->get_scrollx() % 8;
+    fetcher.window_ativa = false;
+
+    uint8_t wy = this->get_winy();
+    if(memoria[0xFF44] == wy)
+      fetcher.window_trigger = true;
+
+    if(fetcher.gbc_window_desativada && memoria[0xFF44] >= wy){
+      fetcher.gbc_window_desativada = false;
+      fetcher.window_trigger = true;
+    }
+
+    this->set_mode(screen_mode::DRAWING);
+  }
+}
+
+void PPU::mode3_step(void){
+  this->draw_step();
+  ++draw_ciclos;
+  if(this->fetcher.finalizado){
+    ciclos = 0;
+    hblank_ciclos = 456 - this->draw_ciclos - 80;
+    if(lcd_start){
+      hblank_ciclos -= 4;
+      lcd_start = false;
+    }
+    if(fetcher.window_ativa)
+      ++fetcher.win_line;
+
+    if(modo_cpu > 0 && *hdma_hblank){
+      *hdma_ativo = true;
+    }
+
+    this->set_mode(screen_mode::HBLANK);
+  }
+}
+
+void PPU::hblank_step(void){
+  if(this->ciclos < this->hblank_ciclos) return;
+
+  ciclos = 0;
+  hblank_ciclos = 0;
+  this->avanca_ly();
+  if(memoria[0xFF44] == 144){
+    this->memoria[0xFF0F] |= BIT_VBLANK;
+    this->set_mode(screen_mode::VBLANK);
+    UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
+  }
+  else{
+    sprites_count = 0;
+    sprites_lidos = 0;
+    this->set_mode(screen_mode::SOAMRAM);
+  }
+}
+
+void PPU::vblank_step(void){
+  if(memoria[0xFF44] == 153 && this->ciclos == 4){
+    this->avanca_ly();
+  }
+  if(this->ciclos >= 456){
+    ciclos = 0;
+    if(memoria[0xFF44] != 0){
+      this->avanca_ly();
+    }
+    else{
+      fetcher.win_line = 0;
+      fetcher.window_trigger = false;
+      fetcher.gbc_window_desativada = false;
+      this->frame_pronto = true;
+      sprites_count = 0;
+      sprites_lidos = 0;
+      this->set_mode(screen_mode::SOAMRAM);
+    }
+  }
+}
+
 void PPU::step(void){
   if(!this->is_lcd_enabled()){
     lcd_prev = false;
@@ -136,6 +226,8 @@ void PPU::step(void){
     draw_ciclos = 0;
     hblank_ciclos = 0;
     lcd_start = true;
+    fetcher.window_trigger = false;
+    fetcher.gbc_window_desativada = false;
     this->set_mode(screen_mode::SOAMRAM);
   }
   
@@ -151,93 +243,19 @@ void PPU::step(void){
       using enum screen_mode;
 
       case SOAMRAM:{
-        if(!(this->ciclos % 2)){
-          this->scan_oam();
-          if(sprites_lidos >= 40){
-
-            if(this->modo_cpu == 0 || (this->memoria[0xFF6C] & 0x01)){
-              std::stable_sort(this->sprites_sel.begin(), this->sprites_sel.begin() + this->sprites_count,
-              [](const Sprite& a, const Sprite& b) -> bool{ return (a.x < b.x); });
-            }
-            ciclos = 0;
-            this->reset_sprites();
-            this->fetcher.clear();
-            fetcher.x_pos = 0;
-            draw_ciclos = 0;
-            fetcher.drop_pixels = this->get_scrollx() % 8;
-            fetcher.window_ativa = false;
-
-            uint8_t wy = this->get_winy();
-            if(memoria[0xFF44] == wy)
-              fetcher.window_trigger = true;
-
-            if(fetcher.gbc_window_desativada && memoria[0xFF44] >= wy){
-              fetcher.gbc_window_desativada = false;
-              fetcher.window_trigger = true;
-            }
-
-            this->set_mode(screen_mode::DRAWING);
-          }
-        }
+        this->soamram_step();
         break;
       }
       case DRAWING:{
-          this->draw_step();
-          ++draw_ciclos;
-          if(this->fetcher.finalizado){
-            ciclos = 0;
-            hblank_ciclos = 456 - this->draw_ciclos - 80;
-            if(lcd_start){
-              hblank_ciclos -= 4;
-              lcd_start = false;
-            }
-            if(fetcher.window_ativa)
-              ++fetcher.win_line;
-
-            if(modo_cpu > 0 && *hdma_hblank){
-              *hdma_ativo = true;
-            }
-
-            this->set_mode(screen_mode::HBLANK);
-          }
+        this->mode3_step();
         break;
       }
       case HBLANK:{
-        if(this->ciclos >= this->hblank_ciclos){
-          ciclos = 0;
-          hblank_ciclos = 0;
-          this->avanca_ly();
-          if(memoria[0xFF44] == 144){
-            this->memoria[0xFF0F] |= BIT_VBLANK;
-            this->set_mode(screen_mode::VBLANK);
-            UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
-          }
-          else{
-            sprites_count = 0;
-            sprites_lidos = 0;
-            this->set_mode(screen_mode::SOAMRAM);
-          }
-        }
+        this->hblank_step();
         break;
       }
       case VBLANK:{
-        if(memoria[0xFF44] == 153 && this->ciclos == 4){
-          this->avanca_ly();
-        }
-        if(this->ciclos >= 456){
-          ciclos = 0;
-          if(memoria[0xFF44] != 0){
-            this->avanca_ly();
-          }
-          else{
-            fetcher.win_line = 0;
-            fetcher.window_trigger = false;
-            this->frame_pronto = true;
-            sprites_count = 0;
-            sprites_lidos = 0;
-            this->set_mode(screen_mode::SOAMRAM);
-          }
-        }
+        this->vblank_step();
         break;
       }
     }

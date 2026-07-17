@@ -14,7 +14,7 @@ void roda_cpu(CPU *atual){
 
   if(atual->pausa_ciclos > 0){
     atual->bus.ppu->step();
-    atual->bus.timer->apu->step();
+    atual->bus.timer->apu->step(atual->modo);
     atual->pausa_ciclos-=atual->pausa_offset;
 
     if(atual->pausa_ciclos <= 0){
@@ -55,7 +55,7 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
     ppu->stat_bug = false;
   }
   ppu->step();
-  timer->apu->step();
+  timer->apu->step(atual->modo);
   //++debug_cycles;
 }
 
