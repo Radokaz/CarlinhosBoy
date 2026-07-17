@@ -331,7 +331,7 @@ void PPU::draw_step(void){
   int32_t wx = static_cast<int>(this->get_winx()) - 7;
 
   if(!this->fetcher.window_ativa && this->is_win_enabled()
-      && ly >= this->get_winy() && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
+      && fetcher.window_trigger && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
     fetcher.window_ativa = true;
     this->fetcher.clear();
     this->tiles_lidos.fill(0);

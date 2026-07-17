@@ -83,6 +83,8 @@ struct PPU_fetcher{
   uint8_t win_line {};
   fetcher_estado atual {fetcher_estado::READ_ID};
   bool window_ativa {false};
+  bool window_trigger {false};
+  bool gbc_window_desativada {false};
   uint8_t delay {};
   uint8_t sprite_penality {};
   bool finalizado {false};

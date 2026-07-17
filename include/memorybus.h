@@ -302,6 +302,13 @@ struct Memorybus{
         }
         return;
       }
+      case 0xFF40:{ //LCDC
+        if(ppu->paleta_cgb && !(valor & 0x20))
+          ppu->fetcher.gbc_window_desativada = true;
+
+        memoria[endereco] = valor;
+        return;
+      }
       case 0xFF41:{ //stat
         if(!ppu->paleta_cgb && ppu->is_lcd_enabled() && 
             (ppu->modo_atual != screen_mode::DRAWING || (memoria[0xFF41] & LYC_Comparison_Signal))){

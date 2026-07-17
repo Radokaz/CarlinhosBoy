@@ -166,6 +166,16 @@ void PPU::step(void){
             draw_ciclos = 0;
             fetcher.drop_pixels = this->get_scrollx() % 8;
             fetcher.window_ativa = false;
+
+            uint8_t wy = this->get_winy();
+            if(memoria[0xFF44] == wy)
+              fetcher.window_trigger = true;
+
+            if(fetcher.gbc_window_desativada && memoria[0xFF44] >= wy){
+              fetcher.gbc_window_desativada = false;
+              fetcher.window_trigger = true;
+            }
+
             this->set_mode(screen_mode::DRAWING);
           }
         }
@@ -221,6 +231,7 @@ void PPU::step(void){
           }
           else{
             fetcher.win_line = 0;
+            fetcher.window_trigger = false;
             this->frame_pronto = true;
             sprites_count = 0;
             sprites_lidos = 0;
