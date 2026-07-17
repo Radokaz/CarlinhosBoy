@@ -12,6 +12,25 @@ void APU::seta_modo(bool cpu_m){
   this->ch4.modo_cgb = cpu_m;
 }
 
+//válido para cgb-02 e cgb-04, mas aqui eu aplico para o dmg também
+void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor){
+  uint8_t periodo_ant = (*nrx2 & 0x07);
+  uint8_t direction_ant = (*nrx2 & 0x08);
+  uint8_t direction_now = (valor & 0x08);
+
+  if(auto_update && !periodo_ant){
+    ++(*envelope);
+  }
+  else if(!direction_ant){
+    (*envelope)+=2;
+  }
+
+  if(direction_ant != direction_now)
+    *envelope = 16 - *envelope;
+
+  (*envelope)&=0x0F;
+}
+
 uint8_t& APU::read(uint16_t endereco){
 
     switch(endereco){
@@ -100,6 +119,8 @@ void APU::write(uint16_t endereco, uint8_t valor){
           memoria[0xFF26] &= ~APU_CH1_ON;
         }
 
+        checa_zombie_mode(&memoria[0xFF12], &ch1.envelope, ch1.auto_update, valor);
+
         memoria[0xFF12] = valor;
         return;
       }
@@ -137,6 +158,8 @@ void APU::write(uint16_t endereco, uint8_t valor){
         if(!ch2.dac){
           memoria[0xFF26] &= ~APU_CH2_ON;
         }
+
+        checa_zombie_mode(&memoria[0xFF17], &ch2.envelope, ch2.auto_update, valor);
 
         memoria[0xFF17] = valor;
         return;
@@ -201,6 +224,8 @@ void APU::write(uint16_t endereco, uint8_t valor){
         ch4.dac = ((valor & 0xF8) != 0);
         if(!ch4.dac)
             memoria[0xFF26] &= ~APU_CH4_ON;
+
+        checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);
 
         memoria[0xFF21] = valor;
         return;

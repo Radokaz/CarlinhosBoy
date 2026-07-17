@@ -87,6 +87,7 @@ struct CH1{
     uint8_t periodo_count {};
 
     bool modo_cgb {false};
+    bool auto_update {true};
     uint8_t ch1_prev {};
 
     CH1(uint8_t *mem): memoria{mem} {}
@@ -122,6 +123,7 @@ struct CH2{
     uint8_t envelope_count {};
 
     bool dac {false};
+    bool auto_update {true};
     bool modo_cgb {false};
     uint8_t ch2_prev {};
 
@@ -193,6 +195,7 @@ struct CH4{
   uint8_t envelope_count {};
 
   bool dac {false};
+  bool auto_update {true};
   bool modo_cgb {false};
   uint8_t ch4_prev {};
 
@@ -253,6 +256,7 @@ struct APU{
   void step(uint8_t modo_cpu);
 };
 
+void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor);
 void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
 void audio_callback(void* buffer, unsigned int frames);
 void limpa_samples(APU *apu);
