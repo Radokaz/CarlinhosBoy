@@ -36,6 +36,7 @@ void CH4::seta_envelope(void){
   direcao_envelope = (memoria[0xFF21] & 0x08) >> 3;
   envelope_pace = memoria[0xFF21] & 0x07;
   envelope_count = envelope_pace;
+  auto_update = true; 
 }
 
 void CH4::sweep_length(void){
@@ -83,9 +84,18 @@ void CH4::sweep_envelope(void){
   if(envelope_count){
     --envelope_count;
     if(!envelope_count){
-      envelope = (!direcao_envelope) ? ((envelope > 0) ? envelope - 1 : 0) : envelope + 1;
-      if(envelope > 15)
-        envelope = 15;
+      if(!direcao_envelope){
+        if(!envelope)
+          auto_update = false; 
+        else
+          --envelope;
+      }
+      else{ 
+        if(envelope == 15)
+          auto_update = false;
+        else
+          ++envelope;
+      }
 
       envelope_count = envelope_pace;
     }

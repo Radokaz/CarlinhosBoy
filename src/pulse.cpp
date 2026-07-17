@@ -42,6 +42,7 @@ void CH1::seta_envelope(void){
     envelope_pace = (memoria[0xFF12] & 0x07);
     envelope_count = envelope_pace;
     envelope = initial_volume;
+    auto_update = true;
 }
 
 void CH1::sweep_periodo(void){
@@ -87,12 +88,22 @@ void CH1::sweep_periodo(void){
 
 void CH1::sweep_envelope(void){
     if(!is_channel1_on(memoria) || !dac) return;
+
     if(envelope_count){
       --envelope_count;
       if(!envelope_count){
-        envelope = (!direcao_envelope) ? ((envelope > 0) ? envelope - 1 : 0) : envelope + 1;
-        if(envelope > 15)
-          envelope = 15;
+        if(!direcao_envelope){
+          if(!envelope)
+            auto_update = false; 
+          else
+            --envelope;
+        }
+        else{ 
+          if(envelope == 15)
+            auto_update = false;
+          else
+            ++envelope;
+        }
 
         envelope_count = envelope_pace;
       }
@@ -181,16 +192,27 @@ void CH2::seta_envelope(void){
     envelope_pace = (memoria[0xFF17] & 0x07);
     envelope_count = envelope_pace;
     envelope = initial_volume;
+    auto_update = true;
 }
 
 void CH2::sweep_envelope(void){
     if(!is_channel2_on(memoria) || !dac) return;
+
     if(envelope_count){
       --envelope_count;
       if(!envelope_count){
-        envelope = (!direcao_envelope) ? ((envelope > 0) ? envelope - 1 : 0) : envelope + 1;
-        if(envelope > 15)
-          envelope = 15;
+        if(!direcao_envelope){
+          if(!envelope)
+            auto_update = false; 
+          else
+            --envelope;
+        }
+        else{ 
+          if(envelope == 15)
+            auto_update = false;
+          else
+            ++envelope;
+        }
 
         envelope_count = envelope_pace;
       }
