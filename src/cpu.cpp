@@ -49,10 +49,13 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
   }
   timer->step(atual->bus);
   atual->bus.dma.step(&atual->bus);
+
   if(ppu->stat_bug){
-    atual->bus.memoria[0xFF41] = (ppu->stat_cache & 0x78) | (atual->bus.memoria[0xFF41] & 0x07);
-    ppu->stat_cache = 0;
-    ppu->stat_bug = false;
+    --ppu->stat_bug;
+    if(!ppu->stat_bug){
+      atual->bus.memoria[0xFF41] = (ppu->stat_cache & 0x78) | (atual->bus.memoria[0xFF41] & 0x07);
+      ppu->stat_cache = 0;
+    }
   }
   ppu->step();
   timer->apu->step(atual->modo);

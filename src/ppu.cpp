@@ -231,7 +231,6 @@ void PPU::step(void){
     this->set_mode(screen_mode::SOAMRAM);
   }
   
-  this->lyc_compare(); //tecnicamente errado, mas necessário pro road rash
   size_t limiar {4};
   if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
     limiar = 2;

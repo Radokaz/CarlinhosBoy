@@ -328,10 +328,10 @@ void PPU::checa_sprites(uint8_t x_atual){
 }
 
 void PPU::draw_step(void){
-  if(!this->fetcher.window_ativa){
+  if(!this->fetcher.window_ativa && !(paleta_cgb && !this->get_winx())){
     int32_t wx = static_cast<int>(this->get_winx()) - 7;
 
-    if(this->is_win_enabled() && fetcher.window_trigger && static_cast<int32_t>(this->fetcher.x_pos) >= wx){
+    if(this->is_win_enabled() && fetcher.window_trigger && (static_cast<int32_t>(this->fetcher.x_pos) >= wx)){
       fetcher.window_ativa = true;
       this->fetcher.clear();
       this->tiles_lidos.fill(0);

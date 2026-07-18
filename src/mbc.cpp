@@ -340,7 +340,7 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
     return;
   }
   if(endereco < 0x6000){
-    ram_bank = valor & 0x0F;
+    ram_bank = (tem_rumble) ? valor & 0x07 : valor & 0x0F;
     return;
   }
   if(endereco >= 0xA000 && endereco < 0xC000){

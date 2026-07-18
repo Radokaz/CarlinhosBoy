@@ -18,6 +18,7 @@ struct MBC{
   std::string saves;
   std::chrono::system_clock::time_point ultimo_save {};
   bool tem_save {false};
+  bool tem_rumble {false};
   bool jogo_salvo {false};
   
   friend void checa_save(MBC *mbc);
