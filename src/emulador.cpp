@@ -17,7 +17,7 @@ void degub_func(CPU *cpu){
   std::cout << "Halted: " << cpu->halted << "\n";
   std::cout << "IME: " << cpu->ime << "\n";
   std::cout << "Haltbug: " << cpu->haltbug << "\n";
-  std::cout << "Ultima instrução: " << static_cast<int>(cpu->last_instruct) << "\n";
+  std::cout << "Ultima instrução: " << std::hex << static_cast<int>(cpu->last_instruct) << "\n";
   std::cout << "Tac :" << static_cast<int>(cpu->bus.memoria[0xFF07]) << "\n";
   std::cout << "LY: " << std::dec << static_cast<int>(cpu->bus.memoria[0xFF44]) << "\n";
 }
