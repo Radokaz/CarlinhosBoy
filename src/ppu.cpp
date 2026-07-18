@@ -187,7 +187,7 @@ void PPU::hblank_step(void){
 }
 
 void PPU::vblank_step(void){
-  if(memoria[0xFF44] == 153 && this->ciclos == 4){
+  if(memoria[0xFF44] == 153 && this->ciclos == 8){
     this->avanca_ly();
   }
   if(this->ciclos >= 456){
