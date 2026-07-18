@@ -123,7 +123,7 @@ struct PPU{
   uint16_t draw_ciclos {};
   uint16_t hblank_ciclos {};
   screen_mode modo_atual {screen_mode::SOAMRAM};
-  bool stat_bug {};
+  uint8_t stat_bug {};
   uint8_t stat_cache {};
   uint8_t sprites_count {};
   uint8_t sprites_lidos {};

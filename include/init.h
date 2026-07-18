@@ -378,11 +378,15 @@ inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::
     }
     case 25:
     case 26:
-    case 27:
+    case 27:{
+      cpu->bus.mbc = std::make_unique<MBC5>(saves, src, rom_sz, ram_sz);
+      break;
+    }
     case 28:
     case 29:
     case 30:{
       cpu->bus.mbc = std::make_unique<MBC5>(saves, src, rom_sz, ram_sz);
+      cpu->bus.mbc->tem_rumble = true;
       break;
     }
     default:{

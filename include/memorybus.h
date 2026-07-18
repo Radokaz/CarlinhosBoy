@@ -312,7 +312,7 @@ struct Memorybus{
       case 0xFF41:{ //stat
         if(!ppu->paleta_cgb && ppu->is_lcd_enabled() && 
             (ppu->modo_atual != screen_mode::DRAWING || (memoria[0xFF41] & LYC_Comparison_Signal))){
-          ppu->stat_bug = true;
+          ppu->stat_bug = 2;
           ppu->stat_cache = valor;
           memoria[endereco] |= 0x78;
         }
@@ -323,6 +323,11 @@ struct Memorybus{
         return;
       }
       case 0xFF44:{ //ly
+        return;
+      }
+      case 0xFF45:{ //lyc
+        memoria[endereco] = valor;
+        ppu->lyc_compare();
         return;
       }
       case 0xFF46:{ //dma
