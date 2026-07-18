@@ -315,10 +315,11 @@ struct Memorybus{
           ppu->stat_bug = true;
           ppu->stat_cache = valor;
           memoria[endereco] |= 0x78;
-          ppu->check_stat_interruption();
         }
         else
           memoria[endereco] = (valor & 0x78) | (memoria[endereco] & 0x07);
+
+        ppu->check_stat_interruption();
         return;
       }
       case 0xFF44:{ //ly

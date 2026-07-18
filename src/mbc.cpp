@@ -355,8 +355,6 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
       }
 
       ram[address] = valor;
-
-      return;
     }
   }
 }

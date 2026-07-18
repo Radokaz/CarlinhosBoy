@@ -16,6 +16,7 @@
 #define OAM_FIM 0xFEA0
 
 #include <cstddef>
+#include <iostream>
 #include <cstdint>
 #include <array>
 #include <memory>
