@@ -325,11 +325,6 @@ struct Memorybus{
       case 0xFF44:{ //ly
         return;
       }
-      case 0xFF45:{ //lyc
-        memoria[endereco] = valor;
-        ppu->lyc_compare();
-        return;
-      }
       case 0xFF46:{ //dma
         dma.start(valor);
         return;

@@ -209,6 +209,11 @@ void PPU::vblank_step(void){
 
 void PPU::step(void){
   if(!this->is_lcd_enabled()){
+    if(lcd_prev){
+      framebuffer.fill(((!paleta_cgb && paleta_lcd) ? 0xFF6ABC9B : 0xFFFFFFFF));
+      UpdateTexture(*(this->raylib_texture), this->framebuffer.data());
+      frame_pronto = true;
+    }
     lcd_prev = false;
     modo_atual = screen_mode::HBLANK;
     ciclos = 0;
@@ -231,6 +236,7 @@ void PPU::step(void){
     this->set_mode(screen_mode::SOAMRAM);
   }
   
+  this->lyc_compare();
   size_t limiar {4};
   if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
     limiar = 2;
