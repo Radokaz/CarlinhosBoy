@@ -8,7 +8,7 @@ bool CH1::is_length_enabled(){
 
 void CH1::init_ch1(void){
     periodo_shadow = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
-    periodo_divider = periodo_shadow;
+    periodo_divider = (periodo_shadow & 0xFFFC) | (periodo_divider & 0x03);
 
     periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
     periodo_count = (!periodo_pace) ? 8 : periodo_pace;
@@ -175,7 +175,7 @@ bool CH2::is_length_enabled(){
 
 void CH2::init_ch2(void){
     periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
-    periodo_divider = periodo_shadow;
+    periodo_divider = (periodo_shadow & 0xFC) | (periodo_divider & 0x03);
 
     this->seta_length();
     this->seta_envelope();
