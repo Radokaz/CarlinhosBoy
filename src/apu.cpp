@@ -135,15 +135,17 @@ void APU::write(uint16_t endereco, uint8_t valor){
         }
 
         if(valor & 0x80){
-          if(ch1.dac)
-            memoria[0xFF26] |= APU_CH1_ON;
-
+          
           ch1.init_ch1();
 
           if(ch1.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
             --ch1.length_timer;
           }
-
+          
+          if(ch1.dac){
+            memoria[0xFF26] |= APU_CH1_ON;
+            ch1.amplifier();
+          }
         }
         
         return;
@@ -177,8 +179,10 @@ void APU::write(uint16_t endereco, uint8_t valor){
             --ch2.length_timer;
           }
 
-          if(ch2.dac)
+          if(ch2.dac){
             memoria[0xFF26] |= APU_CH2_ON;
+            ch2.amplifier();
+          }
         }
         return;
       }
@@ -211,6 +215,7 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
           if(ch3.dac){
             memoria[0xFF26] |= APU_CH3_ON;
+            ch3.amplifier();
           }
         }
         return;
@@ -243,8 +248,10 @@ void APU::write(uint16_t endereco, uint8_t valor){
             --ch4.length_timer;
           }
 
-          if(ch4.dac)
+          if(ch4.dac){
             memoria[0xFF26] |= APU_CH4_ON;
+            ch4.amplifier();
+          }
         }
         return;
       }

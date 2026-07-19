@@ -6,7 +6,7 @@ void DMA::start(uint8_t valor){
   ativo = true;
   byte = 0;
   this->valor = valor;
-  atraso = 1;
+  atraso = 2;
 }
 
 void DMA::step(Memorybus *bus){
