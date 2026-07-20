@@ -36,7 +36,7 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
     janela_alterada = true;
   }
   
-//#define AUDIO_CHANNEL_DEBUG
+#define AUDIO_CHANNEL_DEBUG
 #ifdef AUDIO_CHANNEL_DEBUG
   if(apertado(KEY_ONE)){
     canais_ativos ^= APU_CANAL1;

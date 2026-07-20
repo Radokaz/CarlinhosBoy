@@ -50,38 +50,39 @@ void CH1::sweep_periodo(void){
     if(periodo_count){
       --periodo_count;
       if(!periodo_count){
-
-        uint16_t offset = (periodo_shadow >> ind_step);
-        uint16_t novo_periodo {};
-
+        
         ind_step = memoria[0xFF10] & 0x07;
         periodo_pace = ((memoria[0xFF10] & 0x70) >> 4);
+        periodo_count = (!periodo_pace) ? 8 : periodo_pace;
         direcao_periodo = ((memoria[0xFF10] & 0x08) >> 3);
 
-        if(!direcao_periodo){
-          novo_periodo = periodo_shadow + offset;
-          if(novo_periodo > 0x7FF){
-            memoria[0xFF26] &= ~APU_CH1_ON;
-            return;
+        if(periodo_pace){
+          uint16_t offset = (periodo_shadow >> ind_step);
+          uint16_t novo_periodo {};
+
+          if(!direcao_periodo){
+            novo_periodo = periodo_shadow + offset;
+            if(novo_periodo > 0x7FF){
+              memoria[0xFF26] &= ~APU_CH1_ON;
+              return;
+            }
+          }
+          else{
+            novo_periodo = periodo_shadow - offset;
+            if(!negate_mode)
+              negate_mode = true;
+          } 
+
+          if(ind_step){
+            periodo_shadow = novo_periodo;
+            memoria[0xFF13] = (periodo_shadow & 0xFF);
+            memoria[0xFF14] = ((memoria[0xFF14] & 0xF8) | (periodo_shadow >> 8) & 0x07);
+            if(!direcao_periodo && ((periodo_shadow + (periodo_shadow >> ind_step)) > 0x7FF)){
+              memoria[0xFF26] &= ~APU_CH1_ON;
+              return;
+            }
           }
         }
-        else{
-          novo_periodo = periodo_shadow - offset;
-          if(!negate_mode && periodo_pace)
-            negate_mode = true;
-        }
-
-        if(ind_step && periodo_pace){
-          periodo_shadow = novo_periodo;
-          memoria[0xFF13] = (periodo_shadow & 0xFF);
-          memoria[0xFF14] = ((memoria[0xFF14] & 0xF8) | (periodo_shadow >> 8) & 0x07);
-          if(!direcao_periodo && ((periodo_shadow + (periodo_shadow >> ind_step)) > 0x7FF)){
-            memoria[0xFF26] &= ~APU_CH1_ON;
-            return;
-          }
-        }
-
-        periodo_count = (!periodo_pace) ? 8 : periodo_pace;
       }
     }
 }
@@ -115,9 +116,9 @@ void CH1::incrementa_divider(void){
 
     ++periodo_divider;
     if(periodo_divider > 2047){
+      this->amplifier();
       periodo_divider = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
       duty_step = (duty_step + 1) % 8;
-      this->amplifier();
     }
 }
 
@@ -224,10 +225,10 @@ void CH2::incrementa_divider(void){
 
     ++periodo_divider;
     if(periodo_divider > 2047){
+      this->amplifier();
       periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
       periodo_divider = periodo_shadow;
       duty_step = (duty_step + 1) % 8;
-      this->amplifier();
     }
 }
 

@@ -164,6 +164,14 @@ struct Memorybus{
           dma_hack = (memoria[endereco] & 0x81) | 0x7E;
           return dma_hack;
         }
+        case 0xFF03:
+        case 0xFF08:
+        case 0xFF09:
+        case 0xFF0A:
+        case 0xFF0B:
+        case 0xFF0C:
+        case 0xFF0D:
+        case 0xFF0E:
         case 0xFF51:
         case 0xFF52:
         case 0xFF53:
