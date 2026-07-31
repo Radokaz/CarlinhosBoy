@@ -22,9 +22,10 @@ Por padrão:
 - ESC: Mesma coisa que o comando acima, mas não pode ser remapeada no menu.
 - F: Ativa o Fast Forward.
 - F11: Alterna entre modo janela e fullscreen.
+- F1: Save State no slot selecionado.
+- F2: Load State no slot selecionado.
 
 Os comandos listados acima (com exceção de ESC) podem ser alterados tanto no menu principal quanto no menu de pausa.
-As teclas '1', '2', '3' e '4' desligam/ativam os respectivos canais de áudio e não devem ser mapeadas, pois são comandos de debugging.
 
 ## Modo CBG
 
