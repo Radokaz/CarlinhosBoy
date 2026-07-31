@@ -68,12 +68,13 @@ struct Memorybus{
   PPU *ppu {};
   std::unique_ptr<uint8_t[]> cgb_wram {};
   std::unique_ptr<MBC> mbc {};
-  std::function<void()> restaura_rom;
+  std::function<void()> *restaura_rom;
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
   bool tem_rtc {false};
   bool key0_blocked {false};
   bool opri_blocked {false};
+  bool sv_state_liberado {false};
   
   Memorybus(Timer *tm, Joypad *p, PPU *pp): timer{tm}, pad{p}, ppu{pp} {
     mbc = nullptr;
@@ -339,9 +340,10 @@ struct Memorybus{
       }
       case 0xFF50:{ //bank
         if(valor){
-          restaura_rom();
+          (*restaura_rom)();
           key0_blocked = true;
           opri_blocked = true;
+          sv_state_liberado = true;
         }
         return;
       }

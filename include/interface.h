@@ -14,15 +14,17 @@ inline std::filesystem::path getExeDir() {
   return std::filesystem::path(GetApplicationDirectory());
 }
 
-static constexpr char gb_botoes[12][15] = {
-    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO", "FULLSCREEN"
+static constexpr char gb_botoes[14][15] = {
+    "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO", "FULLSCREEN", "SAVE_STATE", "LOAD_STATE"
 };
 
 struct GB_State{
-  std::array<KeyboardKey, 12> controles;
+  std::array<KeyboardKey, 14> controles;
   std::filesystem::path main_dir;
   std::string rom_path;
   std::string saves_path;
+  std::string states_path;
+  size_t save_slot {};
   int paleta_cgb {};
 
   GB_State(void){
@@ -34,6 +36,7 @@ struct GB_State{
 
     std::filesystem::path state_path = main_dir / "state.cfg";
     std::fstream estado(state_path.string().c_str(), estado.in);
+    save_slot = 1;
 
     this->seta_controles();
     if(!estado){
@@ -43,14 +46,18 @@ struct GB_State{
 
       std::filesystem::path svs = main_dir / "Saves";
       std::filesystem::path roms = main_dir / "ROMS";
+      std::filesystem::path states = main_dir / "States";
       std::filesystem::create_directories(svs);
       std::filesystem::create_directories(roms);
+      std::filesystem::create_directories(states);
       novo << "rom_path: " << roms.string() << "\n";
       novo << "saves_path: " << svs.string() << "\n";
+      novo << "states_path: " << states.string() << "\n";
       novo << "paleta_cgb: " << std::to_string(paleta_cgb) << "\n";
 
       rom_path = roms.string();
       saves_path = svs.string();
+      states_path = states.string();
 
       return;
     }
@@ -72,6 +79,8 @@ struct GB_State{
           rom_path = value_buffer;
         else if(key_buffer == "saves_path")
           saves_path = value_buffer;
+        else if(key_buffer == "states_path")
+          states_path = value_buffer;
         else if(key_buffer == "paleta_cgb")
           paleta_cgb = std::stoi(value_buffer);
       }
@@ -105,7 +114,7 @@ struct GB_State{
     if(!control){
       control.close();
       std::ofstream controle_novo(control_path.string().c_str());
-      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F, KEY_F11};
+      controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F, KEY_F11, KEY_F1, KEY_F2};
       
       for(size_t i {}; i < std::size(gb_botoes); ++i){
         controle_novo << gb_botoes[i] << ": " << std::to_underlying<KeyboardKey>(controles[i]) << "\n";
@@ -196,7 +205,6 @@ struct ListaArquivos{
 };
 
 void debug_func(CPU *cpu);
-bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido);
 void inicia_emulador(std::string_view src, GB_State *estado);
 void carrega_rom(GB_State *estado);
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista);

@@ -29,6 +29,8 @@ struct MBC{
 
   virtual uint8_t& read(uint16_t endereco)=0;
   virtual void write(uint16_t endereco, uint8_t valor)=0;
+  virtual void save_state(std::fstream *save)=0;
+  virtual void load_state(std::fstream *save)=0;
 
   virtual void save(void);
   virtual void load(void);
@@ -65,6 +67,8 @@ struct MBC1 : public MBC{
 
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;   
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
 };
 
 struct MBC2: public MBC{
@@ -92,6 +96,8 @@ struct MBC2: public MBC{
 
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;   
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
 };
 
 struct MBC3 : public MBC{
@@ -141,8 +147,10 @@ struct MBC3 : public MBC{
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;
   void atualiza_rtc(void) override;
-  virtual void save(void) override;
-  virtual void load(void) override;
+  void save(void) override;
+  void load(void) override;
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
 };
 
 struct MBC5 : public MBC{
@@ -172,6 +180,8 @@ struct MBC5 : public MBC{
 
   uint8_t& read(uint16_t endereco) override;
   void write(uint16_t endereco, uint8_t valor) override;
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
 };
 
 void checa_save(MBC *mbc);

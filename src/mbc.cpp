@@ -92,6 +92,33 @@ void MBC1::write(uint16_t endereco, uint8_t valor){
     }
   }
 
+void MBC1::save_state(std::fstream *save){
+  save->write(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->write(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->write(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->write(reinterpret_cast<char*>(&ram_banking), sizeof(ram_banking));
+  save->write(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->write(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->write(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->write(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
+void MBC1::load_state(std::fstream *save){
+  save->read(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->read(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->read(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->read(reinterpret_cast<char*>(&ram_banking), sizeof(ram_banking));
+  save->read(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->read(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->read(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->read(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
+
 uint8_t& MBC2::read(uint16_t endereco){
   if(endereco < 0x4000){
     return rom[endereco];
@@ -140,6 +167,28 @@ void MBC2::write(uint16_t endereco, uint8_t valor){
     }
     ram[address] = valor & 0x0F;
   }
+}
+
+void MBC2::save_state(std::fstream *save){
+  save->write(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->write(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->write(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->write(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->write(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->write(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
+void MBC2::load_state(std::fstream *save){
+  save->read(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->read(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->read(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->read(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->read(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->read(reinterpret_cast<char*>(ram.data()), ram.size());
 }
 
 uint8_t& MBC3::read(uint16_t endereco){
@@ -253,6 +302,42 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     }
   }
 
+void MBC3::save_state(std::fstream *save){
+  save->write(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->write(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->write(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->write(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->write(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->write(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
+  save->write(reinterpret_cast<char*>(&rtc_registrador), sizeof(rtc_registrador));
+  save->write(reinterpret_cast<char*>(&rtc_selected), sizeof(rtc_selected));
+  save->write(reinterpret_cast<char*>(&latch_clock), sizeof(latch_clock));
+  save->write(reinterpret_cast<char*>(&rtc), sizeof(rtc));
+  save->write(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
+  save->write(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->write(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
+void MBC3::load_state(std::fstream *save){
+  save->read(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->read(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->read(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->read(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->read(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->read(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
+  save->read(reinterpret_cast<char*>(&rtc_registrador), sizeof(rtc_registrador));
+  save->read(reinterpret_cast<char*>(&rtc_selected), sizeof(rtc_selected));
+  save->read(reinterpret_cast<char*>(&latch_clock), sizeof(latch_clock));
+  save->read(reinterpret_cast<char*>(&rtc), sizeof(rtc));
+  save->read(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
+  save->read(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->read(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
 void MBC3::save(void){
   std::filesystem::create_directories(saves);
   std::filesystem::path save_path = saves / std::filesystem::path(fonte).filename();
@@ -357,6 +442,30 @@ void MBC5::write(uint16_t endereco, uint8_t valor){
       ram[address] = valor;
     }
   }
+}
+
+void MBC5::save_state(std::fstream *save){
+  save->write(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->write(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->write(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->write(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->write(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->write(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->write(reinterpret_cast<char*>(ram.data()), ram.size());
+}
+
+void MBC5::load_state(std::fstream *save){
+  save->read(reinterpret_cast<char*>(&total_banks), sizeof(total_banks));
+  save->read(reinterpret_cast<char*>(&rom_bank), sizeof(rom_bank));
+  save->read(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
+  save->read(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
+  save->read(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
+  save->read(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
+  save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
+  save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
+  save->read(reinterpret_cast<char*>(ram.data()), ram.size());
 }
 
 void checa_save(MBC *mbc){

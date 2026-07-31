@@ -1,4 +1,5 @@
 #include "init.h"
+#include "game_state.h"
 
 namespace GB{
 
@@ -47,14 +48,9 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   SetAudioStreamCallback(stream, GB::audio_callback);
   PlayAudioStream(stream);
 
-  Joypad pad(reinterpret_cast<const void*>(estado->controles.data()));
-  PPU ppu(&texture);
-  Timer timer;
-  CPU cpu(&timer, &pad, &ppu);
-  APU apu(cpu.bus.memoria.data());
-  timer.apu = &apu;
+  Game_State game(&texture, estado, estado->states_path.data(), src.data());
 
-  if(!init_game(&cpu, src.data(), estado->saves_path.data(), estado->paleta_cgb)){
+  if(!init_game(&game.cpu, src.data(), estado->saves_path.data(), estado->paleta_cgb)){
     ShowCursor();
     UnloadAudioStream(stream);
     CloseAudioDevice();
@@ -80,13 +76,13 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     
     frame_init = GetTime();
     mouse_atual = GetMousePosition();
-    le_input(pad, ppu.paleta_lcd, APU::canais_ativos, pausado, is_120, janela_alterada);
+    le_input(&game, estado->save_slot, pausado, is_120, janela_alterada);
     
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
     }
     mouse_prev = mouse_atual;
-    if(pausa_jogo(&cpu, estado, pausado, resumido)){
+    if(pausa_jogo(&game, estado, pausado, resumido)){
       break;
     }
 
@@ -100,24 +96,24 @@ void inicia_emulador(std::string_view src, GB_State *estado){
       posY = (GetScreenHeight() - texture_h)/2.0f;
     }
 
-    if(cpu.bus.tem_rtc){
-      cpu.bus.mbc->atualiza_rtc();
+    if(game.cpu.bus.tem_rtc){
+      game.cpu.bus.mbc->atualiza_rtc();
     }
 
-    ppu.frame_pronto = false;
-    while(!ppu.frame_pronto){
-      roda_cpu(&cpu);
-      if(!cpu.stepping)
+    game.ppu.frame_pronto = false;
+    while(!game.ppu.frame_pronto){
+      roda_cpu(&game.cpu);
+      if(!game.cpu.stepping)
         break;
-        //degub_func(&cpu);
+        //degub_func(&game.cpu);
     }
 
     BeginDrawing();
     DrawTextureEx(texture, Vector2{posX, posY}, 0, escala, WHITE);
     EndDrawing();
 
-    if(cpu.bus.mbc && cpu.bus.mbc->jogo_salvo){
-      checa_save(cpu.bus.mbc.get());
+    if(game.cpu.bus.mbc && game.cpu.bus.mbc->jogo_salvo){
+      checa_save(game.cpu.bus.mbc.get());
     }
 
     frame_fim = GetTime() - frame_init;
@@ -128,12 +124,10 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     }
   }
 
-  if(cpu.bus.mbc && cpu.bus.mbc->tem_save){
-    cpu.bus.mbc->save();
+  if(game.cpu.bus.mbc && game.cpu.bus.mbc->tem_save){
+    game.cpu.bus.mbc->save();
   }
   
-  limpa_samples(&apu);
-  APU::canais_ativos = 0x0F;
   SetTargetFPS(60);
   ShowCursor();
   UnloadAudioStream(stream);

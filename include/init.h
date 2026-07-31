@@ -77,6 +77,10 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
     cpu->bus.memoria[0xFF4A] = 0x00; // WY
     cpu->bus.memoria[0xFF4B] = 0x00; // WX
     cpu->bus.memoria[0xFFFF] = 0x00; //IE
+
+    cpu->bus.key0_blocked = true;
+    cpu->bus.opri_blocked = true;
+    cpu->bus.sv_state_liberado = true;
     return;
   }
 
@@ -103,7 +107,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
         bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
         bootrom.seekg(0x0200, std::ios::beg);
         bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom() + 0x0200), 0x0700);
-        cpu->bus.restaura_rom = [src, cpu](){
+        *(cpu->bus.restaura_rom) = [src, cpu](){
           std::fstream rom(src.data(), rom.binary | rom.in);
           rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
           rom.seekg(0x0200, std::ios::beg);
@@ -118,7 +122,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
       }
       else{
         bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
-        cpu->bus.restaura_rom = [src, cpu](){
+        *(cpu->bus.restaura_rom) = [src, cpu](){
           std::fstream rom(src.data(), rom.binary | rom.in);
           rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
         };
@@ -129,7 +133,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
         bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
         bootrom.seekg(0x0200, std::ios::beg);
         bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data() + 0x0200), 0x0700);
-        cpu->bus.restaura_rom = [src, cpu](){
+        *(cpu->bus.restaura_rom) = [src, cpu](){
           std::fstream rom(src.data(), rom.binary | rom.in);
           rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
           rom.seekg(0x0200, std::ios::beg);
@@ -144,7 +148,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
       }
       else{
         bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
-        cpu->bus.restaura_rom = [src, cpu](){
+        *(cpu->bus.restaura_rom) = [src, cpu](){
           std::fstream rom(src.data(), rom.binary | rom.in);
           rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
         };
