@@ -4,6 +4,7 @@
 
 O programa já tem uma interface. Basta escolher a rom diretamente pelo botão "Abrir ROM" ou selecionar a pasta em que o programa irá buscar arquivos com a extensão ".gb" para exibir na lista à direita do menu principal. Note que a lista de arquivos mostra apenas extensões de DMG, jogos de Game Boy Color precisam ser selecionados manualmente pelo menu.
 Para salvar um jogo que tenha suporte a bateria, certifique-se de fechar o jogo pelo menu.
+Também há suporte para save states, apenas evite compartilhar o mesmo slot para o mesmo jogo em modo cgb e dmg_only pois podem ocorrer bugs estranhos.
 
 ## Controles:
 

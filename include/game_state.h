@@ -94,19 +94,17 @@ struct Game_State{
     save.write(reinterpret_cast<char*>(&cpu), sizeof(CPU));
     save.write(reinterpret_cast<char*>(&apu), sizeof(APU));
 
+    if(mbc)
+      mbc->save_state(&save);
     if(vbank)
       save.write(reinterpret_cast<char*>(vbank.get()), 8*1024);
-    if(bg_palette)
-      save.write(reinterpret_cast<char*>(bg_palette.get()), 64);
-    if(obj_palette)
-      save.write(reinterpret_cast<char*>(obj_palette.get()), 64);
     if(wram)
       save.write(reinterpret_cast<char*>(wram.get()), 32*1024);
-
-    if(mbc){
-      mbc->save_state(&save);
-    }
-
+    if(bg_palette && cpu.modo > 0)
+      save.write(reinterpret_cast<char*>(bg_palette.get()), 64);
+    if(obj_palette && cpu.modo > 0)
+      save.write(reinterpret_cast<char*>(obj_palette.get()), 64);
+    
     cpu.bus.mbc = std::move(mbc);
     ppu.vram_bank1 = std::move(vbank);
     ppu.bg_palette_ram = std::move(bg_palette);
@@ -136,6 +134,8 @@ struct Game_State{
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
     const void *tec = pad.teclas;
     Texture2D *frame = ppu.raylib_texture;
+    uint8_t modo_cpu = cpu.modo;
+    bool paleta_cgb = ppu.paleta_cgb;
 
     save.read(reinterpret_cast<char*>(&pad), sizeof(Joypad));
     save.read(reinterpret_cast<char*>(&timer), sizeof(Timer));
@@ -143,24 +143,28 @@ struct Game_State{
     save.read(reinterpret_cast<char*>(&cpu), sizeof(CPU));
     save.read(reinterpret_cast<char*>(&apu), sizeof(APU));
 
+    if(mbc)
+      mbc->load_state(&save);
     if(vbank)
       save.read(reinterpret_cast<char*>(vbank.get()), 8*1024);
-    if(bg_palette)
-      save.read(reinterpret_cast<char*>(bg_palette.get()), 64);
-    if(obj_palette)
-      save.read(reinterpret_cast<char*>(obj_palette.get()), 64);
     if(wram)
       save.read(reinterpret_cast<char*>(wram.get()), 32*1024);
-
-    if(mbc){
-      mbc->load_state(&save);
-    }
+    if(bg_palette && modo_cpu > 0)
+      save.read(reinterpret_cast<char*>(bg_palette.get()), 64);
+    if(obj_palette && modo_cpu > 0)
+      save.read(reinterpret_cast<char*>(obj_palette.get()), 64);
+    
+    cpu.modo = modo_cpu;
+    ppu.modo_cpu = modo_cpu;
+    ppu.paleta_cgb = paleta_cgb;
+    apu.seta_modo(paleta_cgb);
 
     cpu.bus.mbc = std::move(mbc);
     ppu.vram_bank1 = std::move(vbank);
     ppu.bg_palette_ram = std::move(bg_palette);
     ppu.obj_palette_ram = std::move(obj_palette);
     cpu.bus.cgb_wram = std::move(wram);
+
     cpu.bus.restaura_rom = &restaura_rom;
     cpu.bus.timer = &timer;
     timer.apu = &apu;
