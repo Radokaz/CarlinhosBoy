@@ -110,7 +110,7 @@ void PPU::reset_sprites(void){
   for(size_t i {}; i < sprites_buscados.size(); ++i){
     sprites_buscados[i] = 0;
   }
-  for(size_t i; i < tiles_lidos.size(); ++i){
+  for(size_t i {}; i < tiles_lidos.size(); ++i){
     tiles_lidos[i] = 0;
   }
 
