@@ -184,6 +184,7 @@ void display_controles(GB_State *estado){
 
     if(apertado(KEY_ESCAPE) && !tecla_apertada){
       estado->atualiza_controles();
+      EndDrawing();
       break;
     }
 
@@ -228,6 +229,8 @@ void display_saves(Game_State *game, GB_State *estado){
         arquivo.seekg(MAX_SAVE_SLOTS*sizeof(size_t), std::ios::beg);
         arquivo.write(reinterpret_cast<char*>(&estado->save_slot), sizeof(size_t));
       }
+
+      EndDrawing();
       break;
     }
 
@@ -305,8 +308,10 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
     }
 
-    if(apertado(KEY_ESCAPE) || apertado(estado->controles[9]))
+    if(apertado(KEY_ESCAPE) || apertado(estado->controles[9])){
+      EndDrawing();
       break;
+    }
 
     DrawText("PAUSE", scale*690.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
@@ -320,6 +325,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     if(escolhas & opt_escolha(0)){
       escolhas &= ~opt_escolha(0);
       resumido = true;
+      EndDrawing();
       break;
     }
     if(escolhas & opt_escolha(1)){
@@ -344,6 +350,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     }
     if(escolhas & opt_escolha(3)){
       escolhas &= ~opt_escolha(3);
+      EndDrawing();
       return true;
     }
 
@@ -540,6 +547,7 @@ void init_gui(void){
       define_pasta(&estado, "rom_path", &lista);
     }
     if(escolhas & opt_escolha(4)){
+      EndDrawing();
       break;
     }
 
