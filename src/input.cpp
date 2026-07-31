@@ -1,11 +1,12 @@
 #include "memorybus.h"
+#include "game_state.h"
 
 namespace GB{
 
-void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausado, bool& is_120, bool& janela_alterada){
+void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120, bool& janela_alterada){
   uint8_t controles {};
 
-  const KeyboardKey *map = reinterpret_cast<const KeyboardKey*>(pad.teclas);
+  const KeyboardKey *map = reinterpret_cast<const KeyboardKey*>(estado->pad.teclas);
 
   if(segurado(map[0])) 
     controles |= A_BUTTON;
@@ -24,7 +25,7 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
   if(segurado(map[7]))
     controles |= RIGHT_BUTTON;
   if(apertado(map[8]))
-    paleta_lcd ^= 1;
+    estado->ppu.paleta_lcd ^= 1;
   if(apertado(map[9]) || apertado(KEY_ESCAPE))
     pausado = true;
   if(apertado(map[10])){
@@ -35,31 +36,37 @@ void le_input(Joypad& pad, bool& paleta_lcd, uint8_t& canais_ativos, bool& pausa
     ToggleFullscreen();
     janela_alterada = true;
   }
+  if(apertado(map[12])){
+    estado->save_state(save_slot);
+  }
+  if(apertado(map[13])){
+    estado->load_state(save_slot);
+  }
   
-#define AUDIO_CHANNEL_DEBUG
+//#define AUDIO_CHANNEL_DEBUG
 #ifdef AUDIO_CHANNEL_DEBUG
   if(apertado(KEY_ONE)){
-    canais_ativos ^= APU_CANAL1;
-    std::cout << "Canal 1 " << ((canais_ativos & APU_CANAL1) ? "ATIVADO\n" : "DESATIVADO\n");
+    APU::canais_ativos ^= APU_CANAL1;
+    std::cout << "Canal 1 " << ((APU::canais_ativos & APU_CANAL1) ? "ATIVADO\n" : "DESATIVADO\n");
   }
   if(apertado(KEY_TWO)){
-    canais_ativos ^= APU_CANAL2;
-    std::cout << "Canal 2 " << ((canais_ativos & APU_CANAL2) ? "ATIVADO\n" : "DESATIVADO\n");
+    APU::canais_ativos ^= APU_CANAL2;
+    std::cout << "Canal 2 " << ((APU::canais_ativos & APU_CANAL2) ? "ATIVADO\n" : "DESATIVADO\n");
   }
   if(apertado(KEY_THREE)){
-    canais_ativos ^= APU_CANAL3;
-    std::cout << "Canal 3 " << ((canais_ativos & APU_CANAL3) ? "ATIVADO\n" : "DESATIVADO\n");
+    APU::canais_ativos ^= APU_CANAL3;
+    std::cout << "Canal 3 " << ((APU::canais_ativos & APU_CANAL3) ? "ATIVADO\n" : "DESATIVADO\n");
   }
   if(apertado(KEY_FOUR)){
-    canais_ativos ^= APU_CANAL4;
-    std::cout << "Canal 4 " << ((canais_ativos & APU_CANAL4) ? "ATIVADO\n" : "DESATIVADO\n");
+    APU::canais_ativos ^= APU_CANAL4;
+    std::cout << "Canal 4 " << ((APU::canais_ativos & APU_CANAL4) ? "ATIVADO\n" : "DESATIVADO\n");
   }
 #endif
 
   if(controles){
     HideCursor();
   }
-  pad.input(controles);
+  estado->pad.input(controles);
   //std::cout << std::hex << static_cast<int32_t>(pad.controles) << "\n";
 }
 

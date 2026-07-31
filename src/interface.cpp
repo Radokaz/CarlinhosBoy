@@ -1,4 +1,5 @@
 #include "interface.h"
+#include "game_state.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 
@@ -130,13 +131,16 @@ void display_controles(GB_State *estado){
       }
     }
 
-    for(size_t i {8}; i < 12; ++i){
+    for(size_t i {8}; i < 14; ++i){
       Rectangle r = get_ret(860.0f, 290.0f + 75.0f*(i - 8), 100.0f, 50.0f);
       if(i == 8 || i == 11){
         DrawText(botoes_show[i].c_str(), scale*680.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
       else if(i == 9){
         DrawText(botoes_show[i].c_str(), scale*763.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
+      }
+      else if(i > 11){
+        DrawText(botoes_show[i].c_str(), scale*680.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
       else{
         DrawText(botoes_show[i].c_str(), scale*747.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
@@ -187,14 +191,88 @@ void display_controles(GB_State *estado){
   }
 }
 
-bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido){
+void display_saves(Game_State *game, GB_State *estado){
+  constexpr float width = 1920.0f;
+  constexpr float height = 1080.0f;
+
+  float screen_w = GetScreenWidth()/width;
+  float screen_h = GetScreenHeight()/height;
+  float scale = std::min(screen_w, screen_h);
+  GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+  GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+
+  while(1){
+    BeginDrawing();
+    ClearBackground(BLACK);
+
+    if(IsWindowResized()){
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+    }
+
+    if(apertado(estado->controles[11])){
+      ToggleFullscreen();
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    }
+
+    if(apertado(KEY_ESCAPE)){
+      std::fstream arquivo(game->save_path, arquivo.in | arquivo.out | arquivo.binary);
+      if(arquivo){
+        arquivo.seekg(MAX_SAVE_SLOTS*sizeof(size_t), std::ios::beg);
+        arquivo.write(reinterpret_cast<char*>(&estado->save_slot), sizeof(size_t));
+      }
+      break;
+    }
+
+    DrawText("SAVE STATES", scale*410.0f, scale*80.0f, scale*150.0f, GOLD);
+    DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
+
+    for(size_t i {}; i < 10; ++i){
+      Rectangle r = get_ret(450.0f, (320.0f + 60.0f*i), 100.0f, 50.0f);
+      if(GuiButton(r, ((game->save_states[i]) ? (std::string("Save") + std::to_string(i + 1)).c_str() : "Vazio"))){
+        estado->save_slot = i + 1;
+      }
+
+      if(estado->save_slot == i + 1){
+        DrawRectangleLines(scale*445.0f, scale*(315.0f + 60.0f*i), scale*110.0f, scale*60.0f, GREEN);
+      }
+    }
+
+    for(size_t i {}; i < 2; ++i){
+      Rectangle r = get_ret(700.0f + 200.0f*i, 320.0f, 150.0f, 100.0f);
+      if(!i){
+        if(GuiButton(r, "Save")){
+          game->save_state(estado->save_slot);
+        }
+      }
+      else{
+        if(GuiButton(r, "Load")){
+          game->load_state(estado->save_slot);
+        }
+      }
+    }
+
+    DrawText("Aperte ESC para voltar", scale*300.0f, scale*970.0f, scale*22, GOLD);
+
+    EndDrawing();
+  }
+}
+
+bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumido){
   if(!pausado) return false; 
 
   BeginDrawing();
   ShowCursor();
   EndDrawing();
   
-  const char opcoes[3][10] = {"Resumir", "Controles", "Sair"};
+  const char opcoes[4][15] = {"Resumir", "Controles", "Save States", "Sair"};
   uint8_t escolhas {};
 
   constexpr float width = 1920.0f;
@@ -233,7 +311,7 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido){
     DrawText("PAUSE", scale*690.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
-    for(size_t i {}; i < 3; ++i){
+    for(size_t i {}; i < 4; ++i){
       Rectangle r = get_ret(790.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
       if(GuiButton(r, opcoes[i]))
         escolhas |= opt_escolha(i);
@@ -256,6 +334,16 @@ bool pausa_jogo(CPU *cpu, GB_State *estado, bool& pausado, bool& resumido){
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
+      display_saves(game, estado);
+
+      screen_w = GetScreenWidth()/width;
+      screen_h = GetScreenHeight()/height;
+      scale = std::min(screen_w, screen_h);
+      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+    }
+    if(escolhas & opt_escolha(3)){
+      escolhas &= ~opt_escolha(3);
       return true;
     }
 

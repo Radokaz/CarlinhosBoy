@@ -307,7 +307,12 @@ void limpa_samples(APU *apu){
   ring.samples.fill(0);
   ring.write_pos = 0;
   ring.read_pos = 0;
-  apu->limpa_registradores();
+  APU::sample_esq = 0.0f;
+  APU::sample_dir = 0.0f;
+  APU::canais_ativos = 0x0F;
+  apu->capacitor_esq = 0.0;
+  apu->capacitor_dir = 0.0;
+  apu->sample_accumulator = 0;
 }
 
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
@@ -350,7 +355,7 @@ void APU::power_on(void){
     memoria[0xFF1B] = 0;
     memoria[0xFF20] = 0;
   }
- }
+}
 
 void APU::atualiza_volume(void){
   uint8_t master_volume = memoria[0xFF24];
