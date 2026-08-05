@@ -66,7 +66,7 @@ void CH3::sweep_length(void){
 }
 
 void CH3::incrementa_divider(void){
-  if(!is_channel3_on(memoria) || !dac) return;
+  if(!is_channel3_on(memoria)) return;
 
   ++periodo_divider;
   if(periodo_divider > 2047){
@@ -112,8 +112,9 @@ uint8_t CH3::get_sample(void){
 
 void CH3::amplifier(void){
   uint8_t sample = this->get_sample();
-  mixer(sample, ch3_prev, is_ch3_left(memoria) && (APU::canais_ativos & APU_CANAL3),
-      is_ch3_right(memoria) && (APU::canais_ativos & APU_CANAL3));
+  memoria[0xFF77] = (memoria[0xFF77] & 0xF0) | (sample & 0x0F);
+  mixer(sample, prev_esq, prev_dir, is_ch3_left(memoria) && (APU::canais_ativos & APU_CANAL3),
+      is_ch3_right(memoria) && (APU::canais_ativos & APU_CANAL3), synth);
 }
 
 void CH3::clear(void){
@@ -124,7 +125,6 @@ void CH3::clear(void){
   periodo_divider = 0;
   periodo_shadow = 0;
   output_level = 0;
-  ch3_prev = 0;
   memoria[0xFF1A] = 0;
   memoria[0xFF1C] = 0;
   memoria[0xFF1D] = 0;

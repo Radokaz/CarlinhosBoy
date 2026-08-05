@@ -29,6 +29,7 @@ void CH1::init_ch1(void){
 
     this->seta_length();
     this->seta_envelope();
+    this->amplifier();
 }
 
 void CH1::seta_length(void){
@@ -46,7 +47,7 @@ void CH1::seta_envelope(void){
 }
 
 void CH1::sweep_periodo(void){
-    if(!is_channel1_on(memoria) || !dac || !sweep_enabled) return;
+    if(!is_channel1_on(memoria) || !sweep_enabled) return;
     if(periodo_count){
       --periodo_count;
       if(!periodo_count){
@@ -88,7 +89,7 @@ void CH1::sweep_periodo(void){
 }
 
 void CH1::sweep_envelope(void){
-    if(!is_channel1_on(memoria) || !dac) return;
+    if(!is_channel1_on(memoria)) return;
 
     if(envelope_count){
       --envelope_count;
@@ -112,13 +113,13 @@ void CH1::sweep_envelope(void){
 }
 
 void CH1::incrementa_divider(void){
-    if(!is_channel1_on(memoria) || !dac) return;
+    if(!is_channel1_on(memoria)) return;
 
     ++periodo_divider;
     if(periodo_divider > 2047){
-      this->amplifier();
       periodo_divider = (((memoria[0xFF14] & 0x07) << 8) | (memoria[0xFF13]));
       duty_step = (duty_step + 1) % 8;
+      this->amplifier();
     }
 }
 
@@ -139,8 +140,9 @@ uint8_t CH1::get_sample(void){
 
 void CH1::amplifier(void){
   uint8_t sample = this->get_sample();
-  mixer(sample, ch1_prev, is_ch1_left(memoria) && (APU::canais_ativos & APU_CANAL1),
-      is_ch1_right(memoria) && (APU::canais_ativos & APU_CANAL1));
+  memoria[0xFF76] = (memoria[0xFF76] & 0xF0) | (sample & 0x0F);
+  mixer(sample, prev_esq, prev_dir, is_ch1_left(memoria) && (APU::canais_ativos & APU_CANAL1),
+      is_ch1_right(memoria) && (APU::canais_ativos & APU_CANAL1), synth);
 }
 
 void CH1::clear(void){
@@ -153,7 +155,6 @@ void CH1::clear(void){
   direcao_periodo = 0;
 
   duty_step = 0;
-  ch1_prev = 0;
 
   envelope = 0;
   initial_volume = 0;
@@ -176,7 +177,7 @@ bool CH2::is_length_enabled(){
 
 void CH2::init_ch2(void){
     periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
-    periodo_divider = (periodo_shadow & 0xFC) | (periodo_divider & 0x03);
+    periodo_divider = (periodo_shadow & 0xFFFC) | (periodo_divider & 0x03);
 
     this->seta_length();
     this->seta_envelope();
@@ -197,7 +198,7 @@ void CH2::seta_envelope(void){
 }
 
 void CH2::sweep_envelope(void){
-    if(!is_channel2_on(memoria) || !dac) return;
+    if(!is_channel2_on(memoria)) return;
 
     if(envelope_count){
       --envelope_count;
@@ -221,14 +222,14 @@ void CH2::sweep_envelope(void){
 }
 
 void CH2::incrementa_divider(void){
-    if(!is_channel2_on(memoria) || !dac) return;
+    if(!is_channel2_on(memoria)) return;
 
     ++periodo_divider;
     if(periodo_divider > 2047){
-      this->amplifier();
       periodo_shadow = (((memoria[0xFF19] & 0x07) << 8) | (memoria[0xFF18]));
       periodo_divider = periodo_shadow;
       duty_step = (duty_step + 1) % 8;
+      this->amplifier();
     }
 }
 
@@ -249,8 +250,9 @@ uint8_t CH2::get_sample(void){
 
 void CH2::amplifier(void){
   uint8_t sample = this->get_sample();
-  mixer(sample, ch2_prev, is_ch2_left(memoria) && (APU::canais_ativos & APU_CANAL2),
-      is_ch2_right(memoria) && (APU::canais_ativos & APU_CANAL2));
+  memoria[0xFF76] = (memoria[0xFF76] & 0x0F) | ((sample & 0x0F) << 4);
+  mixer(sample, prev_esq, prev_dir, is_ch2_left(memoria) && (APU::canais_ativos & APU_CANAL2),
+      is_ch2_right(memoria) && (APU::canais_ativos & APU_CANAL2), synth);
 }
 
 void CH2::clear(void){
@@ -259,7 +261,6 @@ void CH2::clear(void){
   dac = false;
 
   duty_step = 0;
-  ch2_prev = 0;
 
   envelope = 0;
   initial_volume = 0;

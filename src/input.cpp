@@ -43,7 +43,7 @@ void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120,
     estado->load_state(save_slot);
   }
   
-//#define AUDIO_CHANNEL_DEBUG
+#define AUDIO_CHANNEL_DEBUG
 #ifdef AUDIO_CHANNEL_DEBUG
   if(apertado(KEY_ONE)){
     APU::canais_ativos ^= APU_CANAL1;
