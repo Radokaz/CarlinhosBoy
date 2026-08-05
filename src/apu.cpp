@@ -89,7 +89,7 @@ uint8_t& APU::read(uint16_t endereco){
 
 void APU::write(uint16_t endereco, uint8_t valor){
   switch(endereco){
-    case 0xFF26:{
+      case 0xFF26:{
         uint8_t bit_prev = (memoria[0xFF26] & 0x80);
         memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
         if(!(valor & 0x80))
@@ -100,6 +100,14 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         return;
       }
+      case 0xFF25:
+      case 0xFF24:{
+        memoria[endereco] = valor;
+        this->atualiza_volume();
+        this->audio_pop<0xFF>();
+        return;
+      }
+
       case 0xFF10:{
         uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
         memoria[0xFF10] = valor;
@@ -114,12 +122,17 @@ void APU::write(uint16_t endereco, uint8_t valor){
         return;
       }
       case 0xFF12:{
+        bool dac_prev = ch1.dac;
         ch1.dac = ((valor & 0xF8) != 0);
         if(!ch1.dac){
           memoria[0xFF26] &= ~APU_CH1_ON;
         }
 
-        checa_zombie_mode(&memoria[0xFF12], &ch1.envelope, ch1.auto_update, valor);
+        if(dac_prev != ch1.dac)
+          this->audio_pop<0x01>();
+
+        if(is_channel1_on(memoria))
+          checa_zombie_mode(&memoria[0xFF12], &ch1.envelope, ch1.auto_update, valor);
 
         memoria[0xFF12] = valor;
         return;
@@ -138,7 +151,6 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
            if(ch1.dac){
             memoria[0xFF26] |= APU_CH1_ON;
-            //ch1.amplifier();
           }
           
           ch1.init_ch1();
@@ -157,12 +169,17 @@ void APU::write(uint16_t endereco, uint8_t valor){
         return;
       }
       case 0xFF17:{
+        bool dac_prev = ch2.dac;
         ch2.dac = ((valor & 0xF8) != 0);
         if(!ch2.dac){
           memoria[0xFF26] &= ~APU_CH2_ON;
         }
 
-        checa_zombie_mode(&memoria[0xFF17], &ch2.envelope, ch2.auto_update, valor);
+        if(dac_prev != ch2.dac)
+          this->audio_pop<0x02>();
+
+        if(is_channel2_on(memoria))
+          checa_zombie_mode(&memoria[0xFF17], &ch2.envelope, ch2.auto_update, valor);
 
         memoria[0xFF17] = valor;
         return;
@@ -182,16 +199,20 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
           if(ch2.dac){
             memoria[0xFF26] |= APU_CH2_ON;
-            //ch2.amplifier();
+            ch2.amplifier();
           }
         }
         return;
       }
       case 0xFF1A:{
+        bool dac_prev = ch3.dac;
         ch3.dac = ((valor & 0x80) != 0);
         if(!ch3.dac){
           memoria[0xFF26] &= ~APU_CH3_ON;
         }
+
+        if(dac_prev != ch3.dac)
+          this->audio_pop<0x04>();
 
         memoria[0xFF1A] = valor;
         return;
@@ -216,7 +237,7 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
           if(ch3.dac){
             memoria[0xFF26] |= APU_CH3_ON;
-            //ch3.amplifier();
+            ch3.amplifier();
           }
         }
         return;
@@ -227,13 +248,23 @@ void APU::write(uint16_t endereco, uint8_t valor){
         return;
       }
       case 0xFF21:{
+        bool dac_prev = ch4.dac;
         ch4.dac = ((valor & 0xF8) != 0);
-        if(!ch4.dac)
-            memoria[0xFF26] &= ~APU_CH4_ON;
+        if(!ch4.dac){
+          memoria[0xFF26] &= ~APU_CH4_ON;
+        }
 
-        checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);
+        if(dac_prev != ch4.dac)
+          this->audio_pop<0x08>();
+        if(is_channel4_on(memoria))
+          checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);
 
         memoria[0xFF21] = valor;
+        return;
+      }
+      case 0xFF22:{
+        memoria[0xFF22] = valor;
+        ch4.seta_clock();
         return;
       }
       case 0xFF23:{
@@ -251,7 +282,7 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
           if(ch4.dac){
             memoria[0xFF26] |= APU_CH4_ON;
-            //ch4.amplifier();
+            ch4.amplifier();
           }
         }
         return;
@@ -307,28 +338,43 @@ void limpa_samples(APU *apu){
   ring.samples.fill(0);
   ring.write_pos = 0;
   ring.read_pos = 0;
-  APU::sample_esq = 0.0f;
-  APU::sample_dir = 0.0f;
   APU::canais_ativos = 0x0F;
-  apu->capacitor_esq = 0.0;
-  apu->capacitor_dir = 0.0;
-  apu->sample_accumulator = 0;
+}
+
+template <uint8_t channel_bit>
+void APU::audio_pop(void){
+  constexpr uint8_t ch1_bit = (1 << 0);
+  constexpr uint8_t ch2_bit = (1 << 1);
+  constexpr uint8_t ch3_bit = (1 << 2);
+  constexpr uint8_t ch4_bit = (1 << 3);
+
+  if constexpr(channel_bit & ch1_bit){
+    ch1.amplifier();
+  }
+  if constexpr(channel_bit & ch2_bit){
+    ch2.amplifier();
+  }
+  if constexpr(channel_bit & ch3_bit){
+    ch3.amplifier();
+  }
+  if constexpr(channel_bit & ch4_bit){
+    ch4.amplifier();
+  }
 }
 
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_ciclos = 0;
-  sample_accumulator = 0;
-  capacitor_esq = 0.0;
-  capacitor_dir = 0.0;
-  sample_esq = 0;
-  sample_dir = 0;
   volume_esq = 0;
   volume_dir = 0;
 
-  ch1.ch1_prev = 0;
-  ch2.ch2_prev = 0;
-  ch3.ch3_prev = 0;
-  ch4.ch4_prev = 0;
+  ch1.prev_esq = 0;
+  ch1.prev_dir = 0;
+  ch2.prev_esq = 0;
+  ch2.prev_dir = 0;
+  ch3.prev_esq = 0;
+  ch3.prev_dir = 0;
+  ch4.prev_esq = 0;
+  ch4.prev_dir = 0;
   
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
@@ -355,6 +401,7 @@ void APU::power_on(void){
     memoria[0xFF1B] = 0;
     memoria[0xFF20] = 0;
   }
+  this->atualiza_volume();
 }
 
 void APU::atualiza_volume(void){
@@ -384,44 +431,50 @@ void APU::frame_sequencer(void){
   
 }
 
-void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir){
-  if(atual != ultimo){
-    float sample = (static_cast<float>(atual) - 7.5f);
-    float prev = (static_cast<float>(ultimo) - 7.5f);
-    float delta = sample - prev;
-    if(esq) 
-      APU::sample_esq+=(delta*APU::volume_esq);
-    if(dir)
-      APU::sample_dir+=(delta*APU::volume_dir);
+void mixer(uint8_t atual, uint8_t& esq_ultimo, uint8_t& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 15> *synth){
+  uint8_t esq_atual = (esq) ? atual*APU::volume_esq : 0;
+  uint8_t dir_atual = (dir) ? atual*APU::volume_dir : 0;
 
-    ultimo = atual;
+  if(esq_atual != esq_ultimo){
+    int delta = static_cast<int>(esq_atual) - static_cast<int>(esq_ultimo);
+    synth->offset(APU::global_clocks, delta, APU::blip_esq.get());
+    esq_ultimo = esq_atual;
+  }
+  if(dir_atual != dir_ultimo){
+    int delta = static_cast<int>(dir_atual) - static_cast<int>(dir_ultimo);
+    synth->offset(APU::global_clocks, delta, APU::blip_dir.get());
+    dir_ultimo = dir_atual;
   }
 }
 
 void APU::output(void){
-  constexpr float charge {std::pow(0.999958f, static_cast<float>(FREQUENCIA_OSCILADOR)/44100.0f)};
+  blip_esq->end_frame(APU::global_clocks);
+  blip_dir->end_frame(APU::global_clocks);
+  global_clocks = 0;
 
-  float esq = sample_esq/240.0f;
-  float dir = sample_dir/240.0f;
+  int total_samples = blip_esq->samples_avail();
+  if(total_samples > 0){
+    std::vector<blip_sample_t> sample_esq(total_samples), sample_dir(total_samples);
 
-  float out_esq = esq - capacitor_esq;
-  float out_dir = dir - capacitor_dir;
-  capacitor_esq = esq - out_esq*charge;
-  capacitor_dir = dir - out_dir*charge;
+    blip_esq->read_samples(sample_esq.data(), total_samples, 0);
+    blip_dir->read_samples(sample_dir.data(), total_samples, 0);
 
-  ring.push(static_cast<int16_t>(out_esq*32767.0f), static_cast<int16_t>(out_dir*32767.0f));
+    for(size_t i {}; i < total_samples; ++i){
+      ring.push(static_cast<int16_t>(sample_esq[i]), static_cast<int16_t>(sample_dir[i]));    
+    }
+  }
 }
 
 void APU::step(uint8_t modo_cpu){
   if(!is_audio_on(memoria)) return;
   
-  this->atualiza_volume();
   size_t limiar {4};
   if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
     limiar = 2;
 
   for(size_t i {}; i < limiar; ++i){
     ++sample_ciclos;
+    ++global_clocks;
     
     if(sample_ciclos % 2 == 0){
       ch3.incrementa_divider();
@@ -432,9 +485,7 @@ void APU::step(uint8_t modo_cpu){
     }
     ch4.sweep_clock();
 
-    sample_accumulator+=44100;
-    if(sample_accumulator >= FREQUENCIA_OSCILADOR){
-      sample_accumulator-=FREQUENCIA_OSCILADOR;
+    if(global_clocks >= FRAME_CYCLES){
       this->output();
     }
   }

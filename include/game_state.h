@@ -87,6 +87,7 @@ struct Game_State{
     std::unique_ptr<uint8_t[]> obj_palette = std::move(ppu.obj_palette_ram);
     std::unique_ptr<uint8_t[]> wram = std::move(cpu.bus.cgb_wram);
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
+    auto synths = std::move(apu.synths);
 
     save.write(reinterpret_cast<char*>(&pad), sizeof(Joypad));
     save.write(reinterpret_cast<char*>(&timer), sizeof(Timer));
@@ -110,6 +111,7 @@ struct Game_State{
     ppu.bg_palette_ram = std::move(bg_palette);
     ppu.obj_palette_ram = std::move(obj_palette);
     cpu.bus.cgb_wram = std::move(wram);
+    apu.synths = std::move(synths);
 
     std::cout << "Jogo salvo no slot " << slot << ".\n";
   }
@@ -132,6 +134,7 @@ struct Game_State{
     std::unique_ptr<uint8_t[]> obj_palette = std::move(ppu.obj_palette_ram);
     std::unique_ptr<uint8_t[]> wram = std::move(cpu.bus.cgb_wram);
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
+    auto synths = std::move(apu.synths);
     const void *tec = pad.teclas;
     Texture2D *frame = ppu.raylib_texture;
     uint8_t modo_cpu = cpu.modo;
@@ -164,6 +167,7 @@ struct Game_State{
     ppu.bg_palette_ram = std::move(bg_palette);
     ppu.obj_palette_ram = std::move(obj_palette);
     cpu.bus.cgb_wram = std::move(wram);
+    apu.synths = std::move(synths);
 
     cpu.bus.restaura_rom = &restaura_rom;
     cpu.bus.timer = &timer;
@@ -174,9 +178,13 @@ struct Game_State{
     cpu.bus.dma.wram = cpu.bus.cgb_wram.get();
     apu.memoria = cpu.bus.memoria.data();
     apu.ch1.memoria = cpu.bus.memoria.data();
+    apu.ch1.synth = &apu.synths[0];
     apu.ch2.memoria = cpu.bus.memoria.data();
+    apu.ch2.synth = &apu.synths[1];
     apu.ch3.memoria = cpu.bus.memoria.data();
+    apu.ch3.synth = &apu.synths[2];
     apu.ch4.memoria = cpu.bus.memoria.data();
+    apu.ch4.synth = &apu.synths[3];
     pad.teclas = tec;
     pad.p1 = &cpu.bus.memoria[0xFF00];
     ppu.memoria = cpu.bus.memoria.data();

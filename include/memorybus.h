@@ -231,6 +231,15 @@ struct Memorybus{
           memoria[endereco] &= 0x70;
           return memoria[endereco];
         }
+        case 0xFF76:
+        case 0xFF77:{
+          if(!ppu->modo_cpu){
+            dma_hack = 0xFF;
+            return dma_hack;
+          }
+
+          return memoria[endereco];
+        }
         default: break;
     }
         
@@ -426,6 +435,9 @@ struct Memorybus{
         memoria[endereco] = valor & 0x70;
         return;
       }
+      case 0xFF76:
+      case 0xFF77:
+        return;
       default: break;
     }
 

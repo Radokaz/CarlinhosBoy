@@ -50,7 +50,7 @@ void CH4::sweep_length(void){
 }
 
 void CH4::sweep_clock(void){
-  if(!is_channel4_on(memoria) || !dac) return;
+  if(!is_channel4_on(memoria)) return;
   if(clock_timer){
     --clock_timer;
     if(!clock_timer){
@@ -79,7 +79,7 @@ void CH4::incrementa_clock(void){
 }
 
 void CH4::sweep_envelope(void){
-  if(!is_channel4_on(memoria) || !dac) return;
+  if(!is_channel4_on(memoria)) return;
 
   if(envelope_count){
     --envelope_count;
@@ -108,8 +108,9 @@ uint8_t CH4::get_sample(void){
 
 void CH4::amplifier(void){
   uint8_t sample = this->get_sample();
-  mixer(sample, ch4_prev, is_ch4_left(memoria) && (APU::canais_ativos & APU_CANAL4),
-      is_ch4_right(memoria) && (APU::canais_ativos & APU_CANAL4));
+  memoria[0xFF77] = (memoria[0xFF77] & 0x0F) | ((sample & 0x0F) << 4);
+  mixer(sample, prev_esq, prev_dir, is_ch4_left(memoria) && (APU::canais_ativos & APU_CANAL4),
+      is_ch4_right(memoria) && (APU::canais_ativos & APU_CANAL4), synth);
 }
 
 void CH4::clear(void){
@@ -129,7 +130,6 @@ void CH4::clear(void){
   envelope_pace = 0;
   direcao_envelope = 0;
   envelope_count = 0;
-  ch4_prev = 0;
 
   memoria[0xFF21] = 0;
   memoria[0xFF22] = 0;

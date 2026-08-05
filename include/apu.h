@@ -29,12 +29,17 @@
 #define APU_CANAL4 (1 << 3)
 
 #define FREQUENCIA_OSCILADOR 4194304
+#define SAMPLE_RATE_APU 44100
+#define FRAME_CYCLES 70224
 
 #include <cstdint>
 #include <iostream>
 #include <cmath>
 #include <array>
+#include <vector>
+#include <memory>
 #include <raylib.h>
+#include "Blip_Buffer.h"
 
 namespace GB{
 
@@ -63,6 +68,7 @@ static constexpr std::array<std::array<uint8_t, 8>, 4> tabela_onda{{
 struct CH1{
 
     uint8_t *memoria;
+    Blip_Synth<blip_good_quality, 15> *synth {};
     
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
@@ -88,7 +94,8 @@ struct CH1{
 
     bool modo_cgb {false};
     bool auto_update {true};
-    uint8_t ch1_prev {};
+    uint8_t prev_esq {8};
+    uint8_t prev_dir {8};
 
     CH1(uint8_t *mem): memoria{mem} {}
 
@@ -108,6 +115,7 @@ struct CH1{
 struct CH2{
 
     uint8_t *memoria;
+    Blip_Synth<blip_good_quality, 15> *synth {};
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
@@ -125,7 +133,8 @@ struct CH2{
     bool dac {false};
     bool auto_update {true};
     bool modo_cgb {false};
-    uint8_t ch2_prev {};
+    uint8_t prev_esq {8};
+    uint8_t prev_dir {8};
 
     CH2(uint8_t *mem): memoria{mem} {}
 
@@ -144,6 +153,7 @@ struct CH2{
 struct CH3{
 
   uint8_t *memoria;
+  Blip_Synth<blip_good_quality, 15> *synth {};
 
   uint16_t periodo_divider {};
   uint16_t periodo_shadow {};
@@ -158,7 +168,8 @@ struct CH3{
 
   bool dac {false};
   bool modo_cgb {false};
-  uint8_t ch3_prev {};
+  uint8_t prev_esq {8};
+  uint8_t prev_dir {8};
 
   CH3(uint8_t *mem): memoria{mem} {}
 
@@ -177,6 +188,7 @@ struct CH3{
 struct CH4{
 
   uint8_t *memoria;
+  Blip_Synth<blip_good_quality, 15> *synth {};
 
   uint32_t period {8};
   uint32_t clock_timer {};
@@ -197,7 +209,8 @@ struct CH4{
   bool dac {false};
   bool auto_update {true};
   bool modo_cgb {false};
-  uint8_t ch4_prev {};
+  uint8_t prev_esq {8};
+  uint8_t prev_dir {8};
 
   CH4(uint8_t *mem): memoria{mem} {}
 
@@ -218,28 +231,58 @@ struct CH4{
 struct APU{
   
   inline static uint8_t canais_ativos {0x0F}; //debug apenas
-  inline static float sample_esq {};
-  inline static float sample_dir {};
   inline static uint16_t volume_dir {};
   inline static uint16_t volume_esq {};
+  inline static blip_time_t global_clocks {};
 
+  inline static std::unique_ptr<Blip_Buffer> blip_esq{};
+  inline static std::unique_ptr<Blip_Buffer> blip_dir{};
+
+  std::unique_ptr<Blip_Synth<blip_good_quality, 15>[]> synths;
   uint8_t *memoria {};
-
+  
   CH1 ch1;
   CH2 ch2;
   CH3 ch3;
   CH4 ch4;
 
   uint64_t sample_ciclos {};
-  uint32_t sample_accumulator {};
-  float capacitor_esq {};
-  float capacitor_dir {};
   
   uint8_t div_apu {}; //sincroniza os parâmetros de onda em todos os canais
   uint8_t div_prev {};
   uint8_t apu_hack {};
 
-  APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {}
+  APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {
+    blip_esq = std::make_unique<Blip_Buffer>();
+    blip_dir = std::make_unique<Blip_Buffer>();
+    synths = std::make_unique<Blip_Synth<blip_good_quality, 15>[]>(4);
+
+    auto error = blip_esq->set_sample_rate(SAMPLE_RATE_APU);
+    blip_esq->clock_rate(FREQUENCIA_OSCILADOR);
+    assert(!error);
+
+    error = blip_dir->set_sample_rate(SAMPLE_RATE_APU);
+    blip_dir->clock_rate(FREQUENCIA_OSCILADOR);
+    assert(!error);
+
+    for(size_t i {}; i < 4; ++i){
+      synths[i].volume(0.015);
+    }
+    ch1.synth = &synths[0];
+    ch2.synth = &synths[1];
+    ch3.synth = &synths[2];
+    ch4.synth = &synths[3];
+
+    blip_esq->bass_freq(20);
+    blip_dir->bass_freq(20);
+    global_clocks = 0;
+  }
+
+  ~APU(){
+    blip_esq.reset();
+    blip_dir.reset();
+    global_clocks = 0;
+  }
 
   void atualiza_volume(void);
   void limpa_registradores(void);
@@ -249,6 +292,9 @@ struct APU{
   uint8_t& read(uint16_t endereco);
   void write(uint16_t endereco, uint8_t valor);
   
+  template <uint8_t channel_bit>
+  void audio_pop(void);
+
   void amplifier(void);
   void output(void);
 
@@ -257,7 +303,7 @@ struct APU{
 };
 
 void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor);
-void mixer(uint8_t atual, uint8_t& ultimo, bool esq, bool dir);
+void mixer(uint8_t atual, uint8_t& esq_ultimo, uint8_t& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 15> *synth);
 void audio_callback(void* buffer, unsigned int frames);
 void limpa_samples(APU *apu);
 
