@@ -68,7 +68,9 @@ static constexpr std::array<std::array<uint8_t, 8>, 4> tabela_onda{{
 struct CH1{
 
     uint8_t *memoria;
-    Blip_Synth<blip_good_quality, 15> *synth {};
+    Blip_Synth<blip_good_quality, 240> *synth {};
+    int prev_esq {};
+    int prev_dir {};
     
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
@@ -94,9 +96,7 @@ struct CH1{
 
     bool modo_cgb {false};
     bool auto_update {true};
-    uint8_t prev_esq {8};
-    uint8_t prev_dir {8};
-
+   
     CH1(uint8_t *mem): memoria{mem} {}
 
     bool is_length_enabled();
@@ -115,7 +115,9 @@ struct CH1{
 struct CH2{
 
     uint8_t *memoria;
-    Blip_Synth<blip_good_quality, 15> *synth {};
+    Blip_Synth<blip_good_quality, 240> *synth {};
+    int prev_esq {};
+    int prev_dir {};
 
     uint16_t periodo_divider {};
     uint16_t periodo_shadow {};
@@ -133,9 +135,7 @@ struct CH2{
     bool dac {false};
     bool auto_update {true};
     bool modo_cgb {false};
-    uint8_t prev_esq {8};
-    uint8_t prev_dir {8};
-
+    
     CH2(uint8_t *mem): memoria{mem} {}
 
     bool is_length_enabled(void);
@@ -153,7 +153,9 @@ struct CH2{
 struct CH3{
 
   uint8_t *memoria;
-  Blip_Synth<blip_good_quality, 15> *synth {};
+  Blip_Synth<blip_good_quality, 240> *synth {};
+  int prev_esq {};
+  int prev_dir {};
 
   uint16_t periodo_divider {};
   uint16_t periodo_shadow {};
@@ -168,9 +170,7 @@ struct CH3{
 
   bool dac {false};
   bool modo_cgb {false};
-  uint8_t prev_esq {8};
-  uint8_t prev_dir {8};
-
+  
   CH3(uint8_t *mem): memoria{mem} {}
 
   bool is_length_enabled(void);
@@ -188,7 +188,9 @@ struct CH3{
 struct CH4{
 
   uint8_t *memoria;
-  Blip_Synth<blip_good_quality, 15> *synth {};
+  Blip_Synth<blip_good_quality, 240> *synth {};
+  int prev_esq {};
+  int prev_dir {};
 
   uint32_t period {8};
   uint32_t clock_timer {};
@@ -209,9 +211,7 @@ struct CH4{
   bool dac {false};
   bool auto_update {true};
   bool modo_cgb {false};
-  uint8_t prev_esq {8};
-  uint8_t prev_dir {8};
-
+  
   CH4(uint8_t *mem): memoria{mem} {}
 
   bool is_length_enabled(void);
@@ -238,7 +238,7 @@ struct APU{
   inline static std::unique_ptr<Blip_Buffer> blip_esq{};
   inline static std::unique_ptr<Blip_Buffer> blip_dir{};
 
-  std::unique_ptr<Blip_Synth<blip_good_quality, 15>[]> synths;
+  std::unique_ptr<Blip_Synth<blip_good_quality, 240>[]> synths;
   uint8_t *memoria {};
   
   CH1 ch1;
@@ -255,7 +255,7 @@ struct APU{
   APU(uint8_t *mem): memoria{mem}, ch1{mem}, ch2{mem}, ch3{mem}, ch4{mem} {
     blip_esq = std::make_unique<Blip_Buffer>();
     blip_dir = std::make_unique<Blip_Buffer>();
-    synths = std::make_unique<Blip_Synth<blip_good_quality, 15>[]>(4);
+    synths = std::make_unique<Blip_Synth<blip_good_quality, 240>[]>(4);
 
     auto error = blip_esq->set_sample_rate(SAMPLE_RATE_APU);
     blip_esq->clock_rate(FREQUENCIA_OSCILADOR);
@@ -266,7 +266,7 @@ struct APU{
     assert(!error);
 
     for(size_t i {}; i < 4; ++i){
-      synths[i].volume(0.015);
+      synths[i].volume(0.24);
     }
     ch1.synth = &synths[0];
     ch2.synth = &synths[1];
@@ -303,7 +303,7 @@ struct APU{
 };
 
 void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor);
-void mixer(uint8_t atual, uint8_t& esq_ultimo, uint8_t& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 15> *synth);
+void mixer(uint8_t atual, int& esq_ultimo, int& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 240> *synth);
 void audio_callback(void* buffer, unsigned int frames);
 void limpa_samples(APU *apu);
 

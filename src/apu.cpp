@@ -256,6 +256,7 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         if(dac_prev != ch4.dac)
           this->audio_pop<0x08>();
+
         if(is_channel4_on(memoria))
           checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);
 
@@ -431,17 +432,17 @@ void APU::frame_sequencer(void){
   
 }
 
-void mixer(uint8_t atual, uint8_t& esq_ultimo, uint8_t& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 15> *synth){
-  uint8_t esq_atual = (esq) ? atual*APU::volume_esq : 0;
-  uint8_t dir_atual = (dir) ? atual*APU::volume_dir : 0;
+void mixer(uint8_t atual, int& esq_ultimo, int& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 240> *synth){
+  int esq_atual = (esq) ? (0xF - static_cast<int>(atual*2))*APU::volume_esq : esq_ultimo;
+  int dir_atual = (dir) ? (0xF - static_cast<int>(atual*2))*APU::volume_dir : dir_ultimo;
 
   if(esq_atual != esq_ultimo){
-    int delta = static_cast<int>(esq_atual) - static_cast<int>(esq_ultimo);
+    int delta = esq_atual - esq_ultimo;
     synth->offset(APU::global_clocks, delta, APU::blip_esq.get());
     esq_ultimo = esq_atual;
   }
   if(dir_atual != dir_ultimo){
-    int delta = static_cast<int>(dir_atual) - static_cast<int>(dir_ultimo);
+    int delta = dir_atual - dir_ultimo;
     synth->offset(APU::global_clocks, delta, APU::blip_dir.get());
     dir_ultimo = dir_atual;
   }
