@@ -202,6 +202,14 @@ void display_saves(Game_State *game, GB_State *estado){
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
 
+  auto frames = game->load_framebuffer();
+
+  float tex_scale = scale*3.0f;
+  float textureX = 160*tex_scale;
+  float textureY = 144*tex_scale;
+  float posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
+  float posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
+
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
@@ -212,6 +220,12 @@ void display_saves(Game_State *game, GB_State *estado){
       scale = std::min(screen_w, screen_h);
       GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
       GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      
+      tex_scale = scale*3.0f;
+      textureX = 160*tex_scale;
+      textureY = 144*tex_scale;
+      posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
+      posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
     }
 
     if(apertado(estado->controles[11])){
@@ -221,6 +235,12 @@ void display_saves(Game_State *game, GB_State *estado){
       scale = std::min(screen_w, screen_h);
       GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
       GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+
+      tex_scale = scale*3.0f;
+      textureX = 160*tex_scale;
+      textureY = 144*tex_scale;
+      posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
+      posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
     }
 
     if(apertado(KEY_ESCAPE)){
@@ -245,6 +265,9 @@ void display_saves(Game_State *game, GB_State *estado){
 
       if(estado->save_slot == i + 1){
         DrawRectangleLines(scale*445.0f, scale*(315.0f + 60.0f*i), scale*110.0f, scale*60.0f, GREEN);
+        if(frames[i]){
+          DrawTextureEx(*frames[i], Vector2{posX, posY}, 0, tex_scale, WHITE);
+        }
       }
     }
 
@@ -253,6 +276,11 @@ void display_saves(Game_State *game, GB_State *estado){
       if(!i){
         if(GuiButton(r, "Save")){
           game->save_state(estado->save_slot);
+          for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+            if(frames[i])
+              UnloadTexture(*frames[i]);
+          }
+          frames = game->load_framebuffer();
         }
       }
       else{
@@ -265,6 +293,11 @@ void display_saves(Game_State *game, GB_State *estado){
     DrawText("Aperte ESC para voltar", scale*300.0f, scale*970.0f, scale*22, GOLD);
 
     EndDrawing();
+  }
+  
+  for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+    if(frames[i])
+      UnloadTexture(*frames[i]);
   }
 }
 
