@@ -15,7 +15,9 @@ struct Game_State{
   APU apu;
   std::function<void()> restaura_rom;
   std::filesystem::path save_path;
+  std::filesystem::path image_path;
   size_t save_states[MAX_SAVE_SLOTS];
+  size_t frame_states[MAX_SAVE_SLOTS];
   bool *save_liberado {};
 
   Game_State(Texture2D *texture, GB_State *estado, std::string_view states, std::string_view rom_path): 
@@ -27,10 +29,16 @@ struct Game_State{
       save_path = std::filesystem::path(states) / std::filesystem::path(rom_path).filename();
       save_path.replace_extension(".db");
 
+      image_path = std::filesystem::path(states) / std::filesystem::path("Frames");
+      std::filesystem::create_directories(image_path);
+      image_path /= std::filesystem::path(rom_path).filename();
+      image_path.replace_extension(".bin");
+
       std::fstream saves(save_path, saves.in | saves.binary);
       if(!saves){
         for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
           save_states[i] = 0;
+          frame_states[i] = 0;
         }
 
         return;
@@ -42,6 +50,99 @@ struct Game_State{
         save_states[i] = offset;
       }
       saves.read(reinterpret_cast<char*>(&estado->save_slot), sizeof(size_t));
+
+      saves.close();
+      saves.clear();
+      saves.open(image_path, saves.in | saves.binary);
+      if(!saves){
+        for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+          frame_states[i] = 0;
+        }
+
+        return;
+      }
+
+      for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+        size_t offset {};
+        saves.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+        frame_states[i] = offset;
+      }
+  }
+
+  void save_framebuffer(size_t slot){
+    Image frame = LoadImageFromTexture(*(ppu.raylib_texture));
+
+    std::fstream imagens(image_path, imagens.in | imagens.out | imagens.binary);
+    if(!imagens){
+      imagens.close();
+
+      std::ofstream novo(image_path, novo.out | novo.binary);
+
+      for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+        if(i + 1 == slot){
+          frame_states[i] = PAGE_SIZE;
+        }
+        
+        novo.write(reinterpret_cast<char*>(&frame_states[i]), sizeof(size_t));
+      }
+
+      novo.close();
+      imagens.clear();
+      imagens.open(image_path, imagens.in | imagens.out | imagens.binary);
+    }
+
+    constexpr size_t tamanho = sizeof(uint32_t)*160*144;
+
+    if(!frame_states[slot - 1]){
+      size_t num_frames {};
+      for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+        if(frame_states[i])
+          ++num_frames;
+      }
+
+      frame_states[slot - 1] = PAGE_SIZE + num_frames*(sizeof(frame) + tamanho);
+      imagens.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+      imagens.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
+    }
+
+    imagens.seekp(frame_states[slot - 1], std::ios::beg);
+    imagens.write(reinterpret_cast<char*>(&frame), sizeof(frame));
+    imagens.write(reinterpret_cast<char*>(frame.data), tamanho);
+
+    UnloadImage(frame);
+  }
+
+  std::unique_ptr<std::unique_ptr<Texture2D>[]> load_framebuffer(void){
+    auto frames = std::make_unique<std::unique_ptr<Texture2D>[]>(MAX_SAVE_SLOTS);
+
+    std::fstream imagens(image_path, imagens.in | imagens.binary);
+    if(!imagens){
+      return frames;
+    }
+
+    constexpr size_t tamanho = sizeof(uint32_t)*160*144;
+    for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+      Image imagem{};
+
+      if(!frame_states[i]){
+        UnloadImage(imagem);
+        continue;
+      }
+
+      imagens.seekg(frame_states[i], std::ios::beg);
+      imagens.read(reinterpret_cast<char*>(&imagem), sizeof(imagem));
+
+      imagem.data = reinterpret_cast<void*>(new uint32_t[160*144]);
+      imagens.read(reinterpret_cast<char*>(imagem.data), tamanho);
+      frames[i] = std::make_unique<Texture2D>(LoadTextureFromImage(imagem));
+
+      uint32_t *aux = reinterpret_cast<uint32_t*>(imagem.data);
+      imagem.data = nullptr;
+      delete[] aux;
+      UnloadImage(imagem);
+    }
+
+    return frames;
   }
   
   void save_state(size_t slot){
@@ -76,12 +177,13 @@ struct Game_State{
       }
 
       save_states[slot - 1] = PAGE_SIZE + save_index*PAGE_SIZE*80;
-      save.seekg((slot - 1)*sizeof(size_t), std::ios::beg);
+      save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
       save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
     }
 
-    save.seekg(save_states[slot - 1], std::ios::beg);
+    save.seekp(save_states[slot - 1], std::ios::beg);
 
+    this->save_framebuffer(slot);
     std::unique_ptr<uint8_t[]> vbank = std::move(ppu.vram_bank1);
     std::unique_ptr<uint8_t[]> bg_palette = std::move(ppu.bg_palette_ram);
     std::unique_ptr<uint8_t[]> obj_palette = std::move(ppu.obj_palette_ram);
