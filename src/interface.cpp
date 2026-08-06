@@ -207,8 +207,8 @@ void display_saves(Game_State *game, GB_State *estado){
   float tex_scale = scale*3.0f;
   float textureX = 160*tex_scale;
   float textureY = 144*tex_scale;
-  float posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
-  float posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
+  float posX = scale*700.0f;
+  float posY = scale*475.0f;
 
   while(1){
     BeginDrawing();
@@ -224,8 +224,8 @@ void display_saves(Game_State *game, GB_State *estado){
       tex_scale = scale*3.0f;
       textureX = 160*tex_scale;
       textureY = 144*tex_scale;
-      posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
-      posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
+      posX = scale*700.0f;
+      posY = scale*475.0f;
     }
 
     if(apertado(estado->controles[11])){
@@ -239,8 +239,8 @@ void display_saves(Game_State *game, GB_State *estado){
       tex_scale = scale*3.0f;
       textureX = 160*tex_scale;
       textureY = 144*tex_scale;
-      posX = ((GetScreenWidth() - textureX)/2.0f) - scale*20.0f;
-      posY = ((GetScreenHeight() - textureY)/2.0f) + scale*140.0f;
+      posX = scale*700.0f;
+      posY = scale*475.0f;
     }
 
     if(apertado(KEY_ESCAPE)){
@@ -342,6 +342,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     }
 
     if(apertado(KEY_ESCAPE) || apertado(estado->controles[9])){
+      resumido = true;
       EndDrawing();
       break;
     }
