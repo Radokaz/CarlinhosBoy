@@ -191,13 +191,13 @@ struct Game_State{
     ppu.raylib_texture = frame;
     ppu.hdma_hblank = &cpu.bus.hdma.modo_hblank;
     ppu.hdma_ativo = &cpu.bus.hdma.ativo;
-    limpa_samples(&apu);
+    limpa_samples();
 
     std::cout << "Save carregado no slot " << slot << ".\n";
   }
 
   ~Game_State(){
-    limpa_samples(&apu);
+    limpa_samples();
   }
  
 };
