@@ -124,12 +124,15 @@ void APU::write(uint16_t endereco, uint8_t valor){
       case 0xFF12:{
         bool dac_prev = ch1.dac;
         ch1.dac = ((valor & 0xF8) != 0);
-        if(!ch1.dac){
-          memoria[0xFF26] &= ~APU_CH1_ON;
-        }
-
+        
         if(dac_prev != ch1.dac)
           this->audio_pop<0x01>();
+
+        if(!ch1.dac){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+          ch1.prev_esq = 0;
+          ch1.prev_dir = 0;
+        }
 
         if(is_channel1_on(memoria))
           checa_zombie_mode(&memoria[0xFF12], &ch1.envelope, ch1.auto_update, valor);
@@ -171,12 +174,15 @@ void APU::write(uint16_t endereco, uint8_t valor){
       case 0xFF17:{
         bool dac_prev = ch2.dac;
         ch2.dac = ((valor & 0xF8) != 0);
-        if(!ch2.dac){
-          memoria[0xFF26] &= ~APU_CH2_ON;
-        }
-
+        
         if(dac_prev != ch2.dac)
           this->audio_pop<0x02>();
+
+        if(!ch2.dac){
+          memoria[0xFF26] &= ~APU_CH2_ON;
+          ch2.prev_esq = 0;
+          ch2.prev_dir = 0;
+        }
 
         if(is_channel2_on(memoria))
           checa_zombie_mode(&memoria[0xFF17], &ch2.envelope, ch2.auto_update, valor);
@@ -207,12 +213,15 @@ void APU::write(uint16_t endereco, uint8_t valor){
       case 0xFF1A:{
         bool dac_prev = ch3.dac;
         ch3.dac = ((valor & 0x80) != 0);
-        if(!ch3.dac){
-          memoria[0xFF26] &= ~APU_CH3_ON;
-        }
-
+        
         if(dac_prev != ch3.dac)
           this->audio_pop<0x04>();
+
+        if(!ch3.dac){
+          memoria[0xFF26] &= ~APU_CH3_ON;
+          ch3.prev_esq = 0;
+          ch3.prev_dir = 0;
+        }
 
         memoria[0xFF1A] = valor;
         return;
@@ -250,12 +259,15 @@ void APU::write(uint16_t endereco, uint8_t valor){
       case 0xFF21:{
         bool dac_prev = ch4.dac;
         ch4.dac = ((valor & 0xF8) != 0);
-        if(!ch4.dac){
-          memoria[0xFF26] &= ~APU_CH4_ON;
-        }
-
+        
         if(dac_prev != ch4.dac)
           this->audio_pop<0x08>();
+
+        if(!ch4.dac){
+          memoria[0xFF26] &= ~APU_CH4_ON;
+          ch4.prev_esq = 0;
+          ch4.prev_dir = 0;
+        }
 
         if(is_channel4_on(memoria))
           checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);

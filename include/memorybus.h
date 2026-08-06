@@ -369,7 +369,7 @@ struct Memorybus{
       }
       case 0xFF55:{ //hdma
         if(!ppu->modo_cpu) return;
-        if(ppu->modo_atual == screen_mode::HBLANK && (valor & 0x80)) return;
+
         if(hdma.modo_hblank && !(valor & 0x80)){
           hdma.ativo = false;
           hdma.modo_hblank = false;
