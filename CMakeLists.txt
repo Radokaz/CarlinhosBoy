@@ -24,7 +24,7 @@ endif()
 # Create executable
 target_compile_options(cb PRIVATE -Werror -g)
 target_include_directories(cb PRIVATE include)
-#target_link_options(gb PRIVATE -fsanitize=address)
+#target_link_options(cb PRIVATE -fsanitize=address)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_options(cb PRIVATE -static -static-libgcc -static-libstdc++)

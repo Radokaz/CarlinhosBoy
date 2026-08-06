@@ -305,7 +305,7 @@ struct APU{
 void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor);
 void mixer(uint8_t atual, int& esq_ultimo, int& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 240> *synth);
 void audio_callback(void* buffer, unsigned int frames);
-void limpa_samples(APU *apu);
+void limpa_samples(void);
 
 }
 

@@ -335,7 +335,7 @@ void audio_callback(void* buffer, unsigned int frames){
     }
 }
 
-void limpa_samples(APU *apu){
+void limpa_samples(void){
   ring.samples.fill(0);
   ring.write_pos = 0;
   ring.read_pos = 0;
