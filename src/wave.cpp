@@ -104,7 +104,7 @@ void CH3::incrementa_divider(void){
 
 uint8_t CH3::get_sample(void){
   this->seta_output(); 
-  if(!output_level) return 0;
+  if(!output_level) return 7;
 
   uint8_t bit = output_level - 1;
   return (last_sample >> bit);
