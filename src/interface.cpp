@@ -271,21 +271,29 @@ void display_saves(Game_State *game, GB_State *estado){
       }
     }
 
-    for(size_t i {}; i < 2; ++i){
+    for(size_t i {}; i < 3; ++i){
       Rectangle r = get_ret(700.0f + 200.0f*i, 320.0f, 150.0f, 100.0f);
       if(!i){
         if(GuiButton(r, "Save")){
           game->save_state(estado->save_slot);
-          for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
-            if(frames[i])
-              UnloadTexture(*frames[i]);
-          }
-          frames = game->load_framebuffer();
+          if(frames[estado->save_slot - 1])
+            UnloadTexture(*frames[estado->save_slot - 1]);
+
+          frames[estado->save_slot - 1] = game->load_image(estado->save_slot);
+        }
+      }
+      else if(i == 1){
+        if(GuiButton(r, "Load")){
+          game->load_state(estado->save_slot);
         }
       }
       else{
-        if(GuiButton(r, "Load")){
-          game->load_state(estado->save_slot);
+        if(GuiButton(r, "Delete")){
+          game->delete_state(estado->save_slot);
+          if(frames[estado->save_slot - 1]){
+            UnloadTexture(*frames[estado->save_slot - 1]);
+            frames[estado->save_slot - 1].reset();
+          }
         }
       }
     }
