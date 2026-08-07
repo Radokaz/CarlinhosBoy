@@ -367,6 +367,26 @@ struct Memorybus{
         memoria[endereco] = (memoria[endereco] & 0xFE) | (valor & 0x01);
         return;
       }
+      case 0xFF51:{
+        memoria[endereco] = valor;
+        hdma.origem = ((hdma.origem & 0x00FF) | (valor << 8)) & 0xFFF0;
+        return;
+      }
+      case 0xFF52:{
+        memoria[endereco] = valor;
+        hdma.origem = ((hdma.origem & 0xFF00) | valor) & 0xFFF0;
+        return;
+      }
+      case 0xFF53:{
+        memoria[endereco] = valor;
+        hdma.destino = ((hdma.destino & 0x00FF) | (valor << 8)) & 0x1FF0;
+        return;
+      }
+      case 0xFF54:{
+        memoria[endereco] = valor;
+        hdma.destino = ((hdma.destino & 0xFF00) | valor) & 0x1FF0;
+        return;
+      }
       case 0xFF55:{ //hdma
         if(!ppu->modo_cpu) return;
 
@@ -379,12 +399,7 @@ struct Memorybus{
           return;
         }
 
-        uint16_t dest = ((memoria[0xFF53] << 8) | memoria[0xFF54]);
-        uint16_t src = ((memoria[0xFF51] << 8) | memoria[0xFF52]);
-
         memoria[endereco] = valor & 0x7F;
-        hdma.destino = dest & 0x1FF0;
-        hdma.origem = src & 0xFFF0;
         hdma.init_transfer(valor);
 
         return;
