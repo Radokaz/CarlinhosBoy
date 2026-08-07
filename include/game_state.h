@@ -94,15 +94,30 @@ struct Game_State{
     constexpr size_t tamanho = sizeof(uint32_t)*160*144;
 
     if(!frame_states[slot - 1]){
-      size_t num_frames {};
-      for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
-        if(frame_states[i])
-          ++num_frames;
-      }
+      size_t excluidos {};
+      imagens.seekg(10*sizeof(size_t), std::ios::beg);
+      imagens.read(reinterpret_cast<char*>(&excluidos), sizeof(size_t));
 
-      frame_states[slot - 1] = PAGE_SIZE + num_frames*(sizeof(frame) + tamanho);
-      imagens.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
-      imagens.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
+      if(excluidos){
+        size_t offset {};
+        imagens.seekg((11 + (excluidos - 1))*sizeof(size_t), std::ios::beg);
+        imagens.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+        frame_states[slot - 1] = offset;
+        --excluidos;
+        imagens.seekp(10*sizeof(size_t), std::ios::beg);
+        imagens.write(reinterpret_cast<char*>(&excluidos), sizeof(size_t));
+      }
+      else{
+        size_t num_frames {};
+        for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+          if(frame_states[i])
+            ++num_frames;
+        }
+
+        frame_states[slot - 1] = PAGE_SIZE + num_frames*(sizeof(frame) + tamanho);
+        imagens.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+        imagens.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
+      }
     }
 
     imagens.seekp(frame_states[slot - 1], std::ios::beg);
@@ -110,6 +125,31 @@ struct Game_State{
     imagens.write(reinterpret_cast<char*>(frame.data), tamanho);
 
     UnloadImage(frame);
+  }
+
+  std::unique_ptr<Texture2D> load_image(size_t slot){
+    if(!frame_states[slot - 1]) return nullptr;
+
+    std::fstream imagens(image_path, imagens.in | imagens.binary);
+    if(!imagens)
+      return nullptr;
+
+    Image imagem{};
+    constexpr size_t tamanho = sizeof(uint32_t)*160*144;
+
+    imagens.seekg(frame_states[slot - 1], std::ios::beg);
+    imagens.read(reinterpret_cast<char*>(&imagem), sizeof(imagem));
+
+    imagem.data = reinterpret_cast<void*>(new uint32_t[160*144]);
+    imagens.read(reinterpret_cast<char*>(imagem.data), tamanho);
+    auto frame = std::make_unique<Texture2D>(LoadTextureFromImage(imagem));
+
+    uint32_t *aux = reinterpret_cast<uint32_t*>(imagem.data);
+    imagem.data = nullptr;
+    delete[] aux;
+    UnloadImage(imagem);
+
+    return frame;
   }
 
   std::unique_ptr<std::unique_ptr<Texture2D>[]> load_framebuffer(void){
@@ -144,6 +184,13 @@ struct Game_State{
 
     return frames;
   }
+
+  size_t get_excluidos(std::fstream *save){
+    save->seekg(11*sizeof(size_t), std::ios::beg);
+    size_t valor {};
+    save->read(reinterpret_cast<char*>(&valor), sizeof(size_t));
+    return valor;
+  }
   
   void save_state(size_t slot){
     if(!*save_liberado){
@@ -170,15 +217,27 @@ struct Game_State{
     }
     
     if(!save_states[slot - 1]){
-      size_t save_index {};
-      for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
-        if(save_states[i])
-          ++save_index;
+      size_t deletados = this->get_excluidos(&save);
+      if(deletados){
+        size_t offset {};
+        save.seekg((12 + (deletados - 1))*sizeof(size_t), std::ios::beg);
+        save.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
+        save_states[slot - 1] = offset;
+        --deletados;
+        save.seekp(11*sizeof(size_t), std::ios::beg);
+        save.write(reinterpret_cast<char*>(&deletados), sizeof(size_t));
       }
+      else{
+        size_t save_index {};
+        for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+          if(save_states[i])
+            ++save_index;
+          }
 
-      save_states[slot - 1] = PAGE_SIZE + save_index*PAGE_SIZE*80;
-      save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
-      save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
+        save_states[slot - 1] = PAGE_SIZE + save_index*PAGE_SIZE*80;
+        save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+        save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
+      }
     }
 
     save.seekp(save_states[slot - 1], std::ios::beg);
@@ -296,6 +355,45 @@ struct Game_State{
     limpa_samples();
 
     std::cout << "Save carregado no slot " << slot << ".\n";
+  }
+
+  void delete_state(size_t slot){
+    if(!save_states[slot - 1]){
+      std::cout << "Nenhum save encontrado no slot selecionado.\n";
+      return;
+    }
+    
+    std::fstream save(save_path, save.in | save.out | save.binary);
+    size_t deletados = this->get_excluidos(&save);
+    ++deletados;
+    save.seekp(11*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&deletados), sizeof(size_t));
+    save.seekp((12 + (deletados - 1))*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
+    
+    save_states[slot - 1] = 0;
+    save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
+
+    save.close();
+    save.clear();
+
+    if(!frame_states[slot - 1]) return;
+
+    save.open(image_path, save.in | save.out | save.binary);
+    if(!save) return;
+
+    save.seekg(10*sizeof(size_t), std::ios::beg);
+    save.read(reinterpret_cast<char*>(&deletados), sizeof(size_t));
+    ++deletados;
+    save.seekp(10*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&deletados), sizeof(size_t));
+    save.seekp((11 + (deletados - 1))*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
+
+    frame_states[slot - 1] = 0;
+    save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+    save.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
   }
 
   ~Game_State(){
