@@ -123,8 +123,10 @@ void PPU_fetcher::high_step(PPU *ppu){
 }
 
 void PPU_fetcher::push_tile(PPU *ppu){
+  bool flip = (ppu->modo_cpu > 0 && (this->tile_attribute & 0x20));
+
   for(size_t i {}; i < 8; ++i){
-    uint8_t offset = (ppu->modo_cpu > 0 && (this->tile_attribute & 0x20)) ? i : 7 - i; //flip x do background
+    uint8_t offset = (flip) ? i : 7 - i; //flip x do background
     uint8_t mask = 1 << offset;
     uint8_t bit1 = ((this->tile_low & mask) >> offset);
     uint8_t bit2 = ((this->tile_high & mask) >> offset);

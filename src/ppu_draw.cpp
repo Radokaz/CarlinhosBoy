@@ -304,7 +304,7 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att
         break;
     }
 
-    if(result == tile_pixel::INDEX_ZERO || result == tile_pixel::INDEX_NULO) continue; //transparente
+    if(result == tile_pixel::INDEX_ZERO) continue; //transparente
 
     return (!this->modo_cpu) ? this->decide_obj_color_dmg(sprite, result) : this->decide_obj_color_cgb(sprite, result);
   }
