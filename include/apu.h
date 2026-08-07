@@ -267,12 +267,16 @@ struct APU{
 
     for(size_t i {}; i < 4; ++i){
       synths[i].volume(0.24);
+      synths[i].treble_eq(blip_eq_t(-10.0));
     }
+
     ch1.synth = &synths[0];
     ch2.synth = &synths[1];
     ch3.synth = &synths[2];
     ch4.synth = &synths[3];
 
+    blip_esq->bass_freq(5);
+    blip_dir->bass_freq(5);
     global_clocks = 0;
   }
 

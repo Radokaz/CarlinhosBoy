@@ -445,8 +445,8 @@ void APU::frame_sequencer(void){
 }
 
 void mixer(uint8_t atual, int& esq_ultimo, int& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 240> *synth){
-  int esq_atual = (esq) ? (0xF - static_cast<int>(atual*2))*APU::volume_esq : esq_ultimo;
-  int dir_atual = (dir) ? (0xF - static_cast<int>(atual*2))*APU::volume_dir : dir_ultimo;
+  int esq_atual = (esq) ? (0xF - static_cast<int>(atual*2))*APU::volume_esq : 0;
+  int dir_atual = (dir) ? (0xF - static_cast<int>(atual*2))*APU::volume_dir : 0;
 
   if(esq_atual != esq_ultimo){
     int delta = esq_atual - esq_ultimo;
