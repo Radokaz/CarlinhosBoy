@@ -232,6 +232,9 @@ void PPU::verifica_penalidade(const Sprite& sprite){
 }
 
 uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att){
+  using enum tile_pixel;
+  constexpr tile_pixel index_table[4] = {INDEX_ZERO, INDEX_ONE, INDEX_TWO, INDEX_THREE};
+
   uint8_t ly = this->memoria[0xFF44];
   uint8_t sprite_sz = this->atual_spritesize();
 
@@ -285,26 +288,10 @@ uint32_t PPU::merge_sprites(uint8_t x_atual, tile_pixel bg_cor, uint8_t tile_att
 
     uint8_t bit = 7 - pixel_x;
     
-    tile_pixel result = tile_pixel::INDEX_NULO;
     uint8_t index = (((byte2 >> bit) & 0x01) << 1) | ((byte1 >> bit) & 0x01);
-    switch(index){
-      using enum tile_pixel;
+    tile_pixel result = index_table[index];
 
-      case 0x00:
-        result = INDEX_ZERO;
-        break;
-      case 0x01:
-        result = INDEX_ONE;
-        break;
-      case 0x02:
-        result = INDEX_TWO;
-        break;
-      case 0x03:
-        result = INDEX_THREE;
-        break;
-    }
-
-    if(result == tile_pixel::INDEX_ZERO) continue; //transparente
+    if(result == INDEX_ZERO) continue; //transparente
 
     return (!this->modo_cpu) ? this->decide_obj_color_dmg(sprite, result) : this->decide_obj_color_cgb(sprite, result);
   }
