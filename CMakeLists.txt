@@ -22,7 +22,7 @@ else()
 endif()
 
 # Create executable
-target_compile_options(cb PRIVATE -Werror -g)
+target_compile_options(cb PRIVATE -Werror -g -O2)
 target_include_directories(cb PRIVATE include)
 #target_link_options(cb PRIVATE -fsanitize=address)
 
