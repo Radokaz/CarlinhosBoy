@@ -253,7 +253,7 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
     }
 
     if(endereco < 0x8000){
-      if(valor == 0 && !latch_clock){
+      if(valor == 0){
         latch_clock = true;
       }
       else if(latch_clock && valor == 1){
@@ -267,20 +267,6 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
       return;
     }
 
-    if(ram_ativa && ram.size()){
-      uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
-      if(address >= ram.size())
-        address &= (ram.size() - 1);
-
-      if(tem_save && !jogo_salvo){
-        ultimo_save = std::chrono::system_clock::now();
-        jogo_salvo = true;
-      }
-
-      ram[address] = valor;
-
-      return;
-    }
     if(rtc_selected){
       switch(rtc_registrador){
         case 0x08: 
@@ -299,6 +285,19 @@ void MBC3::write(uint16_t endereco, uint8_t valor){
           rtc.f = valor & 0xC1;
           break;
       }
+      return;
+    }
+    if(ram_ativa && ram.size()){
+      uint32_t address = (ram_bank*0x2000) + (endereco - 0xA000);
+      if(address >= ram.size())
+        address &= (ram.size() - 1);
+
+      if(tem_save && !jogo_salvo){
+        ultimo_save = std::chrono::system_clock::now();
+        jogo_salvo = true;
+      }
+
+      ram[address] = valor;
     }
   }
 
@@ -308,12 +307,9 @@ void MBC3::save_state(std::fstream *save){
   save->write(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
   save->write(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
   save->write(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
-  save->write(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
   save->write(reinterpret_cast<char*>(&rtc_registrador), sizeof(rtc_registrador));
   save->write(reinterpret_cast<char*>(&rtc_selected), sizeof(rtc_selected));
   save->write(reinterpret_cast<char*>(&latch_clock), sizeof(latch_clock));
-  save->write(reinterpret_cast<char*>(&rtc), sizeof(rtc));
-  save->write(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
   save->write(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
   save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
   save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
@@ -326,12 +322,9 @@ void MBC3::load_state(std::fstream *save){
   save->read(reinterpret_cast<char*>(&ram_bank), sizeof(ram_bank));
   save->read(reinterpret_cast<char*>(&ram_ativa), sizeof(ram_ativa));
   save->read(reinterpret_cast<char*>(&ram_hack), sizeof(ram_hack));
-  save->read(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
   save->read(reinterpret_cast<char*>(&rtc_registrador), sizeof(rtc_registrador));
   save->read(reinterpret_cast<char*>(&rtc_selected), sizeof(rtc_selected));
   save->read(reinterpret_cast<char*>(&latch_clock), sizeof(latch_clock));
-  save->read(reinterpret_cast<char*>(&rtc), sizeof(rtc));
-  save->read(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
   save->read(reinterpret_cast<char*>(&tem_save), sizeof(tem_save));
   save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
   save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
