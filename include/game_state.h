@@ -104,6 +104,8 @@ struct Game_State{
         imagens.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
         frame_states[slot - 1] = offset;
         --excluidos;
+        imagens.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+        imagens.write(reinterpret_cast<char*>(&frame_states[slot - 1]), sizeof(size_t));
         imagens.seekp(10*sizeof(size_t), std::ios::beg);
         imagens.write(reinterpret_cast<char*>(&excluidos), sizeof(size_t));
       }
@@ -224,6 +226,8 @@ struct Game_State{
         save.read(reinterpret_cast<char*>(&offset), sizeof(size_t));
         save_states[slot - 1] = offset;
         --deletados;
+        save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
+        save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
         save.seekp(11*sizeof(size_t), std::ios::beg);
         save.write(reinterpret_cast<char*>(&deletados), sizeof(size_t));
       }
