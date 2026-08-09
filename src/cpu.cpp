@@ -2,9 +2,6 @@
 
 namespace GB{
 
-//static uint16_t debug_cycles;
-//static uint16_t debug_tamanho;
-
 void roda_cpu(CPU *atual){
   if(atual->check_joypad() || (atual->get_if() & 0x1F)){
     atual->stepping = true;
@@ -60,7 +57,6 @@ void roda_perifericos(CPU *atual, Timer *timer, PPU *ppu){
   }
   ppu->step();
   timer->apu->step(atual->modo);
-  //++debug_cycles;
 }
 
 void CPU::check(void){
@@ -158,9 +154,7 @@ bool CPU::check_joypad(void){
   return false;
 }
 
-
 void CPU::step(){
-  //debug_cycles = 0;
   if(this->bus.hdma.ativo && !this->halted) return;
   if(this->halted){
     roda_perifericos(this, this->bus.timer, this->bus.ppu);
@@ -172,7 +166,6 @@ void CPU::step(){
     this->ime = true;
   }
 
-  //debug_tamanho = 1;
   uint8_t inst_byte = this->bus.read_byte(this->pc);
   if(inst_byte != 0xCB){
     this->last_instruct = inst_byte;
@@ -180,32 +173,13 @@ void CPU::step(){
   this->bus.ppu->check_oam(this->pc, oam_corruption::READ);
   roda_perifericos(this, this->bus.timer, this->bus.ppu);
   
-  try{
-    auto current_act = le_byte(inst_byte, this);
-    current_act.execute(current_act, this);
+  auto current_act = le_byte(inst_byte, this);
+  current_act.execute(current_act, this);
 
-    /*if(debug_tamanho != current_act.tamanho){
-      std::cerr << std::dec << "Tamanho esperado: " << static_cast<int>(current_act.tamanho) << ", Tamanho obtido: " << debug_tamanho << "\n";
-      std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
-      std::terminate();
-    }
-    if(debug_cycles != this->ciclos_esperados){
-      std::cerr << std::dec << "Ciclos esperados: " << static_cast<int>(ciclos_esperados) << ", Ciclos obtidos: " << debug_cycles << "\n";
-      std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n"; 
-      std::terminate();
-    }*/
-    if(!skipa_fetch){
-      this->incrementa_pc();
-    }
-
-    //std::cout << "Ultima instrução: " << std::hex << static_cast<int>(this->last_instruct) << std::dec << "\n";
+  if(!skipa_fetch){
+    this->incrementa_pc();
   }
-  catch(std::exception& ex){
-    std::cerr << "Erro: " << ex.what();
-    std::cerr << "Instrução: " << std::hex << static_cast<int>(this->last_instruct) << "\n";
-    std::terminate();
-  }
-
+  
   this->skipa_fetch = false;
 }
 
@@ -229,13 +203,11 @@ uint8_t& CPU::get_target_ref(reg_target alvo){
       return this->registradores.h;
     case L:
       return this->registradores.l;
-    case HL:{
+    default:{
       this->hack = this->bus.read_byte(this->registradores.get_duplo(HL));
       roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return this->hack;
     }
-    default:
-      throw std::runtime_error("Registrador invalido. Reg_target_ref\n");
   }
 }
 
@@ -315,13 +287,11 @@ uint8_t CPU::get_target_value(reg_target alvo){
       roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return result;
     }
-    case CPTR:{
+    default:{
       uint8_t result = this->bus.read_byte(0xFF00 + static_cast<uint16_t>(this->registradores.c));
       roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return result;
     }
-    default:
-      throw std::runtime_error("Registrador invalido.\n");
   }
 }
 
@@ -361,13 +331,11 @@ uint8_t CPU::get_bit(reg_target alvo, uint8_t bit){
       return ((this->registradores.h & (1 << bit)) > 0) ? 1 : 0;
     case L:
       return ((this->registradores.l & (1 << bit)) > 0) ? 1 : 0;
-    case HL:{
+    default:{
       uint8_t result = this->bus.read_byte(this->registradores.get_duplo(HL));
       roda_perifericos(this, this->bus.timer, this->bus.ppu);
       return ((result & (1 << bit)) > 0) ? 1 : 0;
     }
-    default:
-      throw std::runtime_error("Registrador inválido.\n");
   }
 }
 
@@ -378,8 +346,6 @@ void CPU::incrementa_pc(void){
   }
   else
     this->haltbug = false;
-
-  //++debug_tamanho;
 }
 
 }

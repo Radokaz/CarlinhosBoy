@@ -526,7 +526,7 @@ Action le_byte(uint8_t byte, CPU *atual){
     case 0xFF:
       return Action(RST, 1, NULO, 0x38);
     default:
-      throw std::runtime_error("Endereço inválido.\n");
+      return Action(NOP, 1);
   }
 }
 
@@ -1062,9 +1062,8 @@ Action le_byte_cb(uint8_t byte, CPU *atual){
       return Action(SET, 2, HL, 0, 7);
     case 0xFF:
       return Action(SET, 2, A, 0, 7);
-
     default:
-      throw std::runtime_error("Endereço inválido.\n");
+      return Action(RLC, 2, B);
   }
 }
 

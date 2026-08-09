@@ -22,9 +22,12 @@ else()
 endif()
 
 # Create executable
-target_compile_options(cb PRIVATE -Werror -g -O2)
+# target_compile_options(cb PRIVATE -Werror -g)
+
+# essa é pra versão final
+target_compile_options(cb PRIVATE -O2 -march=x86-64-v2 -flto -fno-exceptions)
 target_include_directories(cb PRIVATE include)
-#target_link_options(cb PRIVATE -fsanitize=address)
+# target_link_options(cb PRIVATE -fsanitize=address)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_options(cb PRIVATE -static -static-libgcc -static-libstdc++)

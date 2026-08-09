@@ -52,34 +52,34 @@ struct Registradores{
         return ((static_cast<uint16_t>(b) << 8) | static_cast<uint16_t>(c));
       case reg_target::DE:
         return ((static_cast<uint16_t>(d) << 8) | static_cast<uint16_t>(e));
-      case reg_target::HL:
-        return ((static_cast<uint16_t>(h) << 8) | static_cast<uint16_t>(l));
       default:
-        throw std::runtime_error("Registrador inválido.\n");
+        return ((static_cast<uint16_t>(h) << 8) | static_cast<uint16_t>(l));
     }
   }
   
   void set_duplo(reg_target registrador, uint16_t valor){
 
     switch(registrador){
-      case reg_target::AF:
+      case reg_target::AF:{
         a = static_cast<uint8_t>((valor & 0xFF00) >> 8);
         f = static_cast<uint8_t>(valor & 0xFF);
         break;
-      case reg_target::BC:
+      }
+      case reg_target::BC:{
         b = static_cast<uint8_t>((valor & 0xFF00) >> 8);
         c = static_cast<uint8_t>(valor & 0xFF);
         break;
-      case reg_target::DE:
+      }
+      case reg_target::DE:{
         d = static_cast<uint8_t>((valor & 0xFF00) >> 8);
         e = static_cast<uint8_t>(valor & 0xFF);
         break;
-      case reg_target::HL:
+      }
+      default:{
         h = static_cast<uint8_t>((valor & 0xFF00) >> 8);
         l = static_cast<uint8_t>(valor & 0xFF);
         break;
-      default:
-        throw std::runtime_error("Registrador inválido.\n");
+      }
     }
   }
 };
