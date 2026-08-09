@@ -59,8 +59,8 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     return;
   }
 
-  constexpr double tempo_frame60 = 1.0/59.7;
-  constexpr double tempo_frame120 = 1.0/119.4;
+  constexpr double tempo_frame60 = 1.0/60.0;
+  constexpr double tempo_frame120 = 1.0/120.0;
 
   Vector2 mouse_prev = GetMousePosition();
   Vector2 mouse_atual{};
@@ -69,7 +69,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   bool resumido {false};
   bool janela_alterada {false};
   bool is_120 {false};
-  SetTargetFPS(60);
+  SetTargetFPS(0);
 
   while(1){
     ClearBackground(BLACK);

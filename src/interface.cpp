@@ -327,6 +327,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+  SetTargetFPS(60);
 
   while(1){
     BeginDrawing();
@@ -400,6 +401,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   }
 
   pausado = false;
+  SetTargetFPS(0);
   return false;
 }
 

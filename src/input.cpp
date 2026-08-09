@@ -30,7 +30,6 @@ void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120,
     pausado = true;
   if(apertado(map[10])){
     is_120 ^= 1;
-    SetTargetFPS(static_cast<int>(is_120)*60 + 60);
   }
   if(apertado(map[11])){
     ToggleFullscreen();
