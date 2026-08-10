@@ -302,6 +302,7 @@ struct Game_State{
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
     auto synths = std::move(apu.synths);
     const void *tec = pad.teclas;
+    const void *but = pad.botoes;
     Texture2D *frame = ppu.raylib_texture;
     uint8_t modo_cpu = cpu.modo;
     bool paleta_cgb = ppu.paleta_cgb;
@@ -352,6 +353,7 @@ struct Game_State{
     apu.ch4.memoria = cpu.bus.memoria.data();
     apu.ch4.synth = &apu.synths[3];
     pad.teclas = tec;
+    pad.botoes = but;
     pad.p1 = &cpu.bus.memoria[0xFF00];
     ppu.memoria = cpu.bus.memoria.data();
     ppu.raylib_texture = frame;
