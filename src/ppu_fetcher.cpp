@@ -190,6 +190,7 @@ void PPU_fetcher::step(PPU *ppu){
 
       break;
     }
+    default: break;
   }
 }
 

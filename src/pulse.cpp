@@ -77,7 +77,7 @@ void CH1::sweep_periodo(void){
           if(ind_step){
             periodo_shadow = novo_periodo;
             memoria[0xFF13] = (periodo_shadow & 0xFF);
-            memoria[0xFF14] = ((memoria[0xFF14] & 0xF8) | (periodo_shadow >> 8) & 0x07);
+            memoria[0xFF14] = ((memoria[0xFF14] & 0xF8) | ((periodo_shadow >> 8) & 0x07));
             if(!direcao_periodo && ((periodo_shadow + (periodo_shadow >> ind_step)) > 0x7FF)){
               memoria[0xFF26] &= ~APU_CH1_ON;
               return;

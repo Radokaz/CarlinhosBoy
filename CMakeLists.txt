@@ -22,11 +22,11 @@ else()
 endif()
 
 # versão para debug
-# target_compile_options(cb PRIVATE -Werror -g)
-# target_link_options(cb PRIVATE -fsanitize=address)
+target_compile_options(cb PRIVATE -Werror -Wall -Wpedantic -g)
+target_link_options(cb PRIVATE -fsanitize=address)
 
 # essa é pra versão final
-target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
+# target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
 target_include_directories(cb PRIVATE include)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

@@ -251,6 +251,7 @@ namespace GBInstruct{
             oam_bugado = true;
             break;
           }
+          default: break;
         }
 
         uint8_t valor = cpu->get_target_value(atual.ld_alvo);

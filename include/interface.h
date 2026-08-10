@@ -3,6 +3,7 @@
 
 #include "actions.h"
 #include <string>
+#include <cstring>
 #include <fstream>
 #include "tinyfiledialogs.h"
 
@@ -18,14 +19,58 @@ static constexpr char gb_botoes[14][15] = {
     "A", "B", "START", "SELECT", "UP", "LEFT", "DOWN", "RIGHT", "LCD_TOGGLE", "MENU", "TURBO", "FULLSCREEN", "SAVE_STATE", "LOAD_STATE"
 };
 
+const char *getDisplayName(KeyboardKey key);
+const char *getDisplayName(GamepadButton but);
+Rectangle get_ret(float x, float y, float w, float h);
+int GamepadDisponivel(void);
+float fix_deadzone(float dz);
+
+struct GamepadComb{
+  GamepadButton but1;
+  GamepadButton but2;
+
+  GamepadComb(void): but1{GAMEPAD_BUTTON_UNKNOWN}, but2{GAMEPAD_BUTTON_UNKNOWN} {}
+  GamepadComb(GamepadButton b1): but1{b1}, but2{GAMEPAD_BUTTON_UNKNOWN} {}
+  GamepadComb(GamepadButton b1, GamepadButton b2): but1{b1}, but2{b2} {}
+  explicit GamepadComb(size_t hash){
+    but1 = static_cast<GamepadButton>(hash & 0xFFFFFFFF);
+    but2 = static_cast<GamepadButton>((hash & 0xFFFFFFFF00000000) >> 32);
+  }
+
+  bool pressionado(int gamepad) const{
+    if(but2)
+      return IsGamepadButtonPressed(gamepad, but1) && IsGamepadButtonPressed(gamepad, but2);;
+
+    return IsGamepadButtonPressed(gamepad, but1);
+  }
+
+  bool segurado(int gamepad) const{
+    if(but2)
+      return IsGamepadButtonDown(gamepad, but1) && IsGamepadButtonDown(gamepad, but2);;
+
+    return IsGamepadButtonDown(gamepad, but1);
+  }
+
+  size_t hash(void) const{
+    return (static_cast<size_t>(but1) & 0xFFFFFFFF) | ((static_cast<size_t>(but2) & 0xFFFFFFFF) << 32);
+  }
+
+  std::string string(void) const{
+    const char *segundo = getDisplayName(but2);
+    return (segundo) ? std::string(getDisplayName(but1)) + " + " + getDisplayName(but2) : std::string(getDisplayName(but1));
+  }
+};
+
 struct GB_State{
   std::array<KeyboardKey, 14> controles;
+  std::array<GamepadComb, 14> controles_but;
   std::filesystem::path main_dir;
   std::string rom_path;
   std::string saves_path;
   std::string states_path;
   size_t save_slot {};
   int paleta_cgb {};
+  bool pad_ultimo {false};
 
   GB_State(void){
 #ifdef _WIN32
@@ -115,9 +160,14 @@ struct GB_State{
       control.close();
       std::ofstream controle_novo(control_path.string().c_str());
       controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F, KEY_F11, KEY_F1, KEY_F2};
+
+      controles_but = {{GAMEPAD_BUTTON_RIGHT_FACE_DOWN, GAMEPAD_BUTTON_RIGHT_FACE_LEFT, GAMEPAD_BUTTON_MIDDLE_RIGHT, 
+      GAMEPAD_BUTTON_MIDDLE_LEFT, GAMEPAD_BUTTON_LEFT_FACE_UP, GAMEPAD_BUTTON_LEFT_FACE_LEFT, GAMEPAD_BUTTON_LEFT_FACE_DOWN,
+      GAMEPAD_BUTTON_LEFT_FACE_RIGHT, GAMEPAD_BUTTON_LEFT_TRIGGER_1, {GAMEPAD_BUTTON_MIDDLE_LEFT, GAMEPAD_BUTTON_MIDDLE_RIGHT}, 
+      GAMEPAD_BUTTON_RIGHT_TRIGGER_2, GAMEPAD_BUTTON_LEFT_TRIGGER_2, GAMEPAD_BUTTON_LEFT_THUMB, GAMEPAD_BUTTON_RIGHT_THUMB}};
       
       for(size_t i {}; i < std::size(gb_botoes); ++i){
-        controle_novo << gb_botoes[i] << ": " << std::to_underlying<KeyboardKey>(controles[i]) << "\n";
+        controle_novo << gb_botoes[i] << ": " << std::to_underlying<KeyboardKey>(controles[i]) << "/" << controles_but[i].hash() << "\n";
       }
 
       return;
@@ -131,9 +181,11 @@ struct GB_State{
         
       std::string value = buffer.substr(pos + 1);
       size_t ini = value.find_first_not_of(" ");
+      size_t end = value.find_first_of("/");
 
       if(ini != std::string::npos){
-        controles[i] = static_cast<KeyboardKey>(std::stoi(value.substr(ini)));
+        controles[i] = static_cast<KeyboardKey>(std::stoi(value.substr(ini, end - ini)));
+        controles_but[i] = GamepadComb(static_cast<size_t>(std::stoll(value.substr(end + 1))));
       }
 
       ++i;
@@ -144,27 +196,24 @@ struct GB_State{
     std::filesystem::path control_path = main_dir / "controles.cfg";
     std::fstream control(control_path.string().c_str(), control.in | control.out);
     
-    std::vector<std::string> linhas;
+    std::array<std::string, std::size(gb_botoes)> linhas;
     std::string buffer;
 
-    while(std::getline(control, buffer)){
-      linhas.push_back(buffer);
+    for(size_t count {}; std::getline(control, buffer); ++count){
+      linhas[count] = buffer;
     }
     control.close();
+    buffer.clear();
 
     std::ofstream novo(control_path.string().c_str());
 
     for(size_t i {}; i < linhas.size(); ++i){
       size_t pos = linhas[i].find(':');
-      if(pos == std::string::npos){ 
-        novo << linhas[i] << "\n";
-        continue;
-      }
-
       std::string key = linhas[i].substr(0, pos);
-      for(size_t i {}; i < std::size(gb_botoes); ++i){
-        if(key == gb_botoes[i]){
-          linhas[i].replace(pos + 2, linhas[i].length(), std::to_string(std::to_underlying<KeyboardKey>(controles[i])));
+      for(size_t j {}; j < std::size(gb_botoes); ++j){
+        if(key == gb_botoes[j]){
+          buffer = std::to_string(std::to_underlying<KeyboardKey>(controles[j])) + "/" + std::to_string(controles_but[j].hash());
+          linhas[i].replace(pos + 2, buffer.length(), buffer);
           break;
         }
       }
@@ -210,8 +259,6 @@ void carrega_rom(GB_State *estado);
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista);
 void display_controles(GB_State *estado);
 void init_gui(void);
-const char *getDisplayName(KeyboardKey key);
-Rectangle get_ret(float x, float y, float w, float h);
 
 }
 

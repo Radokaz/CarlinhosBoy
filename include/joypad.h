@@ -17,6 +17,7 @@ namespace GB{
 
   struct Joypad{
     const void *teclas {};
+    const void *botoes {};
     uint8_t output {0xFF};
     uint8_t controles_prev {};
     bool select_dir {};
@@ -24,7 +25,7 @@ namespace GB{
     uint8_t *p1 {};
     uint8_t controles {};
 
-    Joypad(const void *tec): teclas{tec} {}
+    Joypad(const void *tec, const void *but): teclas{tec}, botoes{but} {}
 
     uint8_t& get_output(void){
       this->set_select();
