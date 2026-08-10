@@ -21,7 +21,8 @@ struct Game_State{
   bool *save_liberado {};
 
   Game_State(Texture2D *texture, GB_State *estado, std::string_view states, std::string_view rom_path): 
-    pad{reinterpret_cast<const void*>(estado->controles.data())}, timer{}, ppu{texture}, cpu{&timer, &pad, &ppu}, apu{cpu.bus.memoria.data()} {
+    pad{reinterpret_cast<const void*>(estado->controles.data()), reinterpret_cast<const void*>(estado->controles_but.data())}, 
+    timer{}, ppu{texture}, cpu{&timer, &pad, &ppu}, apu{cpu.bus.memoria.data()} {
       timer.apu = &apu;
       cpu.bus.restaura_rom = &restaura_rom;
       save_liberado = &cpu.bus.sv_state_liberado;
@@ -407,6 +408,7 @@ struct Game_State{
 };
 
 void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120, bool& janela_alterada);
+void le_input_controle(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120, bool& janela_alterada, uint8_t& controles, int gamepad);
 void display_saves(Game_State *game, GB_State *estado);
 bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumido);
 

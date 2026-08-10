@@ -42,6 +42,30 @@ const char *getDisplayName(KeyboardKey key){
   }
 }
 
+const char *getDisplayName(GamepadButton but){
+  switch(but){
+    case GAMEPAD_BUTTON_LEFT_FACE_UP: return "Pad Up";
+    case GAMEPAD_BUTTON_LEFT_FACE_RIGHT: return "Pad Right";
+    case GAMEPAD_BUTTON_LEFT_FACE_DOWN: return "Pad Down";
+    case GAMEPAD_BUTTON_LEFT_FACE_LEFT: return "Pad Left";
+    case GAMEPAD_BUTTON_RIGHT_FACE_UP: return "Y";
+    case GAMEPAD_BUTTON_RIGHT_FACE_RIGHT: return "B";
+    case GAMEPAD_BUTTON_RIGHT_FACE_DOWN: return "A";
+    case GAMEPAD_BUTTON_RIGHT_FACE_LEFT: return "X";
+    case GAMEPAD_BUTTON_LEFT_TRIGGER_1: return "LB";
+    case GAMEPAD_BUTTON_LEFT_TRIGGER_2: return "LT";
+    case GAMEPAD_BUTTON_RIGHT_TRIGGER_1: return "RB";
+    case GAMEPAD_BUTTON_RIGHT_TRIGGER_2: return "RT";
+    case GAMEPAD_BUTTON_MIDDLE_LEFT: return "Select";
+    case GAMEPAD_BUTTON_MIDDLE: return "Guide";
+    case GAMEPAD_BUTTON_MIDDLE_RIGHT: return "Start";
+    case GAMEPAD_BUTTON_LEFT_THUMB: return "L3";
+    case GAMEPAD_BUTTON_RIGHT_THUMB: return "R3";
+    default: return nullptr;  
+  }
+}
+
+
 Rectangle get_ret(float x, float y, float w, float h){
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
@@ -51,15 +75,37 @@ Rectangle get_ret(float x, float y, float w, float h){
   return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
 
+int GamepadDisponivel(void){
+  for(int i {}; i < 4; ++i){
+    if(!IsGamepadAvailable(i)) return -1;
+    if(GetGamepadAxisCount(i) < 2) continue;
+    const char *name = GetGamepadName(i);
+    if(!name || !strlen(name)) continue;
+    if(strstr(name, "MOUSE") != nullptr) continue;
+    if(strstr(name, "KEYBOARD") != nullptr) continue;
+
+    return i;
+  }
+
+  return -1;
+}
+
+float fix_deadzone(float dz){
+  return (std::fabsf(dz) < 0.08f) ? 0.0f : dz;
+}
+
 void display_controles(GB_State *estado){
   const char *botoes[std::size(gb_botoes)];
+  std::string botoes_controle[std::size(gb_botoes)];
   std::string botoes_show[std::size(gb_botoes)];
 
   for(size_t i {}; i < std::size(gb_botoes); ++i){
     botoes[i] = getDisplayName(estado->controles[i]);
+    botoes_controle[i] = estado->controles_but[i].string();
     botoes_show[i] = (std::string(gb_botoes[i]) + " : ");
   }
 
+  constexpr const char *subs[2] = {"Aperte ESC para voltar", "Aperte B para voltar"};
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
   float screen_w = GetScreenWidth()/width;
@@ -67,25 +113,160 @@ void display_controles(GB_State *estado){
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+  int8_t contr_index {};
+  size_t slot_index {};
+  int axis_timer {};
+  bool key_consumed {false};
+  bool pad_consumed {false};
+  bool tecla_apertada {true};
+
+  auto redimensiona = [&](){
+    screen_w = GetScreenWidth()/width;
+    screen_h = GetScreenHeight()/height;
+    scale = std::min(screen_w, screen_h);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+    GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+  };
+
+  bool& pad_ultimo = estado->pad_ultimo;
+  auto controle_input = [&](int pad){
+
+    float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
+    float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
+
+    if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || (leftStickX > 0.5f && !axis_timer)){
+        if(contr_index + 8 >= static_cast<int>(std::size(gb_botoes))){
+          if(contr_index > 5 && contr_index < 8)
+            contr_index = std::size(gb_botoes) - 1;
+          else
+            contr_index-=8;
+        }
+        else
+          contr_index+=8;
+
+        pad_ultimo = true;
+        if(!axis_timer)
+          axis_timer = 15;
+      }
+      else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT) || (leftStickX < -0.5f && !axis_timer)){
+        if(contr_index - 8 < 0){
+          if(contr_index + 8 >= static_cast<int>(std::size(gb_botoes)))
+            contr_index = std::size(gb_botoes) - 1;
+          else
+            contr_index += 8;
+        }
+        else{
+          contr_index-=8;
+        }
+
+        pad_ultimo = true;
+        if(!axis_timer)
+          axis_timer = 15;
+      }
+      else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || (leftStickY > 0.5f && !axis_timer)){
+        ++contr_index;
+        if(contr_index == 8)
+          contr_index = 0;
+        else if(contr_index == static_cast<int>(std::size(gb_botoes)))
+          contr_index = 8;
+
+        pad_ultimo = true;
+        if(!axis_timer)
+          axis_timer = 15;
+      }
+      else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || (leftStickY < -0.5f && !axis_timer)){
+        --contr_index;
+        if(contr_index == 7)
+          contr_index = std::size(gb_botoes) - 1;
+        else if(contr_index < 0)
+          contr_index = 7;
+
+        pad_ultimo = true;
+        if(!axis_timer)
+          axis_timer = 15;
+      }
+  };
 
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
-    bool tecla_apertada {false};
     
     if(IsWindowResized()){
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+      redimensiona();
     }
     
     DrawText("CONTROLES", scale*500.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
+    int gamepad = GamepadDisponivel();
+    if(gamepad > -1){
+      controle_input(gamepad);
+    }
+
+    if(key_consumed && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
+      int tecla = 0;
+      pad_ultimo = false;
+      while(tecla == 0){
+        if(IsWindowResized()){
+          redimensiona();
+        }
+
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawText("Pressione alguma tecla...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
+        EndDrawing();
+        tecla = GetKeyPressed();
+      }
+      estado->controles[slot_index] = static_cast<KeyboardKey>(tecla);
+      botoes[slot_index] = getDisplayName(estado->controles[slot_index]);
+      tecla_apertada = true;
+      key_consumed = false;
+    }
+
+    if(pad_consumed && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
+      int count {};
+      pad_ultimo = true;
+      GamepadButton comb[2] = {GAMEPAD_BUTTON_UNKNOWN, GAMEPAD_BUTTON_UNKNOWN};
+      while(count < 1){
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawText("Aperte algum botao...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
+        EndDrawing();
+
+        for(int bt {GAMEPAD_BUTTON_LEFT_FACE_UP}; bt <= GAMEPAD_BUTTON_RIGHT_THUMB; ++bt){
+          if(IsGamepadButtonDown(gamepad, bt)){
+            comb[count++] = static_cast<GamepadButton>(bt);
+            if(count == 2)
+              break;
+          }
+        }
+      }
+      estado->controles_but[slot_index] = GamepadComb(comb[0], comb[1]);
+      botoes_controle[slot_index] = estado->controles_but[slot_index].string();
+      tecla_apertada = true;
+      pad_consumed = false;
+    }
+
+    if(apertado(estado->controles[11]) && !tecla_apertada){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = false;
+    }
+    if(gamepad > -1 && estado->controles_but[11].pressionado(gamepad) && !tecla_apertada){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = true;
+    }
+
+    if((apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) && !tecla_apertada){
+      estado->atualiza_controles();
+      EndDrawing();
+      break;
+    }
+
     for(size_t i {}; i < 8; ++i){
-      Rectangle r = get_ret(400.0f, 290.0f + 75.0f*i, 100.0f, 50.0f);
+      float wid = (pad_ultimo) ? 270.0f : 100.0f;
+      Rectangle r = get_ret(400.0f, 290.0f + 75.0f*i, wid, 50.0f);
 
       if(i == 2){
         DrawText(botoes_show[i].c_str(), scale*297.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
@@ -106,33 +287,23 @@ void display_controles(GB_State *estado){
         DrawText(botoes_show[i].c_str(), scale*361.0f, scale*(305.0f + 75.0f*i), scale*22, GOLD);
       }
 
-      if(GuiButton(r, botoes[i])){
-        int tecla = 0;
-        while(tecla == 0){
-          if(IsWindowResized()){
-            screen_w = GetScreenWidth()/width;
-            screen_h = GetScreenHeight()/height;
-            scale = std::min(screen_w, screen_h);
-            GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-            GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
-          }
+      if(pad_ultimo && i == static_cast<size_t>(contr_index)){
+        DrawRectangleLines(scale*395.0f, scale*(285.0f + 75.0f*i), scale*wid + scale*10.0f, scale*60.0f, GREEN);
+      }
+      if(GuiButton(r, (pad_ultimo) ? botoes_controle[i].c_str() : botoes[i])){
+        key_consumed = true;
+        slot_index = i;
+      }
 
-          BeginDrawing();
-          ClearBackground(BLACK);
-          DrawText("Aperte alguma tecla...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
-          EndDrawing();
-          tecla = GetKeyPressed();
-        }
-        if(tecla != 0){
-          estado->controles[i] = static_cast<KeyboardKey>(tecla);
-          botoes[i] = getDisplayName(estado->controles[i]);
-          tecla_apertada = true;
-        }
+      if(gamepad > -1 && static_cast<size_t>(contr_index) == i && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) && !tecla_apertada){
+        pad_consumed = true;
+        slot_index = i;
       }
     }
 
     for(size_t i {8}; i < 14; ++i){
-      Rectangle r = get_ret(860.0f, 290.0f + 75.0f*(i - 8), 100.0f, 50.0f);
+      float wid = (pad_ultimo) ? 270.0f : 100.0f;
+      Rectangle r = get_ret(860.0f, 290.0f + 75.0f*(i - 8), wid, 50.0f);
       if(i == 8 || i == 11){
         DrawText(botoes_show[i].c_str(), scale*680.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
@@ -145,56 +316,34 @@ void display_controles(GB_State *estado){
       else{
         DrawText(botoes_show[i].c_str(), scale*747.0f, scale*(305.0f + 75.0f*(i - 8)), scale*22, GOLD);
       }
-      
-      if(GuiButton(r, botoes[i])){
-        int tecla = 0;
-        while(tecla == 0){
-          if(IsWindowResized()){
-            screen_w = GetScreenWidth()/width;
-            screen_h = GetScreenHeight()/height;
-            scale = std::min(screen_w, screen_h);
-            GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-            GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
-          }
 
-          BeginDrawing();
-          ClearBackground(BLACK);
-          DrawText("Aperte alguma tecla...", scale*800.0f, screen_h*400.0f, scale*30, GOLD);
-          EndDrawing();
-          tecla = GetKeyPressed();
-        }
-        if(tecla != 0){
-          estado->controles[i] = static_cast<KeyboardKey>(tecla);
-          botoes[i] = getDisplayName(estado->controles[i]);
-          tecla_apertada = true;
-        }
+      if(pad_ultimo && i == static_cast<size_t>(contr_index)){
+        DrawRectangleLines(scale*855.0f, scale*(285.0f + 75.0f*(i - 8)), scale*wid + scale*10.0f, scale*60.0f, GREEN);
+      }
+      if(GuiButton(r, (pad_ultimo) ? botoes_controle[i].c_str() : botoes[i])){
+        key_consumed = true;
+        slot_index = i;
+      }
+
+      if(gamepad > -1 && static_cast<size_t>(contr_index) == i && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
+        pad_consumed = true;
+        slot_index = i;
       }
     }
-
-    DrawText("Aperte ESC para voltar", scale*300.0f, scale*950.0f, scale*22, GOLD);
-
-    if(apertado(estado->controles[11]) && !tecla_apertada){
-      ToggleFullscreen();
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
-    }
-
-    if(apertado(KEY_ESCAPE) && !tecla_apertada){
-      estado->atualiza_controles();
-      EndDrawing();
-      break;
-    }
-
+    
+    DrawText((pad_ultimo) ? subs[1] : subs[0], scale*300.0f, scale*950.0f, scale*22, GOLD);
     EndDrawing();
+
+    tecla_apertada = false;
+    if(axis_timer)
+      --axis_timer;
   }
 }
 
 void display_saves(Game_State *game, GB_State *estado){
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
+  constexpr const char *subs[2] = {"Aperte ESC para voltar", "Aperte B para voltar"};
 
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
@@ -209,41 +358,106 @@ void display_saves(Game_State *game, GB_State *estado){
   float textureY = 144*tex_scale;
   float posX = scale*700.0f;
   float posY = scale*475.0f;
+  int8_t contr_index = estado->save_slot - 1;
+  bool botao_apertado {false};
+  uint8_t opt {3};
+  int axis_timer {};
+
+  auto redimensiona = [&](){
+    screen_w = GetScreenWidth()/width;
+    screen_h = GetScreenHeight()/height;
+    scale = std::min(screen_w, screen_h);
+    GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+    GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      
+    tex_scale = scale*3.0f;
+    textureX = 160*tex_scale;
+    textureY = 144*tex_scale;
+    posX = scale*700.0f;
+    posY = scale*475.0f;
+  };
+
+  bool& pad_ultimo = estado->pad_ultimo;
+  auto controle_input = [&](int pad){
+    float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
+    float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
+
+    if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || (leftStickX > 0.5f && !axis_timer)){
+        if(contr_index < 10)
+          contr_index = 10;
+        else{
+          contr_index = (contr_index + 1) % 13;
+        }
+
+        pad_ultimo = true;
+        if(!axis_timer)
+          axis_timer = 15;
+    }
+    else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT) || (leftStickX < -0.5f && !axis_timer)){
+      if(contr_index < 10){
+        contr_index = 12;
+      }
+      else{
+        --contr_index;
+        if(contr_index < 10){
+          contr_index = 0;
+        }
+      }
+      
+      pad_ultimo = true;
+      if(!axis_timer)
+          axis_timer = 15;
+    }
+    else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || (leftStickY > 0.5f && !axis_timer)){
+      if(contr_index > 9){
+        pad_ultimo = true;
+        return;
+      }
+      contr_index = (contr_index + 1) % 10;
+      pad_ultimo = true;
+      if(!axis_timer)
+          axis_timer = 15;
+    }
+    else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || (leftStickY < -0.5f && !axis_timer)){
+      if(contr_index > 9){
+        pad_ultimo = true;
+        return;
+      }
+      --contr_index;
+      if(contr_index < 0)
+        contr_index = 9;
+
+      pad_ultimo = true;
+      if(!axis_timer)
+          axis_timer = 15;
+    }
+  };
 
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
 
     if(IsWindowResized()){
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
-      
-      tex_scale = scale*3.0f;
-      textureX = 160*tex_scale;
-      textureY = 144*tex_scale;
-      posX = scale*700.0f;
-      posY = scale*475.0f;
+      redimensiona();
+    }
+
+    int gamepad = GamepadDisponivel();
+    if(gamepad > -1){
+      controle_input(gamepad);
     }
 
     if(apertado(estado->controles[11])){
       ToggleFullscreen();
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
-
-      tex_scale = scale*3.0f;
-      textureX = 160*tex_scale;
-      textureY = 144*tex_scale;
-      posX = scale*700.0f;
-      posY = scale*475.0f;
+      redimensiona();
+      pad_ultimo = false;
+    }
+    if(gamepad > -1 && estado->controles_but[11].pressionado(gamepad)){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = true;
     }
 
-    if(apertado(KEY_ESCAPE)){
+    if(apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))){
       std::fstream arquivo(game->save_path, arquivo.in | arquivo.out | arquivo.binary);
       if(arquivo){
         arquivo.seekg(MAX_SAVE_SLOTS*sizeof(size_t), std::ios::beg);
@@ -254,6 +468,34 @@ void display_saves(Game_State *game, GB_State *estado){
       break;
     }
 
+    if(botao_apertado && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
+      switch(opt){
+        case 0:{
+          game->save_state(estado->save_slot);
+          if(frames[estado->save_slot - 1])
+            UnloadTexture(*frames[estado->save_slot - 1]);
+          frames[estado->save_slot - 1] = game->load_image(estado->save_slot);
+          break;
+        }
+        case 1:{
+          game->load_state(estado->save_slot);
+          break;
+        }
+        case 2:{
+          game->delete_state(estado->save_slot);
+          if(frames[estado->save_slot - 1]){
+            UnloadTexture(*frames[estado->save_slot - 1]);
+            frames[estado->save_slot - 1].reset();
+          }
+          break;
+        }
+        default: break;
+      }
+
+      opt = 3;
+      botao_apertado = false;
+    }
+
     DrawText("SAVE STATES", scale*410.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
@@ -262,17 +504,37 @@ void display_saves(Game_State *game, GB_State *estado){
       if(GuiButton(r, ((game->save_states[i]) ? (std::string("Save") + std::to_string(i + 1)).c_str() : "Vazio"))){
         estado->save_slot = i + 1;
       }
+      bool pad_apertado = (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) && 
+          static_cast<size_t>(contr_index) == i);
+      if(pad_apertado){
+        estado->save_slot = i + 1;
+      }
 
       if(estado->save_slot == i + 1){
-        DrawRectangleLines(scale*445.0f, scale*(315.0f + 60.0f*i), scale*110.0f, scale*60.0f, GREEN);
+        DrawRectangleLines(scale*445.0f, scale*(315.0f + 60.0f*i), scale*110.0f, scale*60.0f, BLUE);
         if(frames[i]){
           DrawTextureEx(*frames[i], Vector2{posX, posY}, 0, tex_scale, WHITE);
         }
+      }
+      else if(pad_ultimo && static_cast<size_t>(contr_index) == i){
+        DrawRectangleLines(scale*445.0f, scale*(315.0f + 60.0f*i), scale*110.0f, scale*60.0f, GREEN);
       }
     }
 
     for(size_t i {}; i < 3; ++i){
       Rectangle r = get_ret(700.0f + 200.0f*i, 320.0f, 150.0f, 100.0f);
+      bool pad_apertado = (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) && 
+          (contr_index - 10 == static_cast<int>(i)));
+
+      if(pad_ultimo && contr_index - 10 == static_cast<int>(i)){
+        DrawRectangleLines(scale*(695.0f + 200.0f*i), scale*315.0f, scale*160.0f, scale*110.0f, GREEN);
+      }
+      if(pad_apertado){
+        pad_ultimo = true;
+        botao_apertado = true;
+        opt = i;
+      }
+
       if(!i){
         if(GuiButton(r, "Save")){
           game->save_state(estado->save_slot);
@@ -280,11 +542,13 @@ void display_saves(Game_State *game, GB_State *estado){
             UnloadTexture(*frames[estado->save_slot - 1]);
 
           frames[estado->save_slot - 1] = game->load_image(estado->save_slot);
+          pad_ultimo = false;
         }
       }
       else if(i == 1){
         if(GuiButton(r, "Load")){
           game->load_state(estado->save_slot);
+          pad_ultimo = false;
         }
       }
       else{
@@ -294,11 +558,14 @@ void display_saves(Game_State *game, GB_State *estado){
             UnloadTexture(*frames[estado->save_slot - 1]);
             frames[estado->save_slot - 1].reset();
           }
+          pad_ultimo = false;
         }
       }
     }
 
-    DrawText("Aperte ESC para voltar", scale*300.0f, scale*970.0f, scale*22, GOLD);
+    DrawText((pad_ultimo) ? subs[1] : subs[0], scale*300.0f, scale*970.0f, scale*22, GOLD);
+    if(axis_timer)
+      --axis_timer;
 
     EndDrawing();
   }
@@ -316,8 +583,10 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   ShowCursor();
   EndDrawing();
   
-  const char opcoes[4][15] = {"Resumir", "Controles", "Save States", "Sair"};
+  constexpr char opcoes[4][15] = {"Resumir", "Controles", "Save States", "Sair"};
   uint8_t escolhas {};
+  int8_t contr_index {};
+  int axis_timer {};
 
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
@@ -329,40 +598,83 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
   SetTargetFPS(60);
 
+  auto redimensiona = [&](){
+    screen_w = GetScreenWidth()/width;
+    screen_h = GetScreenHeight()/height;
+    scale = std::min(screen_w, screen_h);
+    GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+  };
+
+  bool& pad_ultimo = estado->pad_ultimo;
+  auto controle_input = [&](int pad){
+    float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
+
+    if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || (leftStickY > 0.5f && !axis_timer)){
+      contr_index = (contr_index + 1) % std::size(opcoes);
+      pad_ultimo = true;
+      if(!axis_timer)
+        axis_timer = 15;
+    }
+    else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || (leftStickY < -0.5f && !axis_timer)){
+      --contr_index;
+      if(contr_index < 0)
+        contr_index = std::size(opcoes) - 1;
+            
+      pad_ultimo = true;
+      if(!axis_timer)
+        axis_timer = 15;
+    }
+  };
+
   while(1){
     BeginDrawing();
     ClearBackground(BLACK);
 
     if(IsWindowResized()){
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
 
     if(apertado(estado->controles[11])){
       ToggleFullscreen();
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+      redimensiona();
+      pad_ultimo = false;
+    }
+    
+    int gamepad = GamepadDisponivel();
+    if(gamepad > -1 && estado->controles_but[11].pressionado(gamepad)){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = true;
     }
 
-    if(apertado(KEY_ESCAPE) || apertado(estado->controles[9])){
+    if(gamepad > -1){
+      controle_input(gamepad);
+    }
+
+    bool gamepad_apertado = (gamepad > -1 && 
+        (IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) || estado->controles_but[9].pressionado(gamepad)));
+    if(apertado(KEY_ESCAPE) || apertado(estado->controles[9]) || gamepad_apertado){
       resumido = true;
       EndDrawing();
       break;
     }
-
+      
     DrawText("PAUSE", scale*690.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
     for(size_t i {}; i < 4; ++i){
       Rectangle r = get_ret(790.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
-      if(GuiButton(r, opcoes[i]))
+
+      if(pad_ultimo && static_cast<size_t>(contr_index) == i){
+        DrawRectangleLines(scale*785.0f, scale*(315.0f + 135.0f*i), scale*310.0f, scale*110.0f, GREEN);
+        if(IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+          escolhas |= opt_escolha(i);
+      }
+      if(GuiButton(r, opcoes[i])){
         escolhas |= opt_escolha(i);
+        pad_ultimo = false;
+      }
     }
 
     if(escolhas & opt_escolha(0)){
@@ -397,6 +709,9 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       return true;
     }
 
+    if(axis_timer)
+      --axis_timer;
+
     EndDrawing();
   }
 
@@ -406,7 +721,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
 }
 
 void carrega_rom(GB_State *estado){
-    const char *extensoes[] = {"*.gb", "*.gbc"};
+    constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
 
     const char *resultado = tinyfd_openFileDialog(
         "Escolha a rom",  // título
@@ -494,46 +809,75 @@ void init_gui(void){
   constexpr float height = 1080.0f;
 
   InitWindow(width, height, "Carlinhos Boy");
-  SetWindowState(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
+  SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(60);
-  
-  std::string opcoes[] = {
+
+  constexpr const char *opcoes[] = {
     "Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair",
   };
 
   uint8_t escolhas {};
+  bool paleta_delay {false};
 
   GB_State estado;
   ListaArquivos lista(&estado, ".gb");
     
   int scroll_index {}, ativo {-1};
+  int contr_index {};
+  int axis_timer {};
   
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
   float scale = std::min(screen_w, screen_h);
-
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
+
+  auto redimensiona = [&](){
+    screen_w = GetScreenWidth()/width;
+    screen_h = GetScreenHeight()/height;
+    scale = std::min(screen_w, screen_h);
+    GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
+    GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+  };
+
+  estado.pad_ultimo = (GamepadDisponivel() > -1);
+  bool& pad_ultimo = estado.pad_ultimo;
+  auto controle_input = [&](int pad){
+    float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
+
+    if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || (leftStickY > 0.5f && !axis_timer)){
+      contr_index = (contr_index + 1) % (std::size(opcoes) + 1);
+      pad_ultimo = true;
+      if(!axis_timer)
+        axis_timer = 15;
+    }
+    else if(IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || (leftStickY < -0.5f && !axis_timer)){
+      --contr_index;
+      if(contr_index < 0)
+        contr_index = std::size(opcoes);
+            
+      pad_ultimo = true;
+      if(!axis_timer)
+        axis_timer = 15;
+    }
+  };
 
   while (!WindowShouldClose()) {
     BeginDrawing();
     ClearBackground(BLACK);
     
     if(IsWindowResized()){
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
 
-    if(apertado(estado.controles[11])){
+    int gamepad = GamepadDisponivel();
+    if(gamepad > -1){
+      controle_input(gamepad);
+    }
+
+    if(apertado(estado.controles[11]) || (gamepad > -1 && estado.controles_but[11].pressionado(gamepad))){
       ToggleFullscreen();
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
-      GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
+      redimensiona();
     }
 
     DrawText("CARLINHOS BOY", scale*325.0f, scale*80.0f, scale*150.0f, GOLD);
@@ -541,46 +885,46 @@ void init_gui(void){
 
     for(size_t i {}; i < 5; ++i){
       Rectangle r = get_ret(550.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
-      if(GuiButton(r, opcoes[i].c_str()))
+      if(GuiButton(r, opcoes[i])){
         escolhas |= opt_escolha(i);
+        pad_ultimo = false;
+      }
+      if(pad_ultimo && static_cast<size_t>(contr_index) == i){
+        DrawRectangleLines(scale*545.0f, scale*(315.0f + 135.0f*i), 310.0f, 110.0f, GREEN);
+        if(IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+          escolhas |= opt_escolha(i);
+      }
     }
 
     GuiListView(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), lista.geral.c_str(), &scroll_index, &ativo);
     DrawText("Modo CGB: ", scale*1010.0f, scale*980.0f, scale*25.0f, GOLD);
-    if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado.paleta_cgb) ? "ON" : "OFF")){
+    if(gamepad > -1 && contr_index == 5){
+      DrawRectangleLines(scale*1145.0f, scale*965.0f, scale*110.0f, scale*50.0f, GREEN);
+      if(IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+        paleta_delay = true;
+    }
+
+    bool paleta_trocada = (paleta_delay && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN));
+    if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado.paleta_cgb) ? "ON" : "OFF") || paleta_trocada){
+      paleta_delay = false;
       toggle_paleta(&estado);
     }
 
     if(ativo >= 0 && ativo < static_cast<int>(lista.arquivos.count)){
       inicia_emulador(lista.arquivos.paths[ativo], &estado);
       ativo = -1;
-
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
     
     if(escolhas & opt_escolha(0)){
       escolhas &= ~opt_escolha(0);
       carrega_rom(&estado);
-
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
       display_controles(&estado);
-
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
@@ -594,6 +938,8 @@ void init_gui(void){
       EndDrawing();
       break;
     }
+    if(axis_timer)
+      --axis_timer;
 
     EndDrawing();
   }

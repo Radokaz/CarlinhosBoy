@@ -132,9 +132,6 @@ struct MBC3 : public MBC{
     rtc_last = std::chrono::system_clock::now();
     fonte = rom_src;
     saves = sav;
-    arquivo.seekg(0, std::ios::end);
-    size_t tamanho = arquivo.tellg();
-    arquivo.seekg(0);
     rom.resize(rom_tam);
     if(ram_tam)
       ram.resize(ram_tam, 0xFF);

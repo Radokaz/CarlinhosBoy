@@ -472,7 +472,7 @@ void APU::output(void){
     blip_esq->read_samples(sample_esq.data(), total_samples, 0);
     blip_dir->read_samples(sample_dir.data(), total_samples, 0);
 
-    for(size_t i {}; i < total_samples; ++i){
+    for(int i {}; i < total_samples; ++i){
       ring.push(static_cast<int16_t>(sample_esq[i]), static_cast<int16_t>(sample_dir[i]));    
     }
   }
