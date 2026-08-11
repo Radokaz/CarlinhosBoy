@@ -194,6 +194,10 @@ void display_controles(GB_State *estado){
     if(IsWindowResized()){
       redimensiona();
     }
+
+    if(apertado(MOUSE_LEFT_BUTTON)){
+      pad_ultimo = false;
+    }
     
     DrawText("CONTROLES", scale*500.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
@@ -224,7 +228,7 @@ void display_controles(GB_State *estado){
     }
 
     if(pad_consumed && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
-      int count {};
+  int count {};
       pad_ultimo = true;
       GamepadButton comb[2] = {GAMEPAD_BUTTON_UNKNOWN, GAMEPAD_BUTTON_UNKNOWN};
       while(count < 1){
@@ -441,6 +445,10 @@ void display_saves(Game_State *game, GB_State *estado){
       redimensiona();
     }
 
+    if(apertado(MOUSE_LEFT_BUTTON)){
+      pad_ultimo = false;
+    }
+
     int gamepad = GamepadDisponivel();
     if(gamepad > -1){
       controle_input(gamepad);
@@ -640,6 +648,10 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       redimensiona();
       pad_ultimo = false;
     }
+
+    if(apertado(MOUSE_LEFT_BUTTON)){
+      pad_ultimo = false;
+    }
     
     int gamepad = GamepadDisponivel();
     if(gamepad > -1 && estado->controles_but[11].pressionado(gamepad)){
@@ -820,7 +832,7 @@ void init_gui(void){
   bool paleta_delay {false};
 
   GB_State estado;
-  ListaArquivos lista(&estado, ".gb");
+  ListaArquivos lista(&estado);
     
   int scroll_index {}, ativo {-1};
   int contr_index {};
@@ -870,6 +882,10 @@ void init_gui(void){
       redimensiona();
     }
 
+    if(apertado(MOUSE_LEFT_BUTTON)){
+      pad_ultimo = false;
+    }
+
     int gamepad = GamepadDisponivel();
     if(gamepad > -1){
       controle_input(gamepad);
@@ -910,8 +926,8 @@ void init_gui(void){
       toggle_paleta(&estado);
     }
 
-    if(ativo >= 0 && ativo < static_cast<int>(lista.arquivos.count)){
-      inicia_emulador(lista.arquivos.paths[ativo], &estado);
+    if(ativo >= 0 && ativo < static_cast<int>(lista.arquivos1.count + lista.arquivos2.count)){
+      inicia_emulador(lista.paths[ativo], &estado);
       ativo = -1;
       redimensiona();
     }
@@ -944,7 +960,6 @@ void init_gui(void){
     EndDrawing();
   }
 
-  UnloadDirectoryFiles(lista.arquivos);
   CloseWindow();
 }
 
