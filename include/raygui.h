@@ -387,18 +387,18 @@
 // Macros to define required UI inputs, including mapping to gamepad controls
 // TODO: Define additionally required macros for missing inputs
 #if !defined(GUI_BUTTON_DOWN)
-    #define GUI_BUTTON_DOWN         (IsMouseButtonDown(MOUSE_LEFT_BUTTON) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+    #define GUI_BUTTON_DOWN         (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) //|| IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
 #endif
 #if !defined(GUI_BUTTON_DOWN_ALT)
     //  Mapping to alternative button down pressed
-    #define GUI_BUTTON_DOWN_ALT     (IsMouseButtonDown(MOUSE_RIGHT_BUTTON) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))
+    #define GUI_BUTTON_DOWN_ALT     (IsMouseButtonDown(MOUSE_RIGHT_BUTTON)) //|| IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))
 #endif
 #if !defined(GUI_BUTTON_PRESSED)
-    #define GUI_BUTTON_PRESSED      (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+    #define GUI_BUTTON_PRESSED      (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) //|| IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
 #endif
 // TODO: WARNING: GuiTabBar() still requires IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)
 #if !defined(GUI_BUTTON_RELEASED)
-    #define GUI_BUTTON_RELEASED     (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) || IsGamepadButtonReleased(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
+    #define GUI_BUTTON_RELEASED     (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) //|| IsGamepadButtonReleased(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))
 #endif
 #if !defined(GUI_SCROLL_DELTA)
     // Mapping to scroll delta changes
