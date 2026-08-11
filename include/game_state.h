@@ -369,16 +369,34 @@ struct Game_State{
       std::cout << "Nenhum save encontrado no slot selecionado.\n";
       return;
     }
-    
+
+    size_t vazios {};
+    size_t copia {save_states[slot - 1]};
+    save_states[slot - 1] = 0;
+    for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
+      if(!save_states[i])
+        ++vazios;
+    }
+
+    if(vazios == MAX_SAVE_SLOTS){
+      std::error_code err;
+      if(std::filesystem::remove(save_path, err)){
+        frame_states[slot - 1] = 0;
+        std::filesystem::remove(image_path, err);
+        return;
+      }
+
+      TraceLog(LOG_WARNING, "Não foi possível apagar o arquivo. '%s'", err.message().c_str());
+    }
+
     std::fstream save(save_path, save.in | save.out | save.binary);
     size_t deletados = this->get_excluidos(&save);
     ++deletados;
+    
     save.seekp(11*sizeof(size_t), std::ios::beg);
     save.write(reinterpret_cast<char*>(&deletados), sizeof(size_t));
     save.seekp((12 + (deletados - 1))*sizeof(size_t), std::ios::beg);
-    save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
-    
-    save_states[slot - 1] = 0;
+    save.write(reinterpret_cast<char*>(&copia), sizeof(size_t));
     save.seekp((slot - 1)*sizeof(size_t), std::ios::beg);
     save.write(reinterpret_cast<char*>(&save_states[slot - 1]), sizeof(size_t));
 

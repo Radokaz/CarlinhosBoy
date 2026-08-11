@@ -225,30 +225,52 @@ struct GB_State{
 
 struct ListaArquivos{
   
-  FilePathList arquivos;
-  const char *extensao {};
+  FilePathList arquivos1;
+  FilePathList arquivos2;
   std::string geral;
+  std::vector<const char *> paths;
 
-  ListaArquivos(GB_State *estado, const char *ext): extensao{ext}{
-    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), extensao, true);
+  ListaArquivos(GB_State *estado){
+    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
+    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", true);
     this->atualiza_string();
   }
 
   void atualiza_string(void){
     geral.clear();
-    TraceLog(LOG_INFO, "Arquivos encontrados: %d", arquivos.count);
-    for(int64_t i {}; i < arquivos.count; ++i){
-      TraceLog(LOG_INFO, " %s", arquivos.paths[i]);
-      geral+=GetFileName(arquivos.paths[i]);
-      if(i < (static_cast<int64_t>(arquivos.count) - 1))
+    paths.resize(arquivos1.count + arquivos2.count);
+    TraceLog(LOG_INFO, "Arquivos encontrados: %d", arquivos1.count + arquivos2.count);
+
+    for(int64_t i {}; i < arquivos1.count; ++i){
+      paths[i] = arquivos1.paths[i];
+      geral+=GetFileName(paths[i]);
+      if(i < (static_cast<int64_t>(arquivos1.count) - 1))
+        geral+=';';
+    }
+
+    size_t sz {arquivos1.count};
+    if(sz && arquivos2.count)
+      geral+=';';
+
+    for(int64_t i {}; i < arquivos2.count; ++i){
+      paths[sz + i] = arquivos2.paths[i];
+      geral+=GetFileName(paths[sz + i]);
+      if(i < (static_cast<int64_t>(arquivos2.count) - 1))
         geral+=';';
     }
   }
 
   void atualiza_lista(GB_State *estado){
-    UnloadDirectoryFiles(arquivos);
-    arquivos = LoadDirectoryFilesEx(estado->rom_path.c_str(), extensao, true);
+    UnloadDirectoryFiles(arquivos1);
+    UnloadDirectoryFiles(arquivos2);
+    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
+    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", true);
     this->atualiza_string();
+  }
+
+  ~ListaArquivos(){
+    UnloadDirectoryFiles(arquivos1);
+    UnloadDirectoryFiles(arquivos2);
   }
 
 };
