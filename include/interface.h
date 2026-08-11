@@ -231,31 +231,31 @@ struct ListaArquivos{
   std::vector<const char *> paths;
 
   ListaArquivos(GB_State *estado){
-    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
-    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", true);
+    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", false);
+    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", false);
     this->atualiza_string();
   }
 
   void atualiza_string(void){
     geral.clear();
-    paths.resize(arquivos1.count + arquivos2.count);
-    TraceLog(LOG_INFO, "Arquivos encontrados: %d", arquivos1.count + arquivos2.count);
+    size_t tamanho = arquivos1.count + arquivos2.count;
+    paths.resize(tamanho);
+    TraceLog(LOG_INFO, "Arquivos encontrados: %d", tamanho);
 
-    for(int64_t i {}; i < arquivos1.count; ++i){
-      paths[i] = arquivos1.paths[i];
-      geral+=GetFileName(paths[i]);
-      if(i < (static_cast<int64_t>(arquivos1.count) - 1))
-        geral+=';';
+    char **aux = arquivos1.paths;
+    size_t off {};
+    for(size_t i {}; i < tamanho; ++i){
+      if(i == arquivos1.count){
+        aux = arquivos2.paths;
+        off = arquivos1.count;
+      }
+      paths[i] = aux[i - off];
     }
 
-    size_t sz {arquivos1.count};
-    if(sz && arquivos2.count)
-      geral+=';';
-
-    for(int64_t i {}; i < arquivos2.count; ++i){
-      paths[sz + i] = arquivos2.paths[i];
-      geral+=GetFileName(paths[sz + i]);
-      if(i < (static_cast<int64_t>(arquivos2.count) - 1))
+    std::sort(paths.begin(), paths.end(), [](const char *a, const char *b){ return std::strcmp(a, b) < 0; });
+    for(size_t i {}; i < tamanho; ++i){
+      geral+=GetFileName(paths[i]);
+      if(i < (tamanho - 1))
         geral+=';';
     }
   }
@@ -263,8 +263,8 @@ struct ListaArquivos{
   void atualiza_lista(GB_State *estado){
     UnloadDirectoryFiles(arquivos1);
     UnloadDirectoryFiles(arquivos2);
-    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", true);
-    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", true);
+    arquivos1 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gb", false);
+    arquivos2 = LoadDirectoryFilesEx(estado->rom_path.c_str(), ".gbc", false);
     this->atualiza_string();
   }
 
