@@ -5,7 +5,15 @@
 #include <string>
 #include <cstring>
 #include <fstream>
-#include "tinyfiledialogs.h"
+
+#ifdef UWP_BUILDING
+  #include <winrt/Windows.Storage.h>
+  #include <winrt/Windows.Storage.Pickers.h>
+  #include <winrt/Windows.Foundation.h>
+  #include <future>
+#else
+  #include "tinyfiledialogs.h"
+#endif
 
 #define opt_escolha(x) (1 << x)
 
@@ -57,7 +65,7 @@ struct GamepadComb{
 
   std::string string(void) const{
     const char *segundo = getDisplayName(but2);
-    return (segundo) ? std::string(getDisplayName(but1)) + " + " + getDisplayName(but2) : std::string(getDisplayName(but1));
+    return (std::strlen(segundo)) ? std::string(getDisplayName(but1)) + " + " + segundo : std::string(getDisplayName(but1));
   }
 };
 
@@ -86,7 +94,7 @@ struct GB_State{
     this->seta_controles();
     if(!estado){
       estado.close();
-      std::ofstream novo(state_path.string().c_str());
+      std::ofstream novo(state_path);
       paleta_cgb = 1;
 
       std::filesystem::path svs = main_dir / "Saves";
@@ -185,7 +193,7 @@ struct GB_State{
 
       if(ini != std::string::npos){
         controles[i] = static_cast<KeyboardKey>(std::stoi(value.substr(ini, end - ini)));
-        controles_but[i] = GamepadComb(static_cast<size_t>(std::stoll(value.substr(end + 1))));
+        controles_but[i] = GamepadComb(static_cast<size_t>(std::stoull(value.substr(end + 1))));
       }
 
       ++i;
@@ -209,11 +217,11 @@ struct GB_State{
 
     for(size_t i {}; i < linhas.size(); ++i){
       size_t pos = linhas[i].find(':');
-      std::string key = linhas[i].substr(0, pos);
       for(size_t j {}; j < std::size(gb_botoes); ++j){
-        if(key == gb_botoes[j]){
+        if(!std::strncmp(linhas[i].c_str(), gb_botoes[j], pos)){
+          linhas[i].erase(pos + 2);
           buffer = std::to_string(std::to_underlying<KeyboardKey>(controles[j])) + "/" + std::to_string(controles_but[j].hash());
-          linhas[i].replace(pos + 2, buffer.length(), buffer);
+          linhas[i].append(buffer);
           break;
         }
       }
