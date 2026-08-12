@@ -61,7 +61,7 @@ const char *getDisplayName(GamepadButton but){
     case GAMEPAD_BUTTON_MIDDLE_RIGHT: return "Start";
     case GAMEPAD_BUTTON_LEFT_THUMB: return "L3";
     case GAMEPAD_BUTTON_RIGHT_THUMB: return "R3";
-    default: return nullptr;  
+    default: return "";  
   }
 }
 
@@ -75,6 +75,15 @@ Rectangle get_ret(float x, float y, float w, float h){
   return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
 
+#ifdef UWP_BUILDING
+int GamepadDisponivel(void){
+  for(int i {}; i < 4; ++i){
+    if(IsGamepadAvailable(i)) return i;
+  }
+
+  return -1;
+}
+#else
 int GamepadDisponivel(void){
   for(int i {}; i < 4; ++i){
     if(!IsGamepadAvailable(i)) return -1;
@@ -89,6 +98,7 @@ int GamepadDisponivel(void){
 
   return -1;
 }
+#endif
 
 float fix_deadzone(float dz){
   return (std::fabsf(dz) < 0.08f) ? 0.0f : dz;
@@ -228,7 +238,7 @@ void display_controles(GB_State *estado){
     }
 
     if(pad_consumed && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
-  int count {};
+      int count {};
       pad_ultimo = true;
       GamepadButton comb[2] = {GAMEPAD_BUTTON_UNKNOWN, GAMEPAD_BUTTON_UNKNOWN};
       while(count < 1){
@@ -733,26 +743,63 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
 }
 
 void carrega_rom(GB_State *estado){
-    constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
+  constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
 
-    const char *resultado = tinyfd_openFileDialog(
-        "Escolha a rom",  // título
-        "",               // pasta inicial
-        2,                // número de filtros
-        extensoes,          // extensões permitidas
-        "", // descrição
-        0                 // 0 = um arquivo, 1 = múltiplos
-    );
+#ifdef UWP_BUILDING
+  std::string resultado = std::async(std::launch::async, [extensoes](){
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
 
-    if(!resultado) return;
+    FileOpenPicker picker;
+    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
 
-    inicia_emulador(resultado, estado);
+    for(const auto& ext : extensoes) {
+      picker.FileTypeFilter().Append(ext);
+    }
+
+    StorageFile arquivo = picker.PickSingleFileAsync().get();
+    if(arquivo){
+      return winrt::to_string(arquivo.Path());
+    }
+    return "";
+   }).get();
+
+  if(!resultado.length()) return;
+  inicia_emulador(resultado.c_str(), estado);
+#else
+  const char *resultado = tinyfd_openFileDialog(
+    "Escolha a rom",  // título
+    "",               // pasta inicial
+    2,                // número de filtros
+    extensoes,        // extensões permitidas
+    "",               // descrição
+    0);               // 0 = um arquivo;
+
+  if(!resultado) return;
+  inicia_emulador(resultado, estado);
+#endif
 }
 
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista){
+#ifdef UWP_BUILDING
+  std::string resultado = std::async(std::launch::async, [](){
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
+
+    FolderPicker picker;
+    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
+    picker.FileTypeFilter().Append(L"*");
+
+    StorageFolder pasta = picker.PickSingleFolderAsync().get();
+    if(pasta){
+      return winrt::to_string(pasta.Path());
+    }
+    return ""; }).get();
+
+  if(!resultado.length()) return;
+#else
   const char *resultado = tinyfd_selectFolderDialog("Selecione uma pasta", "");
   if(!resultado) return;
-  
+#endif
+
   std::filesystem::path state_path = estado->main_dir / "state.cfg";
 
   std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
