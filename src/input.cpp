@@ -13,6 +13,7 @@ void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120,
     le_input_controle(estado, save_slot, pausado, is_120, janela_alterada, controles, gamepad);
   }
 
+#ifndef UWP_BUILDING
   if(segurado(map[0])) 
     controles |= A_BUTTON;
   if(segurado(map[1])) 
@@ -72,6 +73,8 @@ void le_input(Game_State *estado, size_t save_slot, bool& pausado, bool& is_120,
   if(controles){
     HideCursor();
   }
+#endif
+
   estado->pad.input(controles);
   //std::cout << std::hex << static_cast<int32_t>(pad.controles) << "\n";
 }
@@ -105,10 +108,12 @@ void le_input_controle(Game_State *estado, size_t save_slot, bool& pausado, bool
   if(but[10].pressionado(gamepad)){
     is_120 ^= 1;
   }
+#ifndef UWP_BUILDING
   if(but[11].pressionado(gamepad)){
     ToggleFullscreen();
     janela_alterada = true;
   }
+#endif
   if(but[12].pressionado(gamepad)){
     estado->save_state(save_slot);
   }

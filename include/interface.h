@@ -10,6 +10,8 @@
   #include <winrt/Windows.Storage.h>
   #include <winrt/Windows.Storage.Pickers.h>
   #include <winrt/Windows.Foundation.h>
+  #include <winrt/Windows.UI.Core.h>
+  #include <winrt/Windows.UI.ViewManagement.h>
   #include <future>
 #else
   #include "tinyfiledialogs.h"
@@ -32,6 +34,8 @@ const char *getDisplayName(GamepadButton but);
 Rectangle get_ret(float x, float y, float w, float h);
 int GamepadDisponivel(void);
 float fix_deadzone(float dz);
+float get_width(void);
+float get_height(void);
 
 struct GamepadComb{
   GamepadButton but1;
@@ -81,7 +85,9 @@ struct GB_State{
   bool pad_ultimo {false};
 
   GB_State(void){
-#ifdef _WIN32
+#ifdef UWP_BUILDING
+    main_dir = this->uwp_dir();
+#elifdef _WIN32
     main_dir = getExeDir();
 #else
     main_dir = this->linux_dir();
@@ -159,6 +165,13 @@ struct GB_State{
     std::filesystem::create_directories(dir);
     return dir;
   }
+
+#ifdef UWP_BUILDING
+  std::filesystem::path uwp_dir(void){
+    auto pasta = winrt::Windows::Storage::ApplicationData::Current().LocalFolder();
+    return std::filesystem::path(std::wstring(pasta.Path()));
+  }
+#endif
 
   void seta_controles(void){
     std::filesystem::path control_path = main_dir / "controles.cfg";
