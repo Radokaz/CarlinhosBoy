@@ -21,6 +21,10 @@ else()
   add_executable(cb ${SOURCES})
 endif()
 
+if(MSVC)
+  target_compile_definitions(cb PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
     set(BUILDING_UWP TRUE)
 else()
@@ -29,22 +33,48 @@ endif()
 
 # Esse SDL é para a versão uwp apenas
 if(BUILDING_UWP)
-  set(SDL3_DIR "${CMAKE_SOURCE_DIR}/include/sdl3-uwp" CACHE PATH "" FORCE)
-  set(SDL3_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/include" CACHE PATH "" FORCE)
-  set(SDL3_LIBRARIES "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL3.lib" CACHE FILEPATH "" FORCE)
+  set(SDL3_UWP_ROOT "${CMAKE_SOURCE_DIR}/include/sdl3-uwp")
+
+  add_library(SDL3::SDL3 SHARED IMPORTED)
+  set_target_properties(SDL3::SDL3 PROPERTIES
+    IMPORTED_IMPLIB   "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.lib"
+    IMPORTED_LOCATION "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
+    INTERFACE_INCLUDE_DIRECTORIES "${SDL3_UWP_ROOT}/include;${SDL3_UWP_ROOT}/include/build_config"
+  )
+
   set(PLATFORM "SDL" CACHE STRING "" FORCE)
+  set(MESA_BIN_DIR "${CMAKE_SOURCE_DIR}/include/mesa-uwp/bin")
+  target_sources(cb PRIVATE uwp/Package.appxmanifest) 
+  target_sources(cb PRIVATE
+    "${MESA_BIN_DIR}/opengl32.dll"
+    "${MESA_BIN_DIR}/libgallium_wgl.dll"
+    "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
+    "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
+    "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
+  )
+  set_source_files_properties(
+    "${MESA_BIN_DIR}/opengl32.dll"
+    "${MESA_BIN_DIR}/libgallium_wgl.dll"
+    "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
+    "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
+    "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
+    PROPERTIES VS_DEPLOYMENT_CONTENT 1
+  )
   target_compile_definitions(cb PRIVATE UWP_BUILDING)
 endif()
  
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
 
-# versão para debug
-target_compile_options(cb PRIVATE -Werror -Wall -Wpedantic -g)
-target_link_options(cb PRIVATE -fsanitize=address)
+if(NOT BUILDING_UWP)
+  # versão para debug
+  target_compile_options(cb PRIVATE -Werror -Wall -Wpedantic -g)
+  target_link_options(cb PRIVATE -fsanitize=address)
 
-# essa é pra versão final
-# target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
+  # essa é pra versão final
+  # target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
+endif()
+
 target_include_directories(cb PRIVATE include)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -53,14 +83,3 @@ endif()
 
 add_subdirectory(include/raylib)
 target_link_libraries(cb PRIVATE raylib)
-
-# Link com o mesa para o uwp
-if(BUILDING_UWP)
-  set(MESA_BIN_DIR "${CMAKE_SOURCE_DIR}/include/mesa-uwp/bin")
-  add_custom_command(TARGET cb POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-       "${MESA_BIN_DIR}/opengl32.dll"
-       "${MESA_BIN_DIR}/libgallium_wgl.dll"
-       $<TARGET_FILE_DIR:cb>)
-endif()
-

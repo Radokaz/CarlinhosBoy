@@ -5,7 +5,10 @@
 #include <string>
 #include <cstring>
 #include <fstream>
-#include "tinyfiledialogs.h"
+
+#ifndef UWP_BUILDING
+  #include "tinyfiledialogs.h"
+#endif
 
 #define opt_escolha(x) (1 << x)
 
@@ -238,7 +241,7 @@ struct ListaArquivos{
 
   void atualiza_string(void){
     geral.clear();
-    size_t tamanho = arquivos1.count + arquivos2.count;
+    size_t tamanho = static_cast<size_t>(arquivos1.count) + arquivos2.count;
     paths.resize(tamanho);
     TraceLog(LOG_INFO, "Arquivos encontrados: %d", tamanho);
 

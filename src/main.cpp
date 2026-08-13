@@ -1,4 +1,7 @@
 #include "init.h"
+#ifdef UWP_BUILDING
+  #include "Windows.h"
+#endif
 
 int main(void){
   #ifdef UWP_BUILDING
