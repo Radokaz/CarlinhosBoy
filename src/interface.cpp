@@ -277,7 +277,6 @@ void display_controles(GB_State *estado){
       pad_consumed = false;
     }
 
-#ifndef UWP_BUILDING
     if(apertado(estado->controles[11]) && !tecla_apertada){
       ToggleFullscreen();
       redimensiona();
@@ -288,7 +287,6 @@ void display_controles(GB_State *estado){
       redimensiona();
       pad_ultimo = true;
     }
-#endif
 
     if((apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) && !tecla_apertada){
       estado->atualiza_controles();
@@ -482,7 +480,6 @@ void display_saves(Game_State *game, GB_State *estado){
       controle_input(gamepad);
     }
 
-#ifndef UWP_BUILDING
     if(apertado(estado->controles[11])){
       ToggleFullscreen();
       redimensiona();
@@ -493,7 +490,6 @@ void display_saves(Game_State *game, GB_State *estado){
       redimensiona();
       pad_ultimo = true;
     }
-#endif
 
     if(apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))){
       std::fstream arquivo(game->save_path, std::ios::in | std::ios::out | std::ios::binary);
@@ -682,7 +678,6 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       controle_input(gamepad);
     }
 
-#ifndef UWP_BUILDING
     if(apertado(estado->controles[11])){
       ToggleFullscreen();
       redimensiona();
@@ -693,7 +688,6 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       redimensiona();
       pad_ultimo = true;
     }
-#endif
 
     bool gamepad_apertado = (gamepad > -1 && 
         (IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) || estado->controles_but[9].pressionado(gamepad)));
@@ -905,15 +899,12 @@ void init_gui(void){
   GuiSetStyle(LISTVIEW, BASE_COLOR_FOCUSED, ColorToInt(GOLD));
   GuiSetStyle(LISTVIEW, BORDER_COLOR_FOCUSED, ColorToInt(GOLD));
 
-#ifdef UWP_BUILDING
-  auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
+  /*auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
   float screen_w = base.Width/width;
   float screen_h = base.Height/height;
-  SetWindowSize((int)base.Width, (int)base.Height);
-#else
+  SetWindowSize((int)base.Width, (int)base.Height);*/
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
-#endif
 
   float scale = (std::min)(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
@@ -1004,7 +995,6 @@ void init_gui(void){
       controle_input(gamepad);
     }
 
-#ifndef UWP_BUILDING
     if(apertado(estado.controles[11])){
       ToggleFullscreen();
       redimensiona();
@@ -1015,7 +1005,6 @@ void init_gui(void){
       redimensiona();
       pad_ultimo = true;
     }
-#endif
 
     if(gamepad > -1 && (open_delay == 1) && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
       open_delay = 2;
@@ -1097,6 +1086,7 @@ void init_gui(void){
 
   CloseWindow();
 }
+#endif
 
 
 }
