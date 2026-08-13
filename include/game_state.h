@@ -35,7 +35,7 @@ struct Game_State{
       image_path /= std::filesystem::path(rom_path).filename();
       image_path.replace_extension(".bin");
 
-      std::fstream saves(save_path, saves.in | saves.binary);
+      std::fstream saves(save_path, std::ios::in | std::ios::binary);
       if(!saves){
         for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
           save_states[i] = 0;
@@ -54,7 +54,7 @@ struct Game_State{
 
       saves.close();
       saves.clear();
-      saves.open(image_path, saves.in | saves.binary);
+      saves.open(image_path, std::ios::in | std::ios::binary);
       if(!saves){
         for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
           frame_states[i] = 0;
@@ -73,11 +73,11 @@ struct Game_State{
   void save_framebuffer(size_t slot){
     Image frame = LoadImageFromTexture(*(ppu.raylib_texture));
 
-    std::fstream imagens(image_path, imagens.in | imagens.out | imagens.binary);
+    std::fstream imagens(image_path, std::ios::in | std::ios::out | std::ios::binary);
     if(!imagens){
       imagens.close();
 
-      std::ofstream novo(image_path, novo.out | novo.binary);
+      std::ofstream novo(image_path, std::ios::out | std::ios::binary);
 
       for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
         if(i + 1 == slot){
@@ -89,7 +89,7 @@ struct Game_State{
 
       novo.close();
       imagens.clear();
-      imagens.open(image_path, imagens.in | imagens.out | imagens.binary);
+      imagens.open(image_path, std::ios::in | std::ios::out | std::ios::binary);
     }
 
     constexpr size_t tamanho = sizeof(uint32_t)*160*144;
@@ -133,7 +133,7 @@ struct Game_State{
   std::unique_ptr<Texture2D> load_image(size_t slot){
     if(!frame_states[slot - 1]) return nullptr;
 
-    std::fstream imagens(image_path, imagens.in | imagens.binary);
+    std::fstream imagens(image_path, std::ios::in | std::ios::binary);
     if(!imagens)
       return nullptr;
 
@@ -158,7 +158,7 @@ struct Game_State{
   std::unique_ptr<std::unique_ptr<Texture2D>[]> load_framebuffer(void){
     auto frames = std::make_unique<std::unique_ptr<Texture2D>[]>(MAX_SAVE_SLOTS);
 
-    std::fstream imagens(image_path, imagens.in | imagens.binary);
+    std::fstream imagens(image_path, std::ios::in | std::ios::binary);
     if(!imagens){
       return frames;
     }
@@ -201,10 +201,10 @@ struct Game_State{
       return;
     }
 
-    std::fstream save(save_path, save.in | save.out | save.binary);
+    std::fstream save(save_path, std::ios::in | std::ios::out | std::ios::binary);
     if(!save){
       save.close();
-      std::ofstream novo(save_path, save.out | save.binary);
+      std::ofstream novo(save_path, std::ios::out | std::ios::binary);
       
       for(size_t i {}; i < MAX_SAVE_SLOTS; ++i){
         if(i + 1 == slot){
@@ -216,7 +216,7 @@ struct Game_State{
       novo.write(reinterpret_cast<char*>(&slot), sizeof(size_t));
       novo.close();
       save.clear();
-      save.open(save_path, save.in | save.out | save.binary);
+      save.open(save_path, std::ios::in | std::ios::out | std::ios::binary);
     }
     
     if(!save_states[slot - 1]){
@@ -253,7 +253,7 @@ struct Game_State{
     std::unique_ptr<uint8_t[]> obj_palette = std::move(ppu.obj_palette_ram);
     std::unique_ptr<uint8_t[]> wram = std::move(cpu.bus.cgb_wram);
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
-    auto synths = std::move(apu.synths);
+    std::unique_ptr<Blip_Synth<blip_good_quality, 240>[]> synths = std::move(apu.synths);
 
     save.write(reinterpret_cast<char*>(&pad), sizeof(Joypad));
     save.write(reinterpret_cast<char*>(&timer), sizeof(Timer));
@@ -292,7 +292,7 @@ struct Game_State{
       return;
     }
 
-    std::fstream save(save_path, save.in | save.out | save.binary);
+    std::fstream save(save_path, std::ios::in | std::ios::out | std::ios::binary);
     save.seekg(save_states[slot - 1], std::ios::beg);
 
     std::unique_ptr<uint8_t[]> vbank = std::move(ppu.vram_bank1);
@@ -300,7 +300,7 @@ struct Game_State{
     std::unique_ptr<uint8_t[]> obj_palette = std::move(ppu.obj_palette_ram);
     std::unique_ptr<uint8_t[]> wram = std::move(cpu.bus.cgb_wram);
     std::unique_ptr<MBC> mbc = std::move(cpu.bus.mbc);
-    auto synths = std::move(apu.synths);
+    std::unique_ptr<Blip_Synth<blip_good_quality, 240>[]> synths = std::move(apu.synths);
     const void *tec = pad.teclas;
     const void *but = pad.botoes;
     Texture2D *frame = ppu.raylib_texture;
@@ -389,7 +389,7 @@ struct Game_State{
       TraceLog(LOG_WARNING, "Não foi possível apagar o arquivo. '%s'", err.message().c_str());
     }
 
-    std::fstream save(save_path, save.in | save.out | save.binary);
+    std::fstream save(save_path, std::ios::in | std::ios::out | std::ios::binary);
     size_t deletados = this->get_excluidos(&save);
     ++deletados;
     
@@ -405,7 +405,7 @@ struct Game_State{
 
     if(!frame_states[slot - 1]) return;
 
-    save.open(image_path, save.in | save.out | save.binary);
+    save.open(image_path, std::ios::in | std::ios::out | std::ios::binary);
     if(!save) return;
 
     save.seekg(10*sizeof(size_t), std::ios::beg);

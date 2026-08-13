@@ -31,7 +31,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   UnloadImage(framebuffer);
   SetTextureFilter(texture, TEXTURE_FILTER_POINT);
   
-  float escala = std::min(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
+  float escala = (std::min)(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
   float texture_w = 160*escala;
   float texture_h = 144*escala;
   float posX = (get_width() - texture_w)/2.0f;
@@ -91,7 +91,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     if(IsWindowResized() || resumido || janela_alterada){
       janela_alterada = false;
       resumido = false;
-      escala = std::min(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
+      escala = (std::min)(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
       texture_w = 160*escala;
       texture_h = 144*escala;
       posX = (get_width() - texture_w)/2.0f;

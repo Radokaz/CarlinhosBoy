@@ -8,8 +8,18 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+    set(BUILDING_UWP TRUE)
+else()
+    set(BUILDING_UWP FALSE)
+endif()
+
 # Source folder to find the .c/.cpp files
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.c")
+
+if(BUILDING_UWP)
+  list(REMOVE_ITEM SOURCES "${CMAKE_SOURCE_DIR}/src/tinyfiledialogs.c")
+endif()
 
 file(COPY ${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
@@ -25,17 +35,11 @@ if(MSVC)
   target_compile_definitions(cb PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
-    set(BUILDING_UWP TRUE)
-else()
-    set(BUILDING_UWP FALSE)
-endif()
-
 # Esse SDL é para a versão uwp apenas
 if(BUILDING_UWP)
   set(SDL3_UWP_ROOT "${CMAKE_SOURCE_DIR}/include/sdl3-uwp")
 
-  add_library(SDL3::SDL3 SHARED IMPORTED)
+  add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
   set_target_properties(SDL3::SDL3 PROPERTIES
     IMPORTED_IMPLIB   "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.lib"
     IMPORTED_LOCATION "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
@@ -48,6 +52,10 @@ if(BUILDING_UWP)
   target_sources(cb PRIVATE
     "${MESA_BIN_DIR}/opengl32.dll"
     "${MESA_BIN_DIR}/libgallium_wgl.dll"
+    "${MESA_BIN_DIR}/libEGL.dll"
+    "${MESA_BIN_DIR}/libGLESv1_CM.dll"
+    "${MESA_BIN_DIR}/libGLESv2.dll"
+    "${MESA_BIN_DIR}/z-1.dll"
     "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
     "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
     "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
@@ -55,6 +63,10 @@ if(BUILDING_UWP)
   set_source_files_properties(
     "${MESA_BIN_DIR}/opengl32.dll"
     "${MESA_BIN_DIR}/libgallium_wgl.dll"
+    "${MESA_BIN_DIR}/libEGL.dll"
+    "${MESA_BIN_DIR}/libGLESv1_CM.dll"
+    "${MESA_BIN_DIR}/libGLESv2.dll"
+    "${MESA_BIN_DIR}/z-1.dll"
     "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
     "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
     "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
@@ -83,3 +95,6 @@ endif()
 
 add_subdirectory(include/raylib)
 target_link_libraries(cb PRIVATE raylib)
+if(MSVC)
+  target_compile_definitions(raylib PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
