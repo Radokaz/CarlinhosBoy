@@ -28,7 +28,14 @@ struct GB_PACKED Header{
 
 inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
 
+#ifdef UWP_BUILDING
+  const char *fname = (cpu->bus.ppu->paleta_cgb) ? BOOT_SOURCE_CGB : BOOT_SOURCE_DMG;
+  auto fold = winrt::Windows::ApplicationModel::Package::Current().InstalledLocation();
+  std::filesystem::path boot_src = std::filesystem::path(std::wstring(fold.Path())) / fname;
+#else
   std::filesystem::path boot_src = (cpu->bus.ppu->paleta_cgb) ? getExeDir() / BOOT_SOURCE_CGB : getExeDir() / BOOT_SOURCE_DMG;
+#endif
+
   std::fstream bootrom(boot_src.string().c_str(), bootrom.binary | bootrom.in);
 
   if(!bootrom){

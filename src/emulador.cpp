@@ -31,11 +31,11 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   UnloadImage(framebuffer);
   SetTextureFilter(texture, TEXTURE_FILTER_POINT);
   
-  float escala = std::min(GetScreenWidth()/1920.0f, GetScreenHeight()/1080.0f)*7.0f;
+  float escala = std::min(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
   float texture_w = 160*escala;
   float texture_h = 144*escala;
-  float posX = (GetScreenWidth() - texture_w)/2.0f;
-  float posY = (GetScreenHeight() - texture_h)/2.0f;
+  float posX = (get_width() - texture_w)/2.0f;
+  float posY = (get_height() - texture_h)/2.0f;
 
   InitAudioDevice();
 
@@ -74,14 +74,16 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   while(1){
     ClearBackground(BLACK);
     
+#ifndef UWP_BUILDING
     frame_init = GetTime();
     mouse_atual = GetMousePosition();
-    le_input(&game, estado->save_slot, pausado, is_120, janela_alterada);
-    
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
     }
     mouse_prev = mouse_atual;
+#endif
+
+    le_input(&game, estado->save_slot, pausado, is_120, janela_alterada);
     if(pausa_jogo(&game, estado, pausado, resumido)){
       break;
     }
@@ -89,11 +91,11 @@ void inicia_emulador(std::string_view src, GB_State *estado){
     if(IsWindowResized() || resumido || janela_alterada){
       janela_alterada = false;
       resumido = false;
-      escala = std::min(GetScreenWidth()/1920.0f, GetScreenHeight()/1080.0f)*7.0f;
+      escala = std::min(get_width()/1920.0f, get_height()/1080.0f)*7.0f;
       texture_w = 160*escala;
       texture_h = 144*escala;
-      posX = (GetScreenWidth() - texture_w)/2.0f;
-      posY = (GetScreenHeight() - texture_h)/2.0f;
+      posX = (get_width() - texture_w)/2.0f;
+      posY = (get_height() - texture_h)/2.0f;
     }
 
     if(game.cpu.bus.tem_rtc){

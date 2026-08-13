@@ -61,7 +61,7 @@ const char *getDisplayName(GamepadButton but){
     case GAMEPAD_BUTTON_MIDDLE_RIGHT: return "Start";
     case GAMEPAD_BUTTON_LEFT_THUMB: return "L3";
     case GAMEPAD_BUTTON_RIGHT_THUMB: return "R3";
-    default: return nullptr;  
+    default: return "";  
   }
 }
 
@@ -75,6 +75,15 @@ Rectangle get_ret(float x, float y, float w, float h){
   return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
 
+#ifdef UWP_BUILDING
+int GamepadDisponivel(void){
+  for(int i {}; i < 4; ++i){
+    if(IsGamepadAvailable(i)) return i;
+  }
+
+  return -1;
+}
+#else
 int GamepadDisponivel(void){
   for(int i {}; i < 4; ++i){
     if(!IsGamepadAvailable(i)) return -1;
@@ -89,9 +98,26 @@ int GamepadDisponivel(void){
 
   return -1;
 }
+#endif
 
 float fix_deadzone(float dz){
   return (std::fabsf(dz) < 0.08f) ? 0.0f : dz;
+}
+
+float get_width(void){
+#ifdef UWP_BUILDING
+  return winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds().Width;
+#else
+  return GetScreenWidth();
+#endif
+}
+
+float get_height(void){
+#ifdef UWP_BUILDING
+  return winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds().Height;
+#else
+  return GetScreenHeight();
+#endif
 }
 
 void display_controles(GB_State *estado){
@@ -108,8 +134,8 @@ void display_controles(GB_State *estado){
   constexpr const char *subs[2] = {"Aperte ESC para voltar", "Aperte B para voltar"};
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
-  float screen_w = GetScreenWidth()/width;
-  float screen_h = GetScreenHeight()/height;
+  float screen_w = get_width()/width;
+  float screen_h = get_height()/height;
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
@@ -121,8 +147,8 @@ void display_controles(GB_State *estado){
   bool tecla_apertada {true};
 
   auto redimensiona = [&](){
-    screen_w = GetScreenWidth()/width;
-    screen_h = GetScreenHeight()/height;
+    screen_w = get_width()/width;
+    screen_h = get_height()/height;
     scale = std::min(screen_w, screen_h);
     GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
     GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
@@ -228,7 +254,7 @@ void display_controles(GB_State *estado){
     }
 
     if(pad_consumed && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
-  int count {};
+      int count {};
       pad_ultimo = true;
       GamepadButton comb[2] = {GAMEPAD_BUTTON_UNKNOWN, GAMEPAD_BUTTON_UNKNOWN};
       while(count < 1){
@@ -251,6 +277,7 @@ void display_controles(GB_State *estado){
       pad_consumed = false;
     }
 
+#ifndef UWP_BUILDING
     if(apertado(estado->controles[11]) && !tecla_apertada){
       ToggleFullscreen();
       redimensiona();
@@ -261,6 +288,7 @@ void display_controles(GB_State *estado){
       redimensiona();
       pad_ultimo = true;
     }
+#endif
 
     if((apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))) && !tecla_apertada){
       estado->atualiza_controles();
@@ -349,8 +377,8 @@ void display_saves(Game_State *game, GB_State *estado){
   constexpr float height = 1080.0f;
   constexpr const char *subs[2] = {"Aperte ESC para voltar", "Aperte B para voltar"};
 
-  float screen_w = GetScreenWidth()/width;
-  float screen_h = GetScreenHeight()/height;
+  float screen_w = get_width()/width;
+  float screen_h = get_height()/height;
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
@@ -368,8 +396,8 @@ void display_saves(Game_State *game, GB_State *estado){
   int axis_timer {};
 
   auto redimensiona = [&](){
-    screen_w = GetScreenWidth()/width;
-    screen_h = GetScreenHeight()/height;
+    screen_w = get_width()/width;
+    screen_h = get_height()/height;
     scale = std::min(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
@@ -454,6 +482,7 @@ void display_saves(Game_State *game, GB_State *estado){
       controle_input(gamepad);
     }
 
+#ifndef UWP_BUILDING
     if(apertado(estado->controles[11])){
       ToggleFullscreen();
       redimensiona();
@@ -464,6 +493,7 @@ void display_saves(Game_State *game, GB_State *estado){
       redimensiona();
       pad_ultimo = true;
     }
+#endif
 
     if(apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))){
       std::fstream arquivo(game->save_path, arquivo.in | arquivo.out | arquivo.binary);
@@ -599,16 +629,16 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
 
-  float screen_w = GetScreenWidth()/width;
-  float screen_h = GetScreenHeight()/height;
+  float screen_w = get_width()/width;
+  float screen_h = get_height()/height;
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
   SetTargetFPS(60);
 
   auto redimensiona = [&](){
-    screen_w = GetScreenWidth()/width;
-    screen_h = GetScreenHeight()/height;
+    screen_w = get_width()/width;
+    screen_h = get_height()/height;
     scale = std::min(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
     GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
@@ -643,26 +673,27 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       redimensiona();
     }
 
-    if(apertado(estado->controles[11])){
-      ToggleFullscreen();
-      redimensiona();
-      pad_ultimo = false;
-    }
-
     if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
       pad_ultimo = false;
     }
     
     int gamepad = GamepadDisponivel();
+    if(gamepad > -1){
+      controle_input(gamepad);
+    }
+
+#ifndef UWP_BUILDING
+    if(apertado(estado->controles[11])){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = false;
+    }
     if(gamepad > -1 && estado->controles_but[11].pressionado(gamepad)){
       ToggleFullscreen();
       redimensiona();
       pad_ultimo = true;
     }
-
-    if(gamepad > -1){
-      controle_input(gamepad);
-    }
+#endif
 
     bool gamepad_apertado = (gamepad > -1 && 
         (IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) || estado->controles_but[9].pressionado(gamepad)));
@@ -733,26 +764,63 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
 }
 
 void carrega_rom(GB_State *estado){
-    constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
+  constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
 
-    const char *resultado = tinyfd_openFileDialog(
-        "Escolha a rom",  // título
-        "",               // pasta inicial
-        2,                // número de filtros
-        extensoes,          // extensões permitidas
-        "", // descrição
-        0                 // 0 = um arquivo, 1 = múltiplos
-    );
+#ifdef UWP_BUILDING
+  std::string resultado = std::async(std::launch::async, [extensoes](){
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
 
-    if(!resultado) return;
+    FileOpenPicker picker;
+    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
 
-    inicia_emulador(resultado, estado);
+    for(const auto& ext : extensoes) {
+      picker.FileTypeFilter().Append(ext);
+    }
+
+    StorageFile arquivo = picker.PickSingleFileAsync().get();
+    if(arquivo){
+      return winrt::to_string(arquivo.Path());
+    }
+    return "";
+   }).get();
+
+  if(!resultado.length()) return;
+  inicia_emulador(resultado.c_str(), estado);
+#else
+  const char *resultado = tinyfd_openFileDialog(
+    "Escolha a rom",  // título
+    "",               // pasta inicial
+    2,                // número de filtros
+    extensoes,        // extensões permitidas
+    "",               // descrição
+    0);               // 0 = um arquivo;
+
+  if(!resultado) return;
+  inicia_emulador(resultado, estado);
+#endif
 }
 
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista){
+#ifdef UWP_BUILDING
+  std::string resultado = std::async(std::launch::async, [](){
+    winrt::init_apartment(winrt::apartment_type::single_threaded);
+
+    FolderPicker picker;
+    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
+    picker.FileTypeFilter().Append(L"*");
+
+    StorageFolder pasta = picker.PickSingleFolderAsync().get();
+    if(pasta){
+      return winrt::to_string(pasta.Path());
+    }
+    return ""; }).get();
+
+  if(!resultado.length()) return;
+#else
   const char *resultado = tinyfd_selectFolderDialog("Selecione uma pasta", "");
   if(!resultado) return;
-  
+#endif
+
   std::filesystem::path state_path = estado->main_dir / "state.cfg";
 
   std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
@@ -847,8 +915,16 @@ void init_gui(void){
   GuiSetStyle(LISTVIEW, BASE_COLOR_FOCUSED, ColorToInt(GOLD));
   GuiSetStyle(LISTVIEW, BORDER_COLOR_FOCUSED, ColorToInt(GOLD));
 
+#ifdef UWP_BUILDING
+  auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
+  float screen_w = base.Width/width;
+  float screen_h = base.Height/height;
+  SetWindowSize((int)base.Width, (int)base.Height);
+#else
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
+#endif
+
   float scale = std::min(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
@@ -858,8 +934,8 @@ void init_gui(void){
   GuiSetStyle(LISTVIEW, LIST_ITEMS_HEIGHT, scale*28.0f);
 
   auto redimensiona = [&](){
-    screen_w = GetScreenWidth()/width;
-    screen_h = GetScreenHeight()/height;
+    screen_w = get_width()/width;
+    screen_h = get_height()/height;
     scale = std::min(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
@@ -938,10 +1014,18 @@ void init_gui(void){
       controle_input(gamepad);
     }
 
-    if(apertado(estado.controles[11]) || (gamepad > -1 && estado.controles_but[11].pressionado(gamepad))){
+#ifndef UWP_BUILDING
+    if(apertado(estado.controles[11])){
       ToggleFullscreen();
       redimensiona();
+      pad_ultimo = false;
     }
+    if(gamepad > -1 && estado.controles_but[11].pressionado(gamepad)){
+      ToggleFullscreen();
+      redimensiona();
+      pad_ultimo = true;
+    }
+#endif
 
     if(gamepad > -1 && (open_delay == 1) && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
       open_delay = 2;
