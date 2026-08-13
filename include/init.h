@@ -36,7 +36,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
   std::filesystem::path boot_src = (cpu->bus.ppu->paleta_cgb) ? getExeDir() / BOOT_SOURCE_CGB : getExeDir() / BOOT_SOURCE_DMG;
 #endif
 
-  std::fstream bootrom(boot_src.string().c_str(), bootrom.binary | bootrom.in);
+  std::fstream bootrom(boot_src.string().c_str(), std::ios::binary | std::ios::in);
 
   if(!bootrom){
     std::cerr << "BOOTROM INDISPONÍVEL\n";
@@ -116,7 +116,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
         bootrom.seekg(0x0200, std::ios::beg);
         bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom() + 0x0200), 0x0700);
         *(cpu->bus.restaura_rom) = [src, cpu](){
-          std::fstream rom(src.data(), rom.binary | rom.in);
+          std::fstream rom(src.data(), std::ios::binary | std::ios::in);
           rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
           rom.seekg(0x0200, std::ios::beg);
           rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom() + 0x200), 0x0700);
@@ -131,7 +131,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
       else{
         bootrom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
         *(cpu->bus.restaura_rom) = [src, cpu](){
-          std::fstream rom(src.data(), rom.binary | rom.in);
+          std::fstream rom(src.data(), std::ios::binary | std::ios::in);
           rom.read(reinterpret_cast<char*>(cpu->bus.mbc->pega_rom()), 0x0100);
         };
       }
@@ -142,7 +142,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
         bootrom.seekg(0x0200, std::ios::beg);
         bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data() + 0x0200), 0x0700);
         *(cpu->bus.restaura_rom) = [src, cpu](){
-          std::fstream rom(src.data(), rom.binary | rom.in);
+          std::fstream rom(src.data(), std::ios::binary | std::ios::in);
           rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
           rom.seekg(0x0200, std::ios::beg);
           rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data() + 0x200), 0x0700);
@@ -157,7 +157,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
       else{
         bootrom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
         *(cpu->bus.restaura_rom) = [src, cpu](){
-          std::fstream rom(src.data(), rom.binary | rom.in);
+          std::fstream rom(src.data(), std::ios::binary | std::ios::in);
           rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x0100);
         };
       }
@@ -166,7 +166,7 @@ inline void merge_boot_rom(CPU *cpu, std::string_view src, uint8_t mbc){
 }
 
 inline Header *init_rom(CPU *cpu, std::string_view src){
-  std::fstream arquivo(src.data(), arquivo.binary | arquivo.in);
+  std::fstream arquivo(src.data(), std::ios::binary | std::ios::in);
   if(!arquivo){
     std::cerr << "Não foi possível abrir a ROM.\n";
     return nullptr;
@@ -402,7 +402,7 @@ inline bool checa_validade(Header *header, CPU *cpu, std::string_view src, std::
       break;
     }
     default:{
-      std::fstream rom(src.data(), rom.in | rom.binary);
+      std::fstream rom(src.data(), std::ios::in | std::ios::binary);
       rom.read(reinterpret_cast<char*>(cpu->bus.memoria.data()), 0x8000);
     }
   }

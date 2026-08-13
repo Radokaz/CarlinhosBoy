@@ -4,12 +4,17 @@
 #include "actions.h"
 #include <string>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 
 #ifdef UWP_BUILDING
+  #include <windows.h>
+  #include <winrt/base.h>
+  #include <winrt/Windows.Foundation.h>
+  #include <winrt/Windows.Foundation.Collections.h>
+  #include <winrt/Windows.ApplicationModel.h>
   #include <winrt/Windows.Storage.h>
   #include <winrt/Windows.Storage.Pickers.h>
-  #include <winrt/Windows.Foundation.h>
   #include <winrt/Windows.UI.Core.h>
   #include <winrt/Windows.UI.ViewManagement.h>
   #include <future>
@@ -93,11 +98,11 @@ struct GB_State{
     main_dir = this->linux_dir();
 #endif
 
-    std::filesystem::path state_path = main_dir / "state.cfg";
-    std::fstream estado(state_path.string().c_str(), estado.in);
-    save_slot = 1;
-
     this->seta_controles();
+
+    std::filesystem::path state_path = main_dir / "state.cfg";
+    std::fstream estado(state_path, std::ios::in);
+    save_slot = 1;
     if(!estado){
       estado.close();
       std::ofstream novo(state_path);
@@ -123,7 +128,6 @@ struct GB_State{
 
     std::string buffer;
     while(std::getline(estado, buffer)){
-    
       size_t pos = buffer.find(':');
       if(pos != std::string::npos){
       
@@ -175,11 +179,11 @@ struct GB_State{
 
   void seta_controles(void){
     std::filesystem::path control_path = main_dir / "controles.cfg";
-    std::fstream control(control_path.string().c_str(), control.in | control.out);
+    std::fstream control(control_path, std::ios::in | std::ios::out);
 
     if(!control){
       control.close();
-      std::ofstream controle_novo(control_path.string().c_str());
+      std::ofstream controle_novo(control_path);
       controles = {KEY_M, KEY_N, KEY_O, KEY_P, KEY_W, KEY_A, KEY_S, KEY_D, KEY_T, KEY_C, KEY_F, KEY_F11, KEY_F1, KEY_F2};
 
       controles_but = {{GAMEPAD_BUTTON_RIGHT_FACE_DOWN, GAMEPAD_BUTTON_RIGHT_FACE_LEFT, GAMEPAD_BUTTON_MIDDLE_RIGHT, 
@@ -215,7 +219,7 @@ struct GB_State{
 
   void atualiza_controles(void){
     std::filesystem::path control_path = main_dir / "controles.cfg";
-    std::fstream control(control_path.string().c_str(), control.in | control.out);
+    std::fstream control(control_path, std::ios::in | std::ios::out);
     
     std::array<std::string, std::size(gb_botoes)> linhas;
     std::string buffer;
@@ -226,7 +230,7 @@ struct GB_State{
     control.close();
     buffer.clear();
 
-    std::ofstream novo(control_path.string().c_str());
+    std::ofstream novo(control_path);
 
     for(size_t i {}; i < linhas.size(); ++i){
       size_t pos = linhas[i].find(':');
@@ -300,6 +304,7 @@ void debug_func(CPU *cpu);
 void inicia_emulador(std::string_view src, GB_State *estado);
 void carrega_rom(GB_State *estado);
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista);
+void toggle_paleta(GB_State* estado);
 void display_controles(GB_State *estado);
 void init_gui(void);
 

@@ -71,7 +71,7 @@ Rectangle get_ret(float x, float y, float w, float h){
   constexpr float height = 1080.0f;
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
-  float scale = std::min(screen_w, screen_h);
+  float scale = (std::min)(screen_w, screen_h);
   return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
 
@@ -136,7 +136,7 @@ void display_controles(GB_State *estado){
   constexpr float height = 1080.0f;
   float screen_w = get_width()/width;
   float screen_h = get_height()/height;
-  float scale = std::min(screen_w, screen_h);
+  float scale = (std::min)(screen_w, screen_h);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
   int8_t contr_index {};
@@ -149,7 +149,7 @@ void display_controles(GB_State *estado){
   auto redimensiona = [&](){
     screen_w = get_width()/width;
     screen_h = get_height()/height;
-    scale = std::min(screen_w, screen_h);
+    scale = (std::min)(screen_w, screen_h);
     GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
     GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
   };
@@ -379,7 +379,7 @@ void display_saves(Game_State *game, GB_State *estado){
 
   float screen_w = get_width()/width;
   float screen_h = get_height()/height;
-  float scale = std::min(screen_w, screen_h);
+  float scale = (std::min)(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
 
@@ -398,7 +398,7 @@ void display_saves(Game_State *game, GB_State *estado){
   auto redimensiona = [&](){
     screen_w = get_width()/width;
     screen_h = get_height()/height;
-    scale = std::min(screen_w, screen_h);
+    scale = (std::min)(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
       
@@ -496,7 +496,7 @@ void display_saves(Game_State *game, GB_State *estado){
 #endif
 
     if(apertado(KEY_ESCAPE) || (gamepad > -1 && IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT))){
-      std::fstream arquivo(game->save_path, arquivo.in | arquivo.out | arquivo.binary);
+      std::fstream arquivo(game->save_path, std::ios::in | std::ios::out | std::ios::binary);
       if(arquivo){
         arquivo.seekg(MAX_SAVE_SLOTS*sizeof(size_t), std::ios::beg);
         arquivo.write(reinterpret_cast<char*>(&estado->save_slot), sizeof(size_t));
@@ -631,7 +631,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
 
   float screen_w = get_width()/width;
   float screen_h = get_height()/height;
-  float scale = std::min(screen_w, screen_h);
+  float scale = (std::min)(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
   SetTargetFPS(60);
@@ -639,7 +639,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   auto redimensiona = [&](){
     screen_w = get_width()/width;
     screen_h = get_height()/height;
-    scale = std::min(screen_w, screen_h);
+    scale = (std::min)(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
     GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
   };
@@ -729,22 +729,12 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
       display_controles(estado);
-
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
       display_saves(game, estado);
-
-      screen_w = GetScreenWidth()/width;
-      screen_h = GetScreenHeight()/height;
-      scale = std::min(screen_w, screen_h);
-      GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
-      GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
+      redimensiona();
     }
     if(escolhas & opt_escolha(3)){
       escolhas &= ~opt_escolha(3);
@@ -767,17 +757,17 @@ void carrega_rom(GB_State *estado){
   constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
 
 #ifdef UWP_BUILDING
-  std::string resultado = std::async(std::launch::async, [extensoes](){
+  std::string resultado = std::async(std::launch::async, [extensoes]() -> std::string{
     winrt::init_apartment(winrt::apartment_type::single_threaded);
 
-    FileOpenPicker picker;
-    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
+    winrt::Windows::Storage::Pickers::FileOpenPicker picker;
+    picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
 
     for(const auto& ext : extensoes) {
-      picker.FileTypeFilter().Append(ext);
+      picker.FileTypeFilter().Append(winrt::to_hstring(ext));
     }
 
-    StorageFile arquivo = picker.PickSingleFileAsync().get();
+    winrt::Windows::Storage::StorageFile arquivo = picker.PickSingleFileAsync().get();
     if(arquivo){
       return winrt::to_string(arquivo.Path());
     }
@@ -802,14 +792,14 @@ void carrega_rom(GB_State *estado){
 
 void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista){
 #ifdef UWP_BUILDING
-  std::string resultado = std::async(std::launch::async, [](){
+  std::string resultado = std::async(std::launch::async, []() -> std::string{
     winrt::init_apartment(winrt::apartment_type::single_threaded);
 
-    FolderPicker picker;
-    picker.SuggestedStartLocation(PickerLocationId::ComputerFolder);
+    winrt::Windows::Storage::Pickers::FolderPicker picker;
+    picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::ComputerFolder);
     picker.FileTypeFilter().Append(L"*");
 
-    StorageFolder pasta = picker.PickSingleFolderAsync().get();
+    winrt::Windows::Storage::StorageFolder pasta = picker.PickSingleFolderAsync().get();
     if(pasta){
       return winrt::to_string(pasta.Path());
     }
@@ -823,7 +813,7 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
 
   std::filesystem::path state_path = estado->main_dir / "state.cfg";
 
-  std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
+  std::fstream arquivo(state_path, std::ios::in | std::ios::out);
   std::string result = resultado, buffer{};
   std::vector<std::string> linhas;
 
@@ -831,7 +821,7 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
     linhas.push_back(buffer);
   }
   arquivo.close();
-  std::ofstream novo(state_path.string().c_str());
+  std::ofstream novo(state_path);
 
   for(auto& linha : linhas){
     size_t pos = linha.find(':');
@@ -857,7 +847,7 @@ void define_pasta(GB_State *estado, std::string_view pasta, ListaArquivos *lista
 void toggle_paleta(GB_State *estado){
   estado->paleta_cgb ^= 1;
   std::filesystem::path state_path = estado->main_dir / "state.cfg";
-  std::fstream arquivo(state_path.string().c_str(), arquivo.in | arquivo.out);
+  std::fstream arquivo(state_path, std::ios::in | std::ios::out);
   std::string buffer{};
   std::vector<std::string> linhas;
 
@@ -925,7 +915,7 @@ void init_gui(void){
   float screen_h = GetScreenHeight()/height;
 #endif
 
-  float scale = std::min(screen_w, screen_h);
+  float scale = (std::min)(screen_w, screen_h);
   GuiSetStyle(BUTTON, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(DEFAULT, TEXT_SIZE, scale*25.0f);
   GuiSetStyle(LISTVIEW, BORDER_WIDTH, scale*5.0f);
@@ -936,7 +926,7 @@ void init_gui(void){
   auto redimensiona = [&](){
     screen_w = get_width()/width;
     screen_h = get_height()/height;
-    scale = std::min(screen_w, screen_h);
+    scale = (std::min)(screen_w, screen_h);
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(LISTVIEW, BORDER_WIDTH, scale*5.0f);
