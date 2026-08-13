@@ -107,10 +107,7 @@ void PPU::write_vram(uint16_t endereco, uint8_t valor){
 }
 
 void PPU::reset_sprites(void){
-  for(size_t i {}; i < sprites_buscados.size(); ++i){
-    sprites_buscados[i] = 0;
-  }
-
+  sprites_buscados.fill(0);
   tiles_lidos.fill(0);
   this->sprites_lidos = 0;
 }
