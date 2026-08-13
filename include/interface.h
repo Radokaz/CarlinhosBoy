@@ -6,7 +6,14 @@
 #include <cstring>
 #include <fstream>
 
-#ifndef UWP_BUILDING
+#ifdef UWP_BUILDING
+  #include <winrt/Windows.Storage.h>
+  #include <winrt/Windows.Storage.Pickers.h>
+  #include <winrt/Windows.Foundation.h>
+  #include <winrt/Windows.UI.Core.h>
+  #include <winrt/Windows.UI.ViewManagement.h>
+  #include <future>
+#else
   #include "tinyfiledialogs.h"
 #endif
 
@@ -27,6 +34,8 @@ const char *getDisplayName(GamepadButton but);
 Rectangle get_ret(float x, float y, float w, float h);
 int GamepadDisponivel(void);
 float fix_deadzone(float dz);
+float get_width(void);
+float get_height(void);
 
 struct GamepadComb{
   GamepadButton but1;
@@ -60,7 +69,7 @@ struct GamepadComb{
 
   std::string string(void) const{
     const char *segundo = getDisplayName(but2);
-    return (segundo) ? std::string(getDisplayName(but1)) + " + " + getDisplayName(but2) : std::string(getDisplayName(but1));
+    return (std::strlen(segundo)) ? std::string(getDisplayName(but1)) + " + " + segundo : std::string(getDisplayName(but1));
   }
 };
 
@@ -76,7 +85,9 @@ struct GB_State{
   bool pad_ultimo {false};
 
   GB_State(void){
-#ifdef _WIN32
+#ifdef UWP_BUILDING
+    main_dir = this->uwp_dir();
+#elifdef _WIN32
     main_dir = getExeDir();
 #else
     main_dir = this->linux_dir();
@@ -89,7 +100,7 @@ struct GB_State{
     this->seta_controles();
     if(!estado){
       estado.close();
-      std::ofstream novo(state_path.string().c_str());
+      std::ofstream novo(state_path);
       paleta_cgb = 1;
 
       std::filesystem::path svs = main_dir / "Saves";
@@ -155,6 +166,13 @@ struct GB_State{
     return dir;
   }
 
+#ifdef UWP_BUILDING
+  std::filesystem::path uwp_dir(void){
+    auto pasta = winrt::Windows::Storage::ApplicationData::Current().LocalFolder();
+    return std::filesystem::path(std::wstring(pasta.Path()));
+  }
+#endif
+
   void seta_controles(void){
     std::filesystem::path control_path = main_dir / "controles.cfg";
     std::fstream control(control_path.string().c_str(), control.in | control.out);
@@ -188,7 +206,7 @@ struct GB_State{
 
       if(ini != std::string::npos){
         controles[i] = static_cast<KeyboardKey>(std::stoi(value.substr(ini, end - ini)));
-        controles_but[i] = GamepadComb(static_cast<size_t>(std::stoll(value.substr(end + 1))));
+        controles_but[i] = GamepadComb(static_cast<size_t>(std::stoull(value.substr(end + 1))));
       }
 
       ++i;
@@ -212,11 +230,11 @@ struct GB_State{
 
     for(size_t i {}; i < linhas.size(); ++i){
       size_t pos = linhas[i].find(':');
-      std::string key = linhas[i].substr(0, pos);
       for(size_t j {}; j < std::size(gb_botoes); ++j){
-        if(key == gb_botoes[j]){
+        if(!std::strncmp(linhas[i].c_str(), gb_botoes[j], pos)){
+          linhas[i].erase(pos + 2);
           buffer = std::to_string(std::to_underlying<KeyboardKey>(controles[j])) + "/" + std::to_string(controles_but[j].hash());
-          linhas[i].replace(pos + 2, buffer.length(), buffer);
+          linhas[i].append(buffer);
           break;
         }
       }
