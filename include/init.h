@@ -2,6 +2,7 @@
 #define INIT_H
 
 #include "interface.h"
+#include "msvc_fix.h"
 #include <map>
 
 #define BOOT_SOURCE_DMG "dmg_boot.bin"
@@ -9,7 +10,7 @@
 
 namespace GB{
 
-struct __attribute__((packed)) Header{
+struct GB_PACKED Header{
   uint8_t entry[4];
   uint8_t logo[0x30];
   char titulo[16];
