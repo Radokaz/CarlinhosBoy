@@ -73,6 +73,7 @@ if(BUILDING_UWP)
     PROPERTIES VS_DEPLOYMENT_CONTENT 1
   )
   target_compile_definitions(cb PRIVATE UWP_BUILDING)
+  target_include_directories(cb PRIVATE SDL3_UWP_ROOT)
 endif()
  
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -94,7 +95,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 add_subdirectory(include/raylib)
+
+if(BUILDING_UWP)
+  target_include_directories(raylib BEFORE PRIVATE "${SDL3_UWP_ROOT}/include" "${SDL3_UWP_ROOT}/include/build_config")
+  target_link_libraries(raylib PRIVATE SDL3::SDL3)
+  target_link_libraries(cb PRIVATE SDL3::SDL3)
+endif()
+
 target_link_libraries(cb PRIVATE raylib)
+
 if(MSVC)
+  target_compile_options(raylib PRIVATE /showIncludes)
   target_compile_definitions(raylib PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
