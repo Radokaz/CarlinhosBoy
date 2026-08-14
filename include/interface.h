@@ -98,6 +98,7 @@ struct GB_State{
     main_dir = this->linux_dir();
 #endif
 
+    pad_ultimo = (GamepadDisponivel() > -1);
     this->seta_controles();
 
     std::filesystem::path state_path = main_dir / "state.cfg";
