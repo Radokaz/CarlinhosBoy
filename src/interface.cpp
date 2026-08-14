@@ -120,6 +120,7 @@ float get_height(void){
 #endif
 }
 
+#ifndef UWP_BUILDING
 void display_controles(GB_State *estado){
   const char *botoes[std::size(gb_botoes)];
   std::string botoes_controle[std::size(gb_botoes)];
@@ -746,6 +747,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   SetTargetFPS(0);
   return false;
 }
+#endif
 
 void carrega_rom(GB_State *estado){
   constexpr const char *extensoes[] = {"*.gb", "*.gbc"};
@@ -867,6 +869,7 @@ void toggle_paleta(GB_State *estado){
 
 }
 
+#ifndef UWP_BUILDING
 void init_gui(void){
 
   constexpr float width = 1920.0f;
@@ -890,7 +893,6 @@ void init_gui(void){
   int scroll_index {}, ativo {-1};
   int contr_index {};
   int axis_timer {};
-  estado.pad_ultimo = (GamepadDisponivel() > -1);
   bool& pad_ultimo = estado.pad_ultimo;
   
   GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, ColorToInt(BLACK));
@@ -899,10 +901,6 @@ void init_gui(void){
   GuiSetStyle(LISTVIEW, BASE_COLOR_FOCUSED, ColorToInt(GOLD));
   GuiSetStyle(LISTVIEW, BORDER_COLOR_FOCUSED, ColorToInt(GOLD));
 
-  /*auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
-  float screen_w = base.Width/width;
-  float screen_h = base.Height/height;
-  SetWindowSize((int)base.Width, (int)base.Height);*/
   float screen_w = GetScreenWidth()/width;
   float screen_h = GetScreenHeight()/height;
 
