@@ -1,0 +1,188 @@
+#ifndef MBC_H
+#define MBC_H
+
+#include <cstdint>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <array>
+#include <filesystem>
+#include <chrono>
+
+namespace GB{
+
+struct MBC{
+  std::vector<uint8_t> rom;
+  std::vector<uint8_t> ram;
+  std::string fonte;
+  std::string saves;
+  std::chrono::system_clock::time_point ultimo_save {};
+  bool tem_save {false};
+  bool tem_rumble {false};
+  bool jogo_salvo {false};
+  
+  friend void checa_save(MBC *mbc);
+
+  uint8_t *pega_rom(void){
+    return rom.data();
+  };
+
+  virtual uint8_t& read(uint16_t endereco)=0;
+  virtual void write(uint16_t endereco, uint8_t valor)=0;
+  virtual void save_state(std::fstream *save)=0;
+  virtual void load_state(std::fstream *save)=0;
+
+  virtual void save(void);
+  virtual void load(void);
+  virtual void atualiza_rtc(void) { return; }
+  virtual ~MBC() = default;
+};
+
+//cada bank de rom tem 16kb de memória, os de ram tem só 8kb
+struct MBC1 : public MBC{
+  uint16_t total_banks{};
+  uint8_t rom_bank {1}; //1 a 127, o bank 0 fica sempre no range 0x0000-0x3FFF
+  uint8_t ram_bank {}; //0 a 3
+  bool ram_banking {false};
+  bool ram_ativa {false};
+  uint8_t ram_hack {0xFF};
+
+  MBC1(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+    std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
+    if(!arquivo){
+      std::cerr << "Rom não encontrada.\n";
+      std::terminate();
+    }
+
+    fonte = rom_src;
+    saves = sav;
+    rom.resize(rom_tam);
+    if(ram_tam)
+      ram.resize(ram_tam, 0xFF);
+    total_banks = rom.size()/(16*1024);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
+    std::cout << "MBC1 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
+  }
+
+  uint8_t& read(uint16_t endereco) override;
+  void write(uint16_t endereco, uint8_t valor) override;   
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
+};
+
+struct MBC2: public MBC{
+  uint16_t total_banks{};
+  uint8_t rom_bank {1};
+  bool ram_ativa {false};
+  uint8_t ram_hack {0xFF};
+
+  MBC2(std::string_view sav, std::string_view rom_src, size_t rom_tam){
+    std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
+    if(!arquivo){
+      std::cerr << "Rom não encontrada.\n";
+      std::terminate();
+    }
+
+    fonte = rom_src;
+    saves = sav;
+    rom.resize(rom_tam);
+    ram.resize(512, 0x0F);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
+    total_banks = rom.size()/(16*1024);
+    std::cout << "MBC2 inicializado. RAM alocada: 512 bytes\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
+  }
+
+  uint8_t& read(uint16_t endereco) override;
+  void write(uint16_t endereco, uint8_t valor) override;   
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
+};
+
+struct MBC3 : public MBC{
+  std::chrono::system_clock::time_point rtc_last {};
+  uint16_t total_banks{};
+  uint8_t rom_bank {1};
+  uint8_t ram_bank {};
+  bool ram_ativa {false};
+  uint8_t ram_hack {0xFF};
+  uint8_t rtc_registrador {};
+  bool rtc_selected {false};
+  bool latch_clock {false};
+
+  struct RTC{
+    uint8_t s {}; //segundos
+    uint8_t m {}; //minutos
+    uint8_t h {}; //horas
+    uint8_t d {}; //dias
+    uint8_t f {}; //flags e dias superiores
+  };
+
+  RTC rtc;
+  RTC rtc_latch;
+
+  MBC3(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+    std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
+    if(!arquivo){
+      std::cerr << "Rom não encontrada.\n";
+      std::terminate();
+    }
+
+    rtc_last = std::chrono::system_clock::now();
+    fonte = rom_src;
+    saves = sav;
+    rom.resize(rom_tam);
+    if(ram_tam)
+      ram.resize(ram_tam, 0xFF);
+    total_banks = rom.size()/(16*1024);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
+    std::cout << "MBC3 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
+  }
+
+  uint8_t& read(uint16_t endereco) override;
+  void write(uint16_t endereco, uint8_t valor) override;
+  void atualiza_rtc(void) override;
+  void save(void) override;
+  void load(void) override;
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
+};
+
+struct MBC5 : public MBC{
+  uint16_t total_banks{};
+  uint16_t rom_bank {}; //bank 0 disponível
+  uint16_t ram_bank {};
+  bool ram_ativa {false};
+  uint8_t ram_hack {0xFF};
+
+  MBC5(std::string_view sav, std::string_view rom_src, size_t rom_tam, size_t ram_tam){
+    std::fstream arquivo(rom_src.data(), arquivo.in | arquivo.binary);
+    if(!arquivo){
+      std::cerr << "Rom não encontrada.\n";
+      std::terminate();
+    }
+
+    fonte = rom_src;
+    saves = sav;
+    rom.resize(rom_tam);
+    if(ram_tam)
+      ram.resize(ram_tam, 0xFF);
+    total_banks = rom.size()/(16*1024);
+    arquivo.read(reinterpret_cast<char*>(rom.data()), rom.size());
+    std::cout << "MBC5 inicializado. RAM alocada: " << ram_tam/1024 << "KB\n";
+    std::cout << "ROM alocada: " << rom.size()/1024 << "KB\n";
+  }
+
+  uint8_t& read(uint16_t endereco) override;
+  void write(uint16_t endereco, uint8_t valor) override;
+  void save_state(std::fstream *save) override;
+  void load_state(std::fstream *save) override;
+};
+
+void checa_save(MBC *mbc);
+
+}
+
+#endif
