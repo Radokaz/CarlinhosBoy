@@ -1,10 +1,15 @@
 #include "interface.h"
 #include "game_state.h"
+<<<<<<< HEAD
 
 #ifndef UWP_BUILDING
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 #endif
+=======
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+>>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
 
 namespace GB{
 
