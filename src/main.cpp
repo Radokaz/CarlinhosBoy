@@ -5,14 +5,14 @@
 #include <SDL3/SDL_main.h>
 #include "uwp_init.h"
 
-static UWP_State* global_state = nullptr;
+static GB_UWP::UWP_State* global_state = nullptr;
 
-SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]){
-   SetEnvironmentVariableW(L"GALLIUM_DRIVER", L"d3d12");
-   global_state = new UWP_State;
-   *appstate = reinterpret_cast<void*>(global_state);
-   GB_UWP::init_uwp(global_state);
-   return SDL_APP_CONTINUE;
+SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[]) {
+    SetEnvironmentVariableW(L"GALLIUM_DRIVER", L"d3d12");
+    global_state = new GB_UWP::UWP_State;
+    *appstate = reinterpret_cast<void*>(global_state);
+    GB_UWP::init_gui(global_state);
+    return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppIterate(void* appstate){

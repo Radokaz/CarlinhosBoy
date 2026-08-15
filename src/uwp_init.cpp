@@ -1,14 +1,19 @@
 #ifdef UWP_BUILDING
 #include "uwp_init.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
 
 namespace GB_UWP{
 
-static constexpr float scr_width = 1920.0f
-static constexpr float scr_height = 1080.0f
+using namespace GB;
+
+static constexpr float scr_width = 1920.0f;
+static constexpr float scr_height = 1080.0f;
 static constexpr const char *opcoes_menu[] = {"Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair"};
 
 void init_gui(UWP_State *estado){
-  InitWindow(width, height, "Carlinhos Boy");
+  SetConfigFlags(FLAG_VSYNC_HINT);
+  InitWindow(scr_width, scr_height, "Carlinhos Boy");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(60);
 
@@ -19,11 +24,11 @@ void init_gui(UWP_State *estado){
   GuiSetStyle(LISTVIEW, BORDER_COLOR_FOCUSED, ColorToInt(GOLD));
 
   auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
-  estado->scr_width = base.Width/width;
-  estado->scr_height = base.Height/height;
+  estado->width = base.Width/scr_width;
+  estado->height = base.Height/scr_height;
   SetWindowSize((int)base.Width, (int)base.Height);
 
-  estado->scale = (std::min)(scr_width, scr_height);
+  estado->scale = (std::min)(estado->width, estado->height);
   GuiSetStyle(BUTTON, TEXT_SIZE, estado->scale*25.0f);
   GuiSetStyle(DEFAULT, TEXT_SIZE, estado->scale*25.0f);
   GuiSetStyle(LISTVIEW, BORDER_WIDTH, estado->scale*5.0f);
@@ -75,18 +80,19 @@ void run_game(UWP_State *estado){
 void run_main_menu(UWP_State *estado){
 
   int gamepad = GamepadDisponivel();
-  int& contr_index {estado->contr_index};
-  int& axis_timer {estado->axis_timer};
-  float& scale {estado->scale};
+  int& contr_index = estado->contr_index;
+  int& axis_timer = estado->axis_timer;
+  int& ativo = estado->index_ativo;
+  float& scale = estado->scale;
   uint8_t& escolhas = estado->escolhas = 0;
-  bool& pad_ultimo {estado->pad_ultimo};
-  bool& paleta_delay {estado->pad_ultimo};
-  bool& in_list {estado->in_list};
+  bool& pad_ultimo = estado->state.pad_ultimo;
+  bool& paleta_delay = estado->paleta_delay;
+  bool& in_list = estado->in_list;
 
   auto redimensiona = [&](){
-    estado->scr_width = get_width()/width;
-    estado->scr_height = get_height()/height;
-    estado->scale = (std::min)(estado->scr_height, estado->scr_width);
+    estado->width = get_width()/scr_width;
+    estado->height = get_height()/scr_height;
+    estado->scale = (std::min)(estado->height, estado->width);
     SetWindowSize((int)get_width(), (int)get_height());
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
@@ -96,17 +102,12 @@ void run_main_menu(UWP_State *estado){
     GuiSetStyle(LISTVIEW, LIST_ITEMS_HEIGHT, scale*28.0f);
   };
 
-  if(estado->switched){
-    estado->switched = false;
-    redimensiona();
-  }
-
   auto controle_input = [&](int pad){
     float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
     float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
 
     if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || leftStickY > 0.5f) && !axis_timer){
-      contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes) + 1);
+      contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes_menu) + 1);
       pad_ultimo = true;
       if(!axis_timer)
         axis_timer = 10;
@@ -125,7 +126,7 @@ void run_main_menu(UWP_State *estado){
         --contr_index;
       }
       else{
-        if(lista.paths.size()){
+        if(estado->lista.paths.size()){
           contr_index = 0;
           in_list ^= 1;
         }
@@ -139,12 +140,12 @@ void run_main_menu(UWP_State *estado){
         axis_timer = 10;
     }
     else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || leftStickX > 0.5f) && !axis_timer){
-      if(lista.paths.size()){
+      if(estado->lista.paths.size()){
         contr_index = 0;
         in_list ^= 1;
       }
       else{
-        contr_index = std::size(opcoes);
+        contr_index = std::size(opcoes_menu);
       }
       pad_ultimo = true;
       if(!axis_timer)
@@ -157,6 +158,11 @@ void run_main_menu(UWP_State *estado){
     
   if(IsWindowResized()){
     redimensiona();
+  }
+
+  if(estado->switched){
+     estado->switched = false;
+     redimensiona();
   }
 
   if(gamepad > -1){
@@ -172,7 +178,7 @@ void run_main_menu(UWP_State *estado){
 
   for(size_t i {}; i < 5; ++i){
     Rectangle r = get_ret(550.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
-    if(GuiButton(r, opcoes[i])){
+    if(GuiButton(r, opcoes_menu[i])){
       escolhas |= opt_escolha(i);
       pad_ultimo = false;
     }
@@ -201,12 +207,12 @@ void run_main_menu(UWP_State *estado){
   }
 
   bool paleta_trocada = (paleta_delay && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN));
-  if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado.paleta_cgb) ? "ON" : "OFF") || paleta_trocada){
+  if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado->state.paleta_cgb) ? "ON" : "OFF") || paleta_trocada){
     paleta_delay = false;
     toggle_paleta(&(estado->state));
   }
 
-  if((ativo >= 0 && ativo < static_cast<int>(lista.arquivos1.count + lista.arquivos2.count) && estado->!open_delay) || estado->open_delay == 2){
+  if((ativo >= 0 && ativo < static_cast<int>(estado->lista.arquivos1.count + estado->lista.arquivos2.count) && !estado->open_delay) || estado->open_delay == 2){
     inicia_emulador(estado->lista.paths[ativo], &estado->state);
     ativo = -1;
     estado->open_delay = 0;
@@ -218,7 +224,7 @@ void run_main_menu(UWP_State *estado){
   }
   if(escolhas & opt_escolha(1)){
     escolhas &= ~opt_escolha(1);
-    estado->machine_state = CONTROLES_1;
+    estado->machine_state = uwp_gui_state::CONTROLES_1;
   }
   if(escolhas & opt_escolha(2)){
     escolhas &= ~opt_escolha(2);
