@@ -23,6 +23,7 @@ void degub_func(CPU *cpu){
   std::cout << "LY: " << std::dec << static_cast<int>(cpu->bus.memoria[0xFF44]) << "\n";
 }
 
+#ifndef UWP_BUILDING
 void inicia_emulador(std::string_view src, GB_State *estado){
 
   Image framebuffer = GenImageColor(160, 144, RAYWHITE);
@@ -74,14 +75,12 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   while(1){
     ClearBackground(BLACK);
     
-#ifndef UWP_BUILDING
     frame_init = GetTime();
     mouse_atual = GetMousePosition();
     if(mouse_atual.x != mouse_prev.x || mouse_atual.y != mouse_prev.y){
       ShowCursor();
     }
     mouse_prev = mouse_atual;
-#endif
 
     le_input(&game, estado->save_slot, pausado, is_120, janela_alterada);
     if(pausa_jogo(&game, estado, pausado, resumido)){
@@ -136,6 +135,10 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   CloseAudioDevice();
   UnloadTexture(texture);
 }
+#else
+void inicia_emulador(std::string_view src, GB_State* estado) {
 
+}
+#endif
 
 }
