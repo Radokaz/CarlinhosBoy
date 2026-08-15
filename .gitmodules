@@ -2,7 +2,7 @@
 	path = include/raylib
 	url = https://github.com/raysan5/raylib.git
 [submodule "include/sdl3-uwp"]
-	path = include/sdl3-uwp
+	path = include/sdl3-wup
 	url = https://github.com/SternXD/SDL3-uwp.git
 
 
