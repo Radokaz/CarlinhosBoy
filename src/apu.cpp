@@ -1,0 +1,507 @@
+#include "apu.h"
+#include "step_table.h"
+#include <iostream>
+#include <atomic>
+
+namespace GB{
+
+void APU::seta_modo(bool cpu_m){
+  this->ch1.modo_cgb = cpu_m;
+  this->ch2.modo_cgb = cpu_m;
+  this->ch3.modo_cgb = cpu_m;
+  this->ch4.modo_cgb = cpu_m;
+}
+
+//válido para cgb-02 e cgb-04, mas aqui eu aplico para o dmg também
+void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8_t valor){
+  uint8_t periodo_ant = (*nrx2 & 0x07);
+  uint8_t direction_ant = (*nrx2 & 0x08);
+  uint8_t direction_now = (valor & 0x08);
+
+  if(auto_update && !periodo_ant){
+    ++(*envelope);
+  }
+  else if(!direction_ant){
+    (*envelope)+=2;
+  }
+
+  if(direction_ant != direction_now)
+    *envelope = 16 - *envelope;
+
+  (*envelope)&=0x0F;
+}
+
+uint8_t& APU::read(uint16_t endereco){
+
+    switch(endereco){
+        case 0xFF10:
+          apu_hack = memoria[0xFF10] | 0x80;
+          return apu_hack;
+        case 0xFF11:
+          apu_hack = memoria[0xFF11] | 0x3F;
+          return apu_hack;
+        case 0xFF14:
+          apu_hack = memoria[0xFF14] | 0xBF;
+          return apu_hack;
+        case 0xFF16:
+          apu_hack = memoria[0xFF16] | 0x3F;
+          return apu_hack;
+        case 0xFF19:
+          apu_hack = memoria[0xFF19] | 0xBF;
+          return apu_hack;
+        case 0xFF1A:
+          apu_hack = memoria[0xFF1A] | 0x7F;
+          return apu_hack;
+        case 0xFF1C:
+          apu_hack = memoria[0xFF1C] | 0x9F;
+          return apu_hack;
+        case 0xFF1E:
+          apu_hack = memoria[0xFF1E] | 0xBF;
+          return apu_hack;
+        case 0xFF23:
+          apu_hack = memoria[0xFF23] | 0xBF;
+          return apu_hack;
+        case 0xFF26:
+          apu_hack = memoria[0xFF26] | 0x70;
+          return apu_hack;
+        case 0xFF13:
+        case 0xFF15:
+        case 0xFF18:
+        case 0xFF1B:
+        case 0xFF1D:
+        case 0xFF1F:
+        case 0xFF20:
+        case 0xFF27:
+        case 0xFF28:
+        case 0xFF29:
+        case 0xFF2A:
+        case 0xFF2B:
+        case 0xFF2C:
+        case 0xFF2D:
+        case 0xFF2E:
+        case 0xFF2F:
+          apu_hack = 0xFF;
+          return apu_hack;
+    }
+
+    return memoria[endereco];
+}
+
+void APU::write(uint16_t endereco, uint8_t valor){
+  switch(endereco){
+      case 0xFF26:{
+        uint8_t bit_prev = (memoria[0xFF26] & 0x80);
+        memoria[0xFF26] = ((memoria[0xFF26] & 0x0F) | (valor & 0xF0));
+        if(!(valor & 0x80))
+          this->limpa_registradores();
+        else if(!bit_prev && (valor & 0x80)){
+          this->power_on();
+        }
+
+        return;
+      }
+      case 0xFF25:
+      case 0xFF24:{
+        memoria[endereco] = valor;
+        this->atualiza_volume();
+        this->audio_pop<0xFF>();
+        return;
+      }
+
+      case 0xFF10:{
+        uint8_t direcao_prev = (memoria[0xFF10] & 0x08);
+        memoria[0xFF10] = valor;
+        if(direcao_prev && this->ch1.negate_mode && !(valor & 0x08)){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+        }
+        return;
+      }
+      case 0xFF11:{
+        memoria[0xFF11] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF11] & 0xC0) | (valor & 0x3F));
+        ch1.length_timer = 64 - (memoria[0xFF11] & 0x3F);
+        return;
+      }
+      case 0xFF12:{
+        bool dac_prev = ch1.dac;
+        ch1.dac = ((valor & 0xF8) != 0);
+        
+        if(dac_prev != ch1.dac)
+          this->audio_pop<0x01>();
+
+        if(!ch1.dac){
+          memoria[0xFF26] &= ~APU_CH1_ON;
+          ch1.prev_esq = 0;
+          ch1.prev_dir = 0;
+        }
+
+        if(is_channel1_on(memoria))
+          checa_zombie_mode(&memoria[0xFF12], &ch1.envelope, ch1.auto_update, valor);
+
+        memoria[0xFF12] = valor;
+        return;
+      }
+      case 0xFF14:{
+        bool length_prev = ((memoria[0xFF14] & 0x40) != 0);
+        memoria[0xFF14] = valor;
+
+        //comportamento obscuro do contador de length
+        //segunda metade do período: quando div_apu é par
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch1.sweep_length();
+        }
+
+        if(valor & 0x80){
+
+           if(ch1.dac){
+            memoria[0xFF26] |= APU_CH1_ON;
+          }
+          
+          ch1.init_ch1();
+
+          if(ch1.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch1.length_timer;
+          }
+          
+        }
+        
+        return;
+      }
+      case 0xFF16:{
+        memoria[0xFF16] = (is_audio_on(memoria)) ? valor : ((memoria[0xFF16] & 0xC0) | (valor & 0x3F));
+        ch2.length_timer = 64 - (memoria[0xFF16] & 0x3F);
+        return;
+      }
+      case 0xFF17:{
+        bool dac_prev = ch2.dac;
+        ch2.dac = ((valor & 0xF8) != 0);
+        
+        if(dac_prev != ch2.dac)
+          this->audio_pop<0x02>();
+
+        if(!ch2.dac){
+          memoria[0xFF26] &= ~APU_CH2_ON;
+          ch2.prev_esq = 0;
+          ch2.prev_dir = 0;
+        }
+
+        if(is_channel2_on(memoria))
+          checa_zombie_mode(&memoria[0xFF17], &ch2.envelope, ch2.auto_update, valor);
+
+        memoria[0xFF17] = valor;
+        return;
+      }
+      case 0xFF19:{
+        bool length_prev = ((memoria[0xFF19] & 0x40) != 0);
+        memoria[0xFF19] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch2.sweep_length();
+        }
+        if(valor & 0x80){
+          this->ch2.init_ch2();
+
+          if(ch2.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch2.length_timer;
+          }
+
+          if(ch2.dac){
+            memoria[0xFF26] |= APU_CH2_ON;
+            ch2.amplifier();
+          }
+        }
+        return;
+      }
+      case 0xFF1A:{
+        bool dac_prev = ch3.dac;
+        ch3.dac = ((valor & 0x80) != 0);
+        
+        if(dac_prev != ch3.dac)
+          this->audio_pop<0x04>();
+
+        if(!ch3.dac){
+          memoria[0xFF26] &= ~APU_CH3_ON;
+          ch3.prev_esq = 0;
+          ch3.prev_dir = 0;
+        }
+
+        memoria[0xFF1A] = valor;
+        return;
+      }
+      case 0xFF1B:{
+        memoria[0xFF1B] = valor;
+        ch3.length_timer = 256 - memoria[0xFF1B];
+        return;
+      }
+      case 0xFF1E:{
+        bool length_prev = ((memoria[0xFF1E] & 0x40) != 0);
+        memoria[0xFF1E] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch3.sweep_length();
+        }
+        if(valor & 0x80){
+          ch3.init_ch3();
+
+          if(ch3.length_timer == 256 && (valor & 0x40) && !(div_apu % 2)){
+            --ch3.length_timer;
+          }
+
+          if(ch3.dac){
+            memoria[0xFF26] |= APU_CH3_ON;
+            ch3.amplifier();
+          }
+        }
+        return;
+      }
+      case 0xFF20:{
+        memoria[0xFF20] = valor;
+        ch4.length_timer = 64 - (memoria[0xFF20] & 0x3F);
+        return;
+      }
+      case 0xFF21:{
+        bool dac_prev = ch4.dac;
+        ch4.dac = ((valor & 0xF8) != 0);
+        
+        if(dac_prev != ch4.dac)
+          this->audio_pop<0x08>();
+
+        if(!ch4.dac){
+          memoria[0xFF26] &= ~APU_CH4_ON;
+          ch4.prev_esq = 0;
+          ch4.prev_dir = 0;
+        }
+
+        if(is_channel4_on(memoria))
+          checa_zombie_mode(&memoria[0xFF21], &ch4.envelope, ch4.auto_update, valor);
+
+        memoria[0xFF21] = valor;
+        return;
+      }
+      case 0xFF22:{
+        memoria[0xFF22] = valor;
+        ch4.seta_clock();
+        return;
+      }
+      case 0xFF23:{
+        bool length_prev = ((memoria[0xFF23] & 0x40) != 0);
+        memoria[0xFF23] = valor;
+        if(!length_prev && (valor & 0x40) && !(div_apu % 2)){
+          ch4.sweep_length();
+        }
+        if(valor & 0x80){
+          ch4.init_ch4();
+
+          if(ch4.length_timer == 64 && (valor & 0x40) && !(div_apu % 2)){
+            --ch4.length_timer;
+          }
+
+          if(ch4.dac){
+            memoria[0xFF26] |= APU_CH4_ON;
+            ch4.amplifier();
+          }
+        }
+        return;
+      }
+  }
+
+  memoria[endereco] = valor;
+}
+
+struct RingBuffer{
+    std::array<int16_t, 4096> samples{};
+    std::atomic<uint32_t> read_pos {};
+    std::atomic<uint32_t> write_pos {};
+    
+    void push(int16_t esq, int16_t dir){
+        if(disponivel() + 2 > samples.size()) return;
+        uint32_t pos = write_pos.load(std::memory_order_relaxed);
+        samples[pos % samples.size()] = esq;
+        samples[(pos + 1) % samples.size()] = dir;
+        write_pos.fetch_add(2, std::memory_order_release);
+    }
+    
+    uint32_t disponivel(void){
+        return write_pos.load(std::memory_order_acquire) - read_pos.load(std::memory_order_relaxed);
+    }
+    
+    int16_t pop(void){
+        uint32_t pos = read_pos.fetch_add(1, std::memory_order_relaxed);
+        return samples[pos % samples.size()];
+    }
+};
+
+static RingBuffer ring;
+
+void audio_callback(void* buffer, unsigned int frames){
+    int16_t* out = reinterpret_cast<int16_t*>(buffer);
+    uint32_t samples_needed = frames*2;
+    
+    size_t avail = ring.disponivel() & ~size_t(1);
+    uint32_t to_read = static_cast<uint32_t>(std::min(static_cast<size_t>(samples_needed), avail));
+    
+    for(size_t i {}; i < to_read; ++i){
+        out[i] = ring.pop();
+    }
+
+    int16_t ultimo = (to_read > 0) ? out[to_read - 1] : 0;
+    for(size_t i {to_read}; i < samples_needed; ++i){
+        out[i] = ultimo;
+    }
+}
+
+void limpa_samples(void){
+  ring.samples.fill(0);
+  ring.write_pos = 0;
+  ring.read_pos = 0;
+  APU::canais_ativos = 0x0F;
+}
+
+template <uint8_t channel_bit>
+void APU::audio_pop(void){
+  constexpr uint8_t ch1_bit = (1 << 0);
+  constexpr uint8_t ch2_bit = (1 << 1);
+  constexpr uint8_t ch3_bit = (1 << 2);
+  constexpr uint8_t ch4_bit = (1 << 3);
+
+  if constexpr(channel_bit & ch1_bit){
+    ch1.amplifier();
+  }
+  if constexpr(channel_bit & ch2_bit){
+    ch2.amplifier();
+  }
+  if constexpr(channel_bit & ch3_bit){
+    ch3.amplifier();
+  }
+  if constexpr(channel_bit & ch4_bit){
+    ch4.amplifier();
+  }
+}
+
+void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
+  sample_ciclos = 0;
+  volume_esq = 0;
+  volume_dir = 0;
+
+  ch1.prev_esq = 0;
+  ch1.prev_dir = 0;
+  ch2.prev_esq = 0;
+  ch2.prev_dir = 0;
+  ch3.prev_esq = 0;
+  ch3.prev_dir = 0;
+  ch4.prev_esq = 0;
+  ch4.prev_dir = 0;
+  
+  memoria[0xFF24] = 0;
+  memoria[0xFF25] = 0;
+  memoria[0xFF26] = 0;
+
+  ch1.clear();
+  ch2.clear();
+  ch3.clear();
+  ch4.clear();
+}
+
+void APU::power_on(void){
+  div_apu = 7;
+  ch1.duty_step = 0;
+  ch2.duty_step = 0;
+  ch3.last_sample = 0;
+  if(ch1.modo_cgb){
+    ch1.length_timer = 0;
+    ch2.length_timer = 0;
+    ch3.length_timer = 0;
+    ch4.length_timer = 0;
+    memoria[0xFF11] = 0;
+    memoria[0xFF16] = 0;
+    memoria[0xFF1B] = 0;
+    memoria[0xFF20] = 0;
+  }
+  this->atualiza_volume();
+}
+
+void APU::atualiza_volume(void){
+  uint8_t master_volume = memoria[0xFF24];
+  volume_dir = (master_volume & 0x07) + 1;
+  volume_esq = ((master_volume & 0x70) >> 4) + 1;
+}
+
+void APU::frame_sequencer(void){
+  if(!is_audio_on(memoria)) return;
+  div_apu = (div_apu + 1) % 8;
+
+  if(div_apu % 2 == 0){
+    ch1.sweep_length();
+    ch2.sweep_length();
+    ch3.sweep_length();
+    ch4.sweep_length();
+  }
+  if(div_apu == 2 || div_apu == 6){
+    ch1.sweep_periodo();
+  }
+  else if(div_apu == 7){
+    ch1.sweep_envelope();
+    ch2.sweep_envelope();
+    ch4.sweep_envelope();
+  }
+  
+}
+
+void mixer(uint8_t atual, int& esq_ultimo, int& dir_ultimo, bool esq, bool dir, Blip_Synth<blip_good_quality, 240> *synth){
+  int esq_atual = (esq) ? (0xF - static_cast<int>(atual*2))*APU::volume_esq : 0;
+  int dir_atual = (dir) ? (0xF - static_cast<int>(atual*2))*APU::volume_dir : 0;
+
+  if(esq_atual != esq_ultimo){
+    int delta = esq_atual - esq_ultimo;
+    synth->offset(APU::global_clocks, delta, APU::blip_esq.get());
+    esq_ultimo = esq_atual;
+  }
+  if(dir_atual != dir_ultimo){
+    int delta = dir_atual - dir_ultimo;
+    synth->offset(APU::global_clocks, delta, APU::blip_dir.get());
+    dir_ultimo = dir_atual;
+  }
+}
+
+void APU::output(void){
+  blip_esq->end_frame(APU::global_clocks);
+  blip_dir->end_frame(APU::global_clocks);
+  global_clocks = 0;
+
+  int total_samples = blip_esq->samples_avail();
+  if(total_samples > 0){
+    std::vector<blip_sample_t> sample_esq(total_samples), sample_dir(total_samples);
+
+    blip_esq->read_samples(sample_esq.data(), total_samples, 0);
+    blip_dir->read_samples(sample_dir.data(), total_samples, 0);
+
+    for(int i {}; i < total_samples; ++i){
+      ring.push(static_cast<int16_t>(sample_esq[i]), static_cast<int16_t>(sample_dir[i]));    
+    }
+  }
+}
+
+void APU::step(uint8_t modo_cpu){
+  if(!is_audio_on(memoria)) return;
+  
+  size_t limiar {4};
+  if(modo_cpu > 0 && (memoria[0xFF4D] & 0x80))
+    limiar = 2;
+
+  for(size_t i {}; i < limiar; ++i){
+    ++sample_ciclos;
+    ++global_clocks;
+    
+    if(sample_ciclos % 2 == 0){
+      ch3.incrementa_divider();
+    }
+    if(sample_ciclos % 4 == 0){
+      ch1.incrementa_divider();
+      ch2.incrementa_divider();
+    }
+    ch4.sweep_clock();
+
+    if(global_clocks >= FRAME_CYCLES){
+      this->output();
+    }
+  }
+}
+
+}
