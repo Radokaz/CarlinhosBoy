@@ -253,7 +253,7 @@ struct ListaArquivos{
   
   FilePathList arquivos1;
   FilePathList arquivos2;
-  std::string geral;
+  std::vector<const char *> nomes;
   std::vector<const char *> paths;
 
   ListaArquivos(GB_State *estado){
@@ -263,8 +263,8 @@ struct ListaArquivos{
   }
 
   void atualiza_string(void){
-    geral.clear();
     size_t tamanho = static_cast<size_t>(arquivos1.count) + arquivos2.count;
+    nomes.resize(tamanho);
     paths.resize(tamanho);
     TraceLog(LOG_INFO, "Arquivos encontrados: %d", tamanho);
 
@@ -279,11 +279,8 @@ struct ListaArquivos{
     }
 
     std::sort(paths.begin(), paths.end(), [](const char *a, const char *b){ return std::strcmp(a, b) < 0; });
-    for(size_t i {}; i < tamanho; ++i){
-      geral+=GetFileName(paths[i]);
-      if(i < (tamanho - 1))
-        geral+=';';
-    }
+    for(size_t i {}; i < tamanho; ++i)
+      nomes[i] = GetFileName(paths[i]);
   }
 
   void atualiza_lista(GB_State *estado){

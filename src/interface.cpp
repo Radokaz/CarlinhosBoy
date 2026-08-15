@@ -72,8 +72,8 @@ const char *getDisplayName(GamepadButton but){
 Rectangle get_ret(float x, float y, float w, float h){
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
-  float screen_w = GetScreenWidth()/width;
-  float screen_h = GetScreenHeight()/height;
+  float screen_w = get_width()/width;
+  float screen_h = get_height()/height;
   float scale = (std::min)(screen_w, screen_h);
   return Rectangle{scale*x, scale*y, scale*w, scale*h};
 }
@@ -893,7 +893,7 @@ void init_gui(void){
   GB_State estado;
   ListaArquivos lista(&estado);
     
-  int scroll_index {}, ativo {-1};
+  int scroll_index {}, ativo {-1}, focus {-1};
   int contr_index {};
   int axis_timer {};
   bool& pad_ultimo = estado.pad_ultimo;
@@ -937,6 +937,15 @@ void init_gui(void){
       pad_ultimo = true;
       if(!axis_timer)
         axis_timer = 10;
+      if(in_list){
+        int visible_itens = static_cast<int>((scale*640.0f)/(GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT) + GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING)));
+        if(contr_index == 0 && scroll_index){
+          scroll_index = 0;
+        }
+        else if(contr_index - scroll_index > visible_itens - 1){
+          ++scroll_index;
+        }
+      }
     }
     else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || leftStickY < -0.5f) && !axis_timer){
       --contr_index;
@@ -946,6 +955,15 @@ void init_gui(void){
       pad_ultimo = true;
       if(!axis_timer)
         axis_timer = 10;
+      if(in_list){
+        if(static_cast<size_t>(contr_index) == lista.paths.size() - 1 && !scroll_index){
+          int visible_itens = static_cast<int>((scale*640.0f)/(GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT) + GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING)));
+          if(contr_index > visible_itens)
+            scroll_index = (lista.paths.size() - visible_itens);
+        }
+        else if((contr_index - scroll_index) < 0)
+          --scroll_index;
+        }
     }
     else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT) || leftStickX < -0.5f) && !axis_timer){
       if(!in_list && contr_index == std::size(opcoes)){
@@ -953,7 +971,7 @@ void init_gui(void){
       }
       else{
         if(lista.paths.size()){
-          contr_index = 0;
+          contr_index = (in_list) ? 0 : scroll_index;
           in_list ^= 1;
         }
         else{
@@ -967,7 +985,7 @@ void init_gui(void){
     }
     else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || leftStickX > 0.5f) && !axis_timer){
       if(lista.paths.size()){
-        contr_index = 0;
+        contr_index = (in_list) ? 0 : scroll_index;
         in_list ^= 1;
       }
       else{
@@ -1026,11 +1044,17 @@ void init_gui(void){
           escolhas |= opt_escolha(i);
       }
     }
-   
-    GuiListView(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), lista.geral.c_str(), &scroll_index, &ativo);
+    
+    int scroll_prev = scroll_index;
+    GuiListViewEx(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), (char**)lista.nomes.data(), lista.paths.size(), &scroll_index, &ativo, &focus);
+    
     if(gamepad > -1 && in_list){
       float offset = GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING) + GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT);
-      DrawRectangleLinesEx(Rectangle{scale*1003.0f, scale*323.0f + contr_index*offset, scale*317.0f, offset - scale*3.0f}, scale*3.0f, GREEN);
+      if(scroll_index != scroll_prev){
+        contr_index+=(scroll_index - scroll_prev);
+      }
+
+      DrawRectangleLinesEx(Rectangle{scale*1003.0f, scale*323.0f + (contr_index - scroll_index)*offset, scale*317.0f, offset - scale*3.0f}, scale*3.0f, GREEN);
       if(IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
         ativo = contr_index;
         open_delay = 1;
