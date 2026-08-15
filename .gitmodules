@@ -4,3 +4,5 @@
 [submodule "include/sdl3-uwp"]
 	path = include/sdl3-uwp
 	url = https://github.com/SternXD/SDL3-uwp.git
+
+
