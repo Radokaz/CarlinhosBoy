@@ -1,7 +1,11 @@
 #ifndef UWP_INIT
 #define UWP_INIT
 
+<<<<<<< HEAD
 #include "game_state.h"
+=======
+#include "init.h"
+>>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
 
 namespace GB_UWP{
 
@@ -15,11 +19,19 @@ enum class uwp_gui_state: uint8_t{
 };
 
 struct UWP_State{
+<<<<<<< HEAD
   GB::GB_State state;
   GB::ListaArquivos lista{&state};
   std::unique_ptr<GB::Game_State> game {};
   float width {};
   float height {};
+=======
+  GB_State state;
+  ListaArquivos lista{&state};
+  std::unique_ptr<Game_State> game {};
+  float screen_w {};
+  float screen_h {};
+>>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   float scale {};
   int scroll_index {};
   int index_ativo {-1};
@@ -36,6 +48,10 @@ struct UWP_State{
 
 void init_gui(UWP_State *estado);
 void run_gui(UWP_State *estado);
+<<<<<<< HEAD
+=======
+void init_game(UWP_State *estado);
+>>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
 void run_game(UWP_State *estado);
 void run_main_menu(UWP_State *estado);
 void run_pause_menu(UWP_State *estado);
