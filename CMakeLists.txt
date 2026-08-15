@@ -38,12 +38,13 @@ endif()
 # Esse SDL é para a versão uwp apenas
 if(BUILDING_UWP)
   set(SDL3_UWP_ROOT "${CMAKE_SOURCE_DIR}/include/sdl3-uwp")
+  set(SDL3_UWP_BIN "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP")
 
   add_library(SDL3::SDL3 SHARED IMPORTED GLOBAL)
   set_target_properties(SDL3::SDL3 PROPERTIES
-    IMPORTED_IMPLIB   "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.lib"
-    IMPORTED_LOCATION "${SDL3_UWP_ROOT}/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
-    INTERFACE_INCLUDE_DIRECTORIES "${SDL3_UWP_ROOT}/include;${SDL3_UWP_ROOT}/include/build_config"
+    IMPORTED_IMPLIB   "${SDL3_UWP_BIN}/SDL3.lib"
+    IMPORTED_LOCATION "${SDL3_UWP_BIN}/SDL3.dll"
+    INTERFACE_INCLUDE_DIRECTORIES "${SDL3_UWP_ROOT}/include"
   )
 
   set(PLATFORM "SDL" CACHE STRING "" FORCE)
@@ -56,7 +57,11 @@ if(BUILDING_UWP)
     "${MESA_BIN_DIR}/libGLESv1_CM.dll"
     "${MESA_BIN_DIR}/libGLESv2.dll"
     "${MESA_BIN_DIR}/z-1.dll"
-    "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
+    "${MESA_BIN_DIR}/spirv_to_dxil.dll"
+    "${MESA_BIN_DIR}/vulkan_dzn.dll"
+    "${MESA_BIN_DIR}/glsl_compiler.exe"
+    "${MESA_BIN_DIR}/spirv2dxil.exe"
+    "${SDL3_UWP_BIN}/SDL3.dll"
     "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
     "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
   )
@@ -67,13 +72,17 @@ if(BUILDING_UWP)
     "${MESA_BIN_DIR}/libGLESv1_CM.dll"
     "${MESA_BIN_DIR}/libGLESv2.dll"
     "${MESA_BIN_DIR}/z-1.dll"
-    "${CMAKE_SOURCE_DIR}/include/sdl3-uwp/VisualC-WinRT/x64/Release/SDL-UWP/SDL3.dll"
+    "${MESA_BIN_DIR}/spirv_to_dxil.dll"
+    "${MESA_BIN_DIR}/vulkan_dzn.dll"
+    "${MESA_BIN_DIR}/glsl_compiler.exe"
+    "${MESA_BIN_DIR}/spirv2dxil.exe"
+    "${SDL3_UWP_BIN}/SDL3.dll"
     "${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin"
     "${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin"
     PROPERTIES VS_DEPLOYMENT_CONTENT 1
   )
   target_compile_definitions(cb PRIVATE UWP_BUILDING)
-  target_include_directories(cb PRIVATE SDL3_UWP_ROOT)
+  target_include_directories(cb PRIVATE "${SDL3_UWP_ROOT}/include;${SDL3_UWP_ROOT}/include/build_config")
 endif()
  
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -97,7 +106,7 @@ endif()
 add_subdirectory(include/raylib)
 
 if(BUILDING_UWP)
-  target_include_directories(raylib BEFORE PRIVATE "${SDL3_UWP_ROOT}/include" "${SDL3_UWP_ROOT}/include/build_config")
+  target_include_directories(raylib BEFORE PRIVATE "${SDL3_UWP_ROOT}/include;${SDL3_UWP_ROOT}/include/build_config")
   target_link_libraries(raylib PRIVATE SDL3::SDL3)
   target_link_libraries(cb PRIVATE SDL3::SDL3)
 endif()

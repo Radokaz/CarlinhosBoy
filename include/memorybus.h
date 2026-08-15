@@ -68,11 +68,7 @@ struct Memorybus{
   PPU *ppu {};
   std::unique_ptr<uint8_t[]> cgb_wram {};
   std::unique_ptr<MBC> mbc {};
-<<<<<<< HEAD
   std::function<void()>* restaura_rom {};
-=======
-  std::function<void()> *restaura_rom;
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   uint8_t dma_hack {0xFF};
   uint8_t serial_count {};
   bool tem_rtc {false};

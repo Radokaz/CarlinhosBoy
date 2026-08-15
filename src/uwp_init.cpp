@@ -1,6 +1,5 @@
 #ifdef UWP_BUILDING
 #include "uwp_init.h"
-<<<<<<< HEAD
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 
@@ -13,18 +12,8 @@ static constexpr float scr_height = 1080.0f;
 static constexpr const char *opcoes_menu[] = {"Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair"};
 
 void init_gui(UWP_State *estado){
+  SetConfigFlags(FLAG_VSYNC_HINT);
   InitWindow(scr_width, scr_height, "Carlinhos Boy");
-=======
-
-namespace GB_UWP{
-
-static constexpr float scr_width = 1920.0f
-static constexpr float scr_height = 1080.0f
-static constexpr const char *opcoes_menu[] = {"Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair"};
-
-void init_gui(UWP_State *estado){
-  InitWindow(width, height, "Carlinhos Boy");
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(60);
 
@@ -35,19 +24,11 @@ void init_gui(UWP_State *estado){
   GuiSetStyle(LISTVIEW, BORDER_COLOR_FOCUSED, ColorToInt(GOLD));
 
   auto base = winrt::Windows::UI::Core::CoreWindow::GetForCurrentThread().Bounds();
-<<<<<<< HEAD
   estado->width = base.Width/scr_width;
   estado->height = base.Height/scr_height;
   SetWindowSize((int)base.Width, (int)base.Height);
 
   estado->scale = (std::min)(estado->width, estado->height);
-=======
-  estado->scr_width = base.Width/width;
-  estado->scr_height = base.Height/height;
-  SetWindowSize((int)base.Width, (int)base.Height);
-
-  estado->scale = (std::min)(scr_width, scr_height);
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   GuiSetStyle(BUTTON, TEXT_SIZE, estado->scale*25.0f);
   GuiSetStyle(DEFAULT, TEXT_SIZE, estado->scale*25.0f);
   GuiSetStyle(LISTVIEW, BORDER_WIDTH, estado->scale*5.0f);
@@ -99,7 +80,6 @@ void run_game(UWP_State *estado){
 void run_main_menu(UWP_State *estado){
 
   int gamepad = GamepadDisponivel();
-<<<<<<< HEAD
   int& contr_index = estado->contr_index;
   int& axis_timer = estado->axis_timer;
   int& ativo = estado->index_ativo;
@@ -113,20 +93,6 @@ void run_main_menu(UWP_State *estado){
     estado->width = get_width()/scr_width;
     estado->height = get_height()/scr_height;
     estado->scale = (std::min)(estado->height, estado->width);
-=======
-  int& contr_index {estado->contr_index};
-  int& axis_timer {estado->axis_timer};
-  float& scale {estado->scale};
-  uint8_t& escolhas = estado->escolhas = 0;
-  bool& pad_ultimo {estado->pad_ultimo};
-  bool& paleta_delay {estado->pad_ultimo};
-  bool& in_list {estado->in_list};
-
-  auto redimensiona = [&](){
-    estado->scr_width = get_width()/width;
-    estado->scr_height = get_height()/height;
-    estado->scale = (std::min)(estado->scr_height, estado->scr_width);
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
     SetWindowSize((int)get_width(), (int)get_height());
     GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
     GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
@@ -136,24 +102,12 @@ void run_main_menu(UWP_State *estado){
     GuiSetStyle(LISTVIEW, LIST_ITEMS_HEIGHT, scale*28.0f);
   };
 
-<<<<<<< HEAD
-=======
-  if(estado->switched){
-    estado->switched = false;
-    redimensiona();
-  }
-
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   auto controle_input = [&](int pad){
     float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
     float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
 
     if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || leftStickY > 0.5f) && !axis_timer){
-<<<<<<< HEAD
       contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes_menu) + 1);
-=======
-      contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes) + 1);
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
       pad_ultimo = true;
       if(!axis_timer)
         axis_timer = 10;
@@ -172,11 +126,7 @@ void run_main_menu(UWP_State *estado){
         --contr_index;
       }
       else{
-<<<<<<< HEAD
         if(estado->lista.paths.size()){
-=======
-        if(lista.paths.size()){
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
           contr_index = 0;
           in_list ^= 1;
         }
@@ -190,20 +140,12 @@ void run_main_menu(UWP_State *estado){
         axis_timer = 10;
     }
     else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || leftStickX > 0.5f) && !axis_timer){
-<<<<<<< HEAD
       if(estado->lista.paths.size()){
-=======
-      if(lista.paths.size()){
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
         contr_index = 0;
         in_list ^= 1;
       }
       else{
-<<<<<<< HEAD
         contr_index = std::size(opcoes_menu);
-=======
-        contr_index = std::size(opcoes);
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
       }
       pad_ultimo = true;
       if(!axis_timer)
@@ -218,14 +160,11 @@ void run_main_menu(UWP_State *estado){
     redimensiona();
   }
 
-<<<<<<< HEAD
   if(estado->switched){
      estado->switched = false;
      redimensiona();
   }
 
-=======
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   if(gamepad > -1){
     controle_input(gamepad);
   }
@@ -239,11 +178,7 @@ void run_main_menu(UWP_State *estado){
 
   for(size_t i {}; i < 5; ++i){
     Rectangle r = get_ret(550.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
-<<<<<<< HEAD
     if(GuiButton(r, opcoes_menu[i])){
-=======
-    if(GuiButton(r, opcoes[i])){
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
       escolhas |= opt_escolha(i);
       pad_ultimo = false;
     }
@@ -272,21 +207,13 @@ void run_main_menu(UWP_State *estado){
   }
 
   bool paleta_trocada = (paleta_delay && IsGamepadButtonReleased(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN));
-<<<<<<< HEAD
   if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado->state.paleta_cgb) ? "ON" : "OFF") || paleta_trocada){
-=======
-  if(GuiButton(get_ret(1150.0f, 970.0f, 100.0f, 40.0f), (estado.paleta_cgb) ? "ON" : "OFF") || paleta_trocada){
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
     paleta_delay = false;
     toggle_paleta(&(estado->state));
   }
 
-<<<<<<< HEAD
   if((ativo >= 0 && ativo < static_cast<int>(estado->lista.arquivos1.count + estado->lista.arquivos2.count) && !estado->open_delay) || estado->open_delay == 2){
-=======
-  if((ativo >= 0 && ativo < static_cast<int>(lista.arquivos1.count + lista.arquivos2.count) && estado->!open_delay) || estado->open_delay == 2){
     inicia_emulador(estado->lista.paths[ativo], &estado->state);
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
     ativo = -1;
     estado->open_delay = 0;
   }
@@ -297,11 +224,7 @@ void run_main_menu(UWP_State *estado){
   }
   if(escolhas & opt_escolha(1)){
     escolhas &= ~opt_escolha(1);
-<<<<<<< HEAD
     estado->machine_state = uwp_gui_state::CONTROLES_1;
-=======
-    estado->machine_state = CONTROLES_1;
->>>>>>> df25042b78fadd3c0e0c7a8ee7c68c422db11ffd
   }
   if(escolhas & opt_escolha(2)){
     escolhas &= ~opt_escolha(2);
