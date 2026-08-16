@@ -23,6 +23,7 @@ struct UWP_State{
   float scale {};
   int scroll_index {};
   int index_ativo {-1};
+  int focus{ -1 };
   int contr_index {};
   int axis_timer {};
   uwp_gui_state machine_state {};

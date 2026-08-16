@@ -237,7 +237,7 @@ void display_controles(GB_State *estado){
       controle_input(gamepad);
     }
 
-    if(key_consumed && IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
+    if(key_consumed){
       int tecla = 0;
       pad_ultimo = false;
       while(tecla == 0){

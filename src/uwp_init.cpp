@@ -83,6 +83,8 @@ void run_main_menu(UWP_State *estado){
   int& contr_index = estado->contr_index;
   int& axis_timer = estado->axis_timer;
   int& ativo = estado->index_ativo;
+  int& scroll_index = estado->scroll_index;
+  int& focus = estado->focus;
   float& scale = estado->scale;
   uint8_t& escolhas = estado->escolhas = 0;
   bool& pad_ultimo = estado->state.pad_ultimo;
@@ -102,56 +104,74 @@ void run_main_menu(UWP_State *estado){
     GuiSetStyle(LISTVIEW, LIST_ITEMS_HEIGHT, scale*28.0f);
   };
 
-  auto controle_input = [&](int pad){
-    float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
-    float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
+  auto controle_input = [&](int pad) {
+      float leftStickY = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_Y));
+      float leftStickX = fix_deadzone(GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X));
 
-    if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || leftStickY > 0.5f) && !axis_timer){
-      contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes_menu) + 1);
-      pad_ultimo = true;
-      if(!axis_timer)
-        axis_timer = 10;
-    }
-    else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || leftStickY < -0.5f) && !axis_timer){
-      --contr_index;
-      if(contr_index < 0)
-        contr_index = (in_list) ? estado->lista.paths.size() - 1 : std::size(opcoes_menu);
-            
-      pad_ultimo = true;
-      if(!axis_timer)
-        axis_timer = 10;
-    }
-    else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT) || leftStickX < -0.5f) && !axis_timer){
-      if(!in_list && contr_index == std::size(opcoes_menu)){
-        --contr_index;
+      if ((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN) || leftStickY > 0.5f) && !axis_timer) {
+          contr_index = (contr_index + 1) % ((in_list) ? estado->lista.paths.size() : std::size(opcoes_menu) + 1);
+          pad_ultimo = true;
+          if (!axis_timer)
+              axis_timer = 10;
+          if (in_list) {
+              int visible_itens = static_cast<int>((estado->scale * 640.0f) / (GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT) + GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING)));
+              if (contr_index == 0 && scroll_index) {
+                  scroll_index = 0;
+              }
+              else if (contr_index - scroll_index > visible_itens - 1) {
+                  ++scroll_index;
+              }
+          }
       }
-      else{
-        if(estado->lista.paths.size()){
-          contr_index = 0;
-          in_list ^= 1;
-        }
-        else{
-          contr_index = std::size(opcoes_menu);
-        }
-      }
+      else if ((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_UP) || leftStickY < -0.5f) && !axis_timer) {
+          --contr_index;
+          if (contr_index < 0)
+              contr_index = (in_list) ? estado->lista.paths.size() - 1 : std::size(opcoes_menu);
 
-      pad_ultimo = true;
-      if(!axis_timer)
-        axis_timer = 10;
-    }
-    else if((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || leftStickX > 0.5f) && !axis_timer){
-      if(estado->lista.paths.size()){
-        contr_index = 0;
-        in_list ^= 1;
+          pad_ultimo = true;
+          if (!axis_timer)
+              axis_timer = 10;
+          if (in_list) {
+              if (static_cast<size_t>(contr_index) == estado->lista.paths.size() - 1 && !scroll_index) {
+                  int visible_itens = static_cast<int>((estado->scale * 640.0f) / (GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT) + GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING)));
+                  if (contr_index > visible_itens)
+                      scroll_index = (estado->lista.paths.size() - visible_itens);
+              }
+              else if ((contr_index - scroll_index) < 0)
+                  --scroll_index;
+          }
       }
-      else{
-        contr_index = std::size(opcoes_menu);
+      else if ((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT) || leftStickX < -0.5f) && !axis_timer) {
+          if (!in_list && contr_index == std::size(opcoes_menu)) {
+              --contr_index;
+          }
+          else {
+              if (estado->lista.paths.size()) {
+                  contr_index = (in_list) ? 0 : scroll_index;
+                  in_list ^= 1;
+              }
+              else {
+                  contr_index = std::size(opcoes_menu);
+              }
+          }
+
+          pad_ultimo = true;
+          if (!axis_timer)
+              axis_timer = 10;
       }
-      pad_ultimo = true;
-      if(!axis_timer)
-        axis_timer = 10;
-    }
-  };
+      else if ((IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) || leftStickX > 0.5f) && !axis_timer) {
+          if (estado->lista.paths.size()) {
+              contr_index = (in_list) ? 0 : scroll_index;
+              in_list ^= 1;
+          }
+          else {
+              contr_index = std::size(opcoes_menu);
+          }
+          pad_ultimo = true;
+          if (!axis_timer)
+              axis_timer = 10;
+      }
+      };
 
   BeginDrawing();
   ClearBackground(BLACK);
@@ -189,9 +209,14 @@ void run_main_menu(UWP_State *estado){
     }
   }
    
-  GuiListView(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), estado->lista.geral.c_str(), &estado->scroll_index, &ativo);
+  int scroll_prev = scroll_index;
+  GuiListViewEx(get_ret(1000.0f, 320.0f, 325.0f, 640.0f), (char**)estado->lista.nomes.data(), estado->lista.paths.size(), &scroll_index, &ativo, &focus);
   if(gamepad > -1 && in_list){
     float offset = GuiGetStyle(LISTVIEW, LIST_ITEMS_SPACING) + GuiGetStyle(LISTVIEW, LIST_ITEMS_HEIGHT);
+    if(scroll_index != scroll_prev){
+        contr_index += (scroll_index - scroll_prev);
+    }
+
     DrawRectangleLinesEx(Rectangle{scale*1003.0f, scale*323.0f + contr_index*offset, scale*317.0f, offset - scale*3.0f}, scale*3.0f, GREEN);
     if(IsGamepadButtonPressed(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)){
       ativo = contr_index;
