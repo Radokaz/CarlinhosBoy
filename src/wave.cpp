@@ -8,7 +8,6 @@ bool CH3::is_length_enabled(void){
 
 void CH3::init_ch3(void){
   this->seta_length();
-  this->seta_output();
 
   if(!modo_cgb && is_channel3_on(memoria) && periodo_divider == periodo_shadow){
     
@@ -104,7 +103,7 @@ void CH3::incrementa_divider(void){
 
 uint8_t CH3::get_sample(void){
   this->seta_output(); 
-  if(!output_level) return 7;
+  if(!output_level) return 0;
 
   uint8_t bit = output_level - 1;
   return (last_sample >> bit);
@@ -114,7 +113,7 @@ void CH3::amplifier(void){
   uint8_t sample = this->get_sample();
   memoria[0xFF77] = (memoria[0xFF77] & 0xF0) | (sample & 0x0F);
   mixer(sample, prev_esq, prev_dir, is_ch3_left(memoria) && (APU::canais_ativos & APU_CANAL3),
-      is_ch3_right(memoria) && (APU::canais_ativos & APU_CANAL3), synth);
+    is_ch3_right(memoria) && (APU::canais_ativos & APU_CANAL3), synth);
 }
 
 void CH3::clear(void){

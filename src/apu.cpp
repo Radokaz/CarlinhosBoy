@@ -24,11 +24,11 @@ void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8
   else if(!direction_ant){
     (*envelope)+=2;
   }
-
+  
   if(direction_ant != direction_now)
-    *envelope = 16 - *envelope;
+    *envelope = (16 - *envelope);
 
-  (*envelope)&=0x0F;
+  (*envelope)&=0xF;
 }
 
 uint8_t& APU::read(uint16_t endereco){
@@ -130,8 +130,6 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         if(!ch1.dac){
           memoria[0xFF26] &= ~APU_CH1_ON;
-          ch1.prev_esq = 0;
-          ch1.prev_dir = 0;
         }
 
         if(is_channel1_on(memoria))
@@ -180,8 +178,6 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         if(!ch2.dac){
           memoria[0xFF26] &= ~APU_CH2_ON;
-          ch2.prev_esq = 0;
-          ch2.prev_dir = 0;
         }
 
         if(is_channel2_on(memoria))
@@ -219,8 +215,6 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         if(!ch3.dac){
           memoria[0xFF26] &= ~APU_CH3_ON;
-          ch3.prev_esq = 0;
-          ch3.prev_dir = 0;
         }
 
         memoria[0xFF1A] = valor;
@@ -265,8 +259,6 @@ void APU::write(uint16_t endereco, uint8_t valor){
 
         if(!ch4.dac){
           memoria[0xFF26] &= ~APU_CH4_ON;
-          ch4.prev_esq = 0;
-          ch4.prev_dir = 0;
         }
 
         if(is_channel4_on(memoria))
@@ -380,15 +372,6 @@ void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   volume_esq = 0;
   volume_dir = 0;
 
-  ch1.prev_esq = 0;
-  ch1.prev_dir = 0;
-  ch2.prev_esq = 0;
-  ch2.prev_dir = 0;
-  ch3.prev_esq = 0;
-  ch3.prev_dir = 0;
-  ch4.prev_esq = 0;
-  ch4.prev_dir = 0;
-  
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
   memoria[0xFF26] = 0;
