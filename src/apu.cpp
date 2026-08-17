@@ -31,6 +31,22 @@ void checa_zombie_mode(uint8_t *nrx2, uint8_t *envelope, bool auto_update, uint8
   (*envelope)&=0xF;
 }
 
+template <typename T>
+concept IsChannel = requires(T t){
+  { t.synth } -> std::same_as<Blip_Synth<blip_good_quality, 240>*&>;
+  { t.prev_esq } -> std::convertible_to<int>;
+  { t.prev_dir } -> std::convertible_to<int>;
+};
+
+template <typename T>
+requires IsChannel<T>
+void output_zero(T& ch){
+  ch.synth->offset(APU::global_clocks, 0 - ch.prev_esq, APU::blip_esq.get());
+  ch.synth->offset(APU::global_clocks, 0 - ch.prev_dir, APU::blip_esq.get());
+  ch.prev_esq = 0;
+  ch.prev_dir = 0;
+}
+
 uint8_t& APU::read(uint16_t endereco){
 
     switch(endereco){
@@ -367,6 +383,7 @@ void APU::audio_pop(void){
   }
 }
 
+
 void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   sample_ciclos = 0;
   volume_esq = 0;
@@ -375,6 +392,10 @@ void APU::limpa_registradores(void){ //limpa todos menos os de lenght e o NR52
   memoria[0xFF24] = 0;
   memoria[0xFF25] = 0;
   memoria[0xFF26] = 0;
+  output_zero(ch1);
+  output_zero(ch2);
+  output_zero(ch3);
+  output_zero(ch4);
 
   ch1.clear();
   ch2.clear();
