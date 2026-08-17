@@ -275,8 +275,8 @@ struct APU{
     ch3.synth = &synths[2];
     ch4.synth = &synths[3];
 
-    blip_esq->bass_freq(20);
-    blip_dir->bass_freq(20);
+    blip_esq->bass_freq(10);
+    blip_dir->bass_freq(10);
     global_clocks = 0;
   }
 
