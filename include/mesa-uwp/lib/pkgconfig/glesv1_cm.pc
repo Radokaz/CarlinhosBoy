@@ -1,9 +1,0 @@
-prefix=C:/mesa_build
-includedir=${prefix}/include
-libdir=${prefix}/lib
-
-Name: glesv1_cm
-Description: Mesa OpenGL ES 1.1 CM library
-Version: 26.2.0
-Libs: -L${libdir} -lGLESv1_CM
-Cflags: -I${includedir}

@@ -1,9 +1,0 @@
-prefix=C:/mesa_build
-includedir=${prefix}/include
-libdir=${prefix}/lib
-
-Name: egl
-Description: Mesa EGL Library
-Version: 26.2.0
-Libs: -L${libdir} -lEGL
-Cflags: -I${includedir}
