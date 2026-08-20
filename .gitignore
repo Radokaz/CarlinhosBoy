@@ -4,3 +4,5 @@ include/mesa-uwp/bin/spirv2dxil.exe
 include/mesa-uwp/bin/spirv2dxil.pdb
 include/mesa-uwp/lib/
 include/mesa-uwp/share/
+include/raylib/
+include/sdl3-uwp/
