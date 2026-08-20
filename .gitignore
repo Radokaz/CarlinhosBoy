@@ -2,4 +2,5 @@ include/mesa-uwp/bin/glsl_compiler.exe
 include/mesa-uwp/bin/glsl_compiler.pdb
 include/mesa-uwp/bin/spirv2dxil.exe
 include/mesa-uwp/bin/spirv2dxil.pdb
+include/mesa-uwp/lib/
 include/mesa-uwp/share/
