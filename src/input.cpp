@@ -87,7 +87,7 @@ void le_input_controle(Game_State *estado, size_t save_slot, bool& pausado, bool
 
   if(but[0].segurado(gamepad)) 
     controles |= A_BUTTON;
-  if(but[1].segurado(gamepad)) 
+  if(but[1].segurado(gamepad) || IsGamepadButtonDown(gamepad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) //botão B já pré-mapeado
     controles |= B_BUTTON;
   if(but[2].segurado(gamepad))
     controles |= START;

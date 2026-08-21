@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.2.0)
 
 # Project name
-project(Carlinhos_Boy LANGUAGES C CXX)
+project(CarlinhosBoy LANGUAGES C CXX)
 
 # Set C++ standard to C++23
 set(CMAKE_CXX_STANDARD 23)
@@ -90,11 +90,11 @@ set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
 
 if(NOT BUILDING_UWP)
   # versão para debug
-  target_compile_options(cb PRIVATE -Werror -Wall -Wpedantic -g)
-  target_link_options(cb PRIVATE -fsanitize=address)
+  #target_compile_options(cb PRIVATE -Werror -Wall -Wpedantic -g)
+  #target_link_options(cb PRIVATE -fsanitize=address)
 
   # essa é pra versão final
-  # target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
+  target_compile_options(cb PRIVATE -O2 -march=x86-64-v3 -flto -fno-exceptions)
 endif()
 
 target_include_directories(cb PRIVATE include)
