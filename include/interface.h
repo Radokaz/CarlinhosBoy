@@ -88,6 +88,7 @@ struct GB_State{
   size_t save_slot {};
   int paleta_cgb {};
   bool pad_ultimo {false};
+  bool rodando {false};
 
   GB_State(void){
 #ifdef UWP_BUILDING

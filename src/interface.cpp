@@ -621,10 +621,11 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   ShowCursor();
   EndDrawing();
   
-  constexpr char opcoes[4][15] = {"Resumir", "Controles", "Save States", "Sair"};
+  constexpr char opcoes[5][15] = {"Resumir", "Reiniciar", "Controles", "Save States", "Sair"};
   uint8_t escolhas {};
   int8_t contr_index {};
   int axis_timer {};
+  bool controles {false};
 
   constexpr float width = 1920.0f;
   constexpr float height = 1080.0f;
@@ -673,6 +674,12 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
       redimensiona();
     }
 
+    if(controles){
+      controles = false;
+      display_controles(estado);
+      redimensiona();
+    }
+
     if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
       pad_ultimo = false;
     }
@@ -704,7 +711,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     DrawText("PAUSE", scale*690.0f, scale*80.0f, scale*150.0f, GOLD);
     DrawLine(scale*275.0f, scale*250.0f, scale*1625.0f, scale*250.0f, GOLD);
 
-    for(size_t i {}; i < 4; ++i){
+    for(size_t i {}; i < 5; ++i){
       Rectangle r = get_ret(790.0f, (320.0f + 135.0f*i), 300.0f, 100.0f);
 
       if(pad_ultimo && static_cast<size_t>(contr_index) == i){
@@ -726,17 +733,22 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
     }
     if(escolhas & opt_escolha(1)){
       escolhas &= ~opt_escolha(1);
-      display_controles(estado);
-      redimensiona();
+      EndDrawing();
+      return true;
     }
     if(escolhas & opt_escolha(2)){
       escolhas &= ~opt_escolha(2);
-      display_saves(game, estado);
-      redimensiona();
+      controles = true;
     }
     if(escolhas & opt_escolha(3)){
       escolhas &= ~opt_escolha(3);
+      display_saves(game, estado);
+      redimensiona();
+    }
+    if(escolhas & opt_escolha(4)){
+      escolhas &= ~opt_escolha(4);
       EndDrawing();
+      estado->rodando = false;
       return true;
     }
 
@@ -774,7 +786,9 @@ void carrega_rom(GB_State *estado){
    }).get();
 
   if(!resultado.length()) return;
-  inicia_emulador(resultado.c_str(), estado);
+  estado->rodando = true;
+  while(estado->rodando)
+    inicia_emulador(resultado.c_str(), estado);
 #else
   const char *resultado = tinyfd_openFileDialog(
     "Escolha a rom",  // título
@@ -785,7 +799,10 @@ void carrega_rom(GB_State *estado){
     0);               // 0 = um arquivo;
 
   if(!resultado) return;
-  inicia_emulador(resultado, estado);
+
+  estado->rodando = true;
+  while(estado->rodando)
+    inicia_emulador(resultado, estado);
 #endif
 }
 
@@ -1075,7 +1092,9 @@ void init_gui(void){
     }
 
     if((ativo >= 0 && ativo < static_cast<int>(lista.arquivos1.count + lista.arquivos2.count) && !open_delay) || open_delay == 2){
-      inicia_emulador(lista.paths[ativo], &estado);
+      estado.rodando = true;
+      while(estado.rodando)
+        inicia_emulador(lista.paths[ativo], &estado);
       ativo = -1;
       open_delay = 0;
       redimensiona();
