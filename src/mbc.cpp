@@ -314,6 +314,9 @@ void MBC3::save_state(std::fstream *save){
   save->write(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
   save->write(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
   save->write(reinterpret_cast<char*>(ram.data()), ram.size());
+  save->write(reinterpret_cast<char*>(&rtc), sizeof(rtc));
+  save->write(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
+  save->write(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
 }
 
 void MBC3::load_state(std::fstream *save){
@@ -329,6 +332,9 @@ void MBC3::load_state(std::fstream *save){
   save->read(reinterpret_cast<char*>(&tem_rumble), sizeof(tem_rumble));
   save->read(reinterpret_cast<char*>(&jogo_salvo), sizeof(jogo_salvo));
   save->read(reinterpret_cast<char*>(ram.data()), ram.size());
+  save->read(reinterpret_cast<char*>(&rtc), sizeof(rtc));
+  save->read(reinterpret_cast<char*>(&rtc_latch), sizeof(rtc_latch));
+  save->read(reinterpret_cast<char*>(&rtc_last), sizeof(rtc_last));
 }
 
 void MBC3::save(void){
