@@ -23,6 +23,7 @@ endif()
 
 file(COPY ${CMAKE_SOURCE_DIR}/resources/dmg_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/resources/cgb_boot.bin DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/resources/gamecontrollerdb.txt DESTINATION ${CMAKE_BINARY_DIR})
 
 if(WIN32)
   set(APP_ICON_RESOURCE_WINDOWS "${CMAKE_SOURCE_DIR}/resources/Cavalo.rc")

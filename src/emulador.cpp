@@ -71,6 +71,7 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   bool janela_alterada {false};
   bool is_120 {false};
   SetTargetFPS(0);
+  inibe_tela();
 
   while(1){
     ClearBackground(BLACK);
@@ -134,7 +135,9 @@ void inicia_emulador(std::string_view src, GB_State *estado){
   UnloadAudioStream(stream);
   CloseAudioDevice();
   UnloadTexture(texture);
+  desinibe_tela();
 }
+
 #else
 void inicia_emulador(std::string_view src, GB_State* estado) {
 

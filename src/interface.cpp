@@ -636,6 +636,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
   GuiSetStyle(BUTTON, TEXT_SIZE, (scale*25.0f));
   GuiSetStyle(DEFAULT, TEXT_SIZE, (scale*25.0f));
   SetTargetFPS(60);
+  desinibe_tela();
 
   auto redimensiona = [&](){
     screen_w = get_width()/width;
@@ -760,6 +761,7 @@ bool pausa_jogo(Game_State *game, GB_State *estado, bool& pausado, bool& resumid
 
   pausado = false;
   SetTargetFPS(0);
+  inibe_tela();
   return false;
 }
 #endif
@@ -898,6 +900,11 @@ void init_gui(void){
   InitWindow(width, height, "Carlinhos Boy");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
   SetTargetFPS(60);
+
+  std::ifstream file(std::filesystem::path(getExeDir()) / "gamecontrollerdb.txt");
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  SetGamepadMappings(buffer.str().c_str());
 
   constexpr const char *opcoes[] = {
     "Abrir ROM", "Controles", "Definir pasta de saves", "Definir pasta de roms", "Sair",

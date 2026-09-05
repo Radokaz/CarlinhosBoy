@@ -7,8 +7,21 @@
 #include <filesystem>
 #include <fstream>
 
+#if !defined(_WIN32) && !defined(UWP_BUILDING)
+#include <csignal>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#endif
+
+#if defined(_WIN32) || defined(UWP_BUILDING)
+#define WIN32_LEAN_AND_MEAN
+#define NOGDI
+#define NOUSER
+#include <windows.h>
+#endif
+
 #ifdef UWP_BUILDING
-  #include <windows.h>
   #include <winrt/base.h>
   #include <winrt/Windows.Foundation.h>
   #include <winrt/Windows.Foundation.Collections.h>
@@ -41,6 +54,40 @@ int GamepadDisponivel(void);
 float fix_deadzone(float dz);
 float get_width(void);
 float get_height(void);
+
+#ifdef _WIN32
+
+inline void inibe_tela(void){
+  SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
+}
+
+inline void desinibe_tela(void){
+  SetThreadExecutionState(ES_CONTINUOUS);
+}
+
+#else
+//funciona apenas com systemd;
+inline static int pid = -1;
+
+inline void inibe_tela(void){
+  pid = fork();
+  if(pid == 0) {
+    execlp("systemd-inhibit", "systemd-inhibit",
+      "--what=idle", "--who=raylib", "--why=playing",
+      "sleep", "infinity", (char *)NULL);
+    _exit(1);
+  }
+}
+
+inline void desinibe_tela(void){
+  if(pid > 0){
+    kill(pid, SIGTERM);
+    waitpid(pid, NULL, 0);
+    pid = -1;
+  }
+}
+
+#endif
 
 struct GamepadComb{
   GamepadButton but1;
